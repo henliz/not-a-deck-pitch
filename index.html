@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Trove</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 75% 65% at 12% 58%, rgba(143,230,60,0.22) 0%, transparent 62%),
+        radial-gradient(ellipse 55% 75% at 88% 18%, rgba(110,215,80,0.13) 0%, transparent 55%),
+        radial-gradient(ellipse 40% 50% at 60% 90%, rgba(143,230,60,0.10) 0%, transparent 50%),
+        #f0f0e0;
+
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    canvas#webgl {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+
+    /* ── fade cover ── */
+    #fade-cover {
+      position: fixed;
+      inset: 0;
+      background: #f5f5e8;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 700ms ease;
+    }
+
+    #fade-cover.active { opacity: 1; }
+
+    /* ── vignette — CSS only, zero WebGL impact ── */
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 8;
+      background: radial-gradient(ellipse 75% 80% at 50% 50%,
+        transparent 40%,
+        rgba(20,16,8,0.08) 68%,
+        rgba(12,10,4,0.24) 100%);
+    }
+
+    /* ── tangle overlay ── */
+    #tangle-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+
+    #tangle-screen {
+      position: absolute;
+      pointer-events: none;
+      transform-origin: 0 0;
+    }
+    #tangle-screen.active { pointer-events: all; }
+
+    #tangle-slide {
+      width: 100%; height: 100%;
+      background: #ffffff;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      border-radius: inherit;
+      transform: translateY(100%);
+      transition: transform 420ms cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .t-status {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 22px 5px; background: #ffffff;
+      font-size: 12px; font-weight: 700; color: #1a1a2e;
+      letter-spacing: -0.01em; flex-shrink: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    .t-status-icons { display: flex; align-items: center; gap: 5px; }
+
+    .t-nav {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 12px; background: #ffffff;
+      border-bottom: 1px solid rgba(0,0,0,0.07); flex-shrink: 0;
+    }
+    .t-close-btn, .t-help-btn {
+      width: 30px; height: 30px; border-radius: 50%; border: none;
+      background: #1a1a2e; color: white; font-size: 16px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; line-height: 1;
+    }
+    .t-progress-track { flex: 1; height: 8px; background: #1a1a2e; border-radius: 999px; overflow: hidden; }
+    .t-progress-fill { height: 100%; background: #d4f54a; border-radius: 999px; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); width: 0%; }
+    .t-avatars { display: flex; gap: 4px; }
+    .t-avatar { width: 26px; height: 26px; border-radius: 50%; background: #1a1a2e; }
+
+    #t-content { flex: 1; overflow: hidden; position: relative; }
+
+    .t-scene {
+      position: absolute; inset: 0; overflow-y: auto;
+      padding: 14px 18px 32px; display: flex; flex-direction: column;
+      scrollbar-width: none; transform: translateX(0);
+      transition: transform 300ms cubic-bezier(0.4,0,0.2,1);
+    }
+    .t-scene::-webkit-scrollbar { display: none; }
+    .t-scene.slide-out  { transform: translateX(-100%); }
+    .t-scene.slide-in-prepare { transform: translateX(100%); transition: none; }
+    .t-scene.slide-in   { transform: translateX(0); }
+
+    .t-chapter-label {
+      font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+      color: #9a9a88; margin-bottom: 10px; font-family: 'Inter', sans-serif;
+    }
+    .t-prev-text {
+      font-size: 11px; color: #aaa898; font-style: italic;
+      margin-bottom: 10px; line-height: 1.4; font-family: 'Inter', sans-serif;
+    }
+    .t-scene-text {
+      font-size: 14px; font-weight: 600; color: #1a1a1a;
+      line-height: 1.65; margin-bottom: 10px; font-family: 'Nunito', sans-serif;
+    }
+    .t-pull-quote {
+      border-left: 3px solid #d4f54a; padding: 8px 0 8px 12px;
+      margin: 8px 0; font-size: 13px; font-style: italic; color: #4a4a3a; line-height: 1.5;
+      font-family: 'Nunito', sans-serif;
+    }
+    .t-speech-bubble {
+      background: #ffffff; border-radius: 14px 14px 14px 4px;
+      padding: 10px 14px; font-size: 13px; color: #1a1a1a;
+      line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      margin: 8px 0; font-family: 'Inter', sans-serif;
+    }
+    .t-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+    .t-stat-cell { background: rgba(26,26,46,0.06); border-radius: 10px; padding: 10px 12px; text-align: center; }
+    .t-stat-num { font-size: 20px; font-weight: 800; color: #1a1a2e; display: block; line-height: 1; margin-bottom: 4px; font-family: 'Nunito', sans-serif; }
+    .t-stat-label { font-size: 9px; color: #6a6a5a; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; font-family: 'Inter', sans-serif; }
+
+    .t-ask-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
+    .t-ask-cell { background: rgba(26,26,46,0.06); border-radius: 10px; padding: 10px 12px; }
+    .t-ask-label { font-size: 9px; letter-spacing: 0.1em; color: #8a8a7a; text-transform: uppercase; margin-bottom: 4px; font-family: 'Inter', sans-serif; }
+    .t-ask-val { font-size: 15px; font-weight: 800; color: #1a1a2e; font-family: 'Nunito', sans-serif; }
+    .t-ask-sub { font-size: 10px; color: #7a7a6a; margin-top: 3px; font-style: italic; font-family: 'Inter', sans-serif; }
+
+    .t-reveal-list { margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+    .t-reveal-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 12px; color: #3a3a2a; line-height: 1.4;
+      opacity: 0; transform: translateY(4px);
+      animation: tFadeUp 0.4s ease forwards; font-family: 'Nunito', sans-serif;
+    }
+    .t-reveal-marker { color: #8a8a7a; font-size: 9px; letter-spacing: 0.1em; flex-shrink: 0; margin-top: 2px; font-family: 'Inter', sans-serif; }
+    @keyframes tFadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    .t-team-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+    .t-team-card { background: rgba(26,26,46,0.06); border-radius: 10px; padding: 10px 12px; }
+    .t-team-name { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; font-family: 'Nunito', sans-serif; }
+    .t-team-bio { font-size: 11px; color: #5a5a4a; line-height: 1.4; font-style: italic; font-family: 'Inter', sans-serif; }
+
+    .t-inv-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+    .t-inv-tag { border: 1px solid rgba(26,26,46,0.2); border-radius: 4px; padding: 4px 8px; font-size: 9px; letter-spacing: 0.08em; color: #6a6a5a; text-transform: uppercase; font-family: 'Inter', sans-serif; }
+    .t-inv-tag.active { border-color: #d4f54a; color: #1a2a00; background: rgba(212,245,74,0.18); }
+
+    .t-profile-reveal { background: rgba(26,26,46,0.06); border-radius: 12px; border: 1px solid rgba(26,26,46,0.1); padding: 14px; margin: 8px 0; }
+    .t-profile-title { font-size: 9px; letter-spacing: 0.15em; color: #8a8a7a; text-transform: uppercase; margin-bottom: 6px; font-family: 'Inter', sans-serif; }
+    .t-profile-type { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; font-family: 'Nunito', sans-serif; }
+    .t-profile-desc { font-size: 12px; color: #4a4a3a; line-height: 1.5; font-style: italic; font-family: 'Inter', sans-serif; }
+
+    .t-contact { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 11px; color: #7a7a6a; line-height: 1.9; font-family: 'Inter', sans-serif; }
+    .t-contact a { color: #4a6a4a; text-decoration: none; }
+    .t-contact-name { font-weight: 700; color: #2a2a1a; font-size: 12px; font-family: 'Nunito', sans-serif; }
+
+    .t-choices { margin-top: auto; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .t-choice-btn {
+      background: #1a1a2e; color: white; border: none; border-radius: 50px;
+      padding: 13px 18px; min-height: 52px; font-size: 13px; font-weight: 500;
+      font-family: 'Nunito', sans-serif; text-align: left; cursor: pointer;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: transform 80ms ease, background 200ms ease;
+    }
+    .t-choice-btn:active { transform: scale(0.97); }
+    .t-choice-btn.selected { background: #d4f54a; color: #1a1a1a; }
+    .t-choice-icon { font-size: 14px; flex-shrink: 0; }
+
+    .t-continue-btn {
+      margin-top: 14px; background: #1a1a2e; color: white; border: none;
+      border-radius: 50px; padding: 14px 20px; font-size: 13px; font-weight: 700;
+      font-family: 'Nunito', sans-serif; cursor: pointer; width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: transform 80ms ease;
+    }
+    .t-continue-btn:active { transform: scale(0.98); }
+
+    .t-hero-logo {
+      position: relative; display: inline-block;
+      height: 40px; margin-bottom: 8px; overflow: visible;
+    }
+    .t-hero-word {
+      height: 36px; width: auto; display: block; opacity: 0;
+    }
+    .t-hero-oh {
+      position: absolute; top: 7px; left: 0;
+      width: 24px; height: 24px; object-fit: contain;
+    }
+
+    .t-toast {
+      position: absolute; top: 10px; right: 10px;
+      background: #d4f54a; color: #1a2a00; border-radius: 999px;
+      padding: 6px 12px; font-size: 11px; font-weight: 700;
+      font-family: 'Nunito', sans-serif; transform: translateX(130%);
+      transition: transform 300ms cubic-bezier(0.4,0,0.2,1);
+      pointer-events: none; z-index: 10; white-space: nowrap;
+    }
+    .t-toast.visible { transform: translateX(0); }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three":       "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js",
+      "web-haptics": "https://unpkg.com/web-haptics@0.0.6/dist/index.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <canvas id="webgl"></canvas>
+  <div id="vignette"></div>
+
+  <div id="tangle-overlay"><div id="tangle-screen"></div></div>
+  <div id="fade-cover"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/loaders/GLTFLoader.js';
+    import { WebHaptics } from 'web-haptics';
+
+    /* ── haptics ── */
+    const haptics = new WebHaptics();
+    haptics.setDebug(true); // enables audio simulation on devices without vibration
+
+    // Named patterns for each moment in the sequence
+    const HAPTIC = {
+      tap:    () => haptics.trigger('selection'),
+      notif:  () => haptics.trigger([{ duration: 40, intensity: 0.8 }, { delay: 100, duration: 40, intensity: 0.6 }]),
+      burst:  () => haptics.trigger([{ duration: 20, intensity: 1.0 }]),
+      shatter:() => haptics.trigger([
+                      { duration: 80,  intensity: 1.0 },
+                      { delay: 40,  duration: 60,  intensity: 0.8 },
+                      { delay: 30,  duration: 120, intensity: 1.0 },
+                    ]),
+      begin:  () => haptics.trigger([{ duration: 8 }], { intensity: 0.3 }),
+      card:   () => haptics.trigger([{ duration: 80, intensity: 0.8 }, { delay: 80, duration: 50, intensity: 0.3 }]),
+    };
+
+    /* ── renderer ── */
+    const canvas = document.getElementById('webgl');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = false;
+    renderer.setClearColor(0x000000, 0); // transparent — CSS body gradient shows through
+
+    const scene = new THREE.Scene(); // no background colour, CSS handles it
+
+    const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 7);
+
+    scene.add(new THREE.HemisphereLight(0xf5ede0, 0xd0c8b8, 0.18));
+
+    const keyLight = new THREE.PointLight(0xfff2d8, 4.5, 28);
+    keyLight.position.set(-3.5, 7, 5);
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight(0x9ab8ff, 6.0);
+    rimLight.position.set(7, 2, -8);
+    scene.add(rimLight);
+
+    const rimLight2 = new THREE.DirectionalLight(0xffd090, 2.2);
+    rimLight2.position.set(-6, 0, -7);
+    scene.add(rimLight2);
+
+    const bounceLight = new THREE.DirectionalLight(0xffe4c0, 0.55);
+    bounceLight.position.set(1, -8, 5);
+    scene.add(bounceLight);
+
+    const greenAccent = new THREE.PointLight(0x8fe63c, 1.4, 22);
+    greenAccent.position.set(4, -3, 3);
+    scene.add(greenAccent);
+
+    /* ── phone group ── */
+    const phoneGroup = new THREE.Group();
+    scene.add(phoneGroup);
+
+    let phoneMesh    = null;
+    let questionMat  = null; // opacity-animated after spin
+    let spinStart    = null;
+    let spinDone     = false;
+    let isSpinning   = false;
+
+    /* ── question / hold canvas module-scope handles ── */
+    let qctx = null, qTex = null, qPlane = null, screenRefPlane = null;
+    let phoneScreenMeta = null; // { maxX, midY, midZ, sizeY, sizeZ } in phoneMesh local space
+    let holdCtx = null, holdTex = null, holdMat = null;
+    let isHolding = false, holdStart = 0, holdHapticInterval = null;
+    let qAnimStart = null, qAnimDone = false, btnVisible = false;
+    let prioBtnCanvas = null; // {x,y,w,h} canvas pixel coords of the button
+    let fontsReady = false;
+    document.fonts.ready.then(() => { fontsReady = true; });
+
+    /* ── Trove logo (white silhouette, transparent bg) ── */
+    let troveLogoCv = null;
+    const _troveImg = new Image();
+    _troveImg.onload = () => {
+      const tmp = document.createElement('canvas');
+      tmp.width = tmp.height = 256;
+      const tctx = tmp.getContext('2d');
+      tctx.drawImage(_troveImg, 0, 0, 256, 256);
+      const d = tctx.getImageData(0, 0, 256, 256);
+      for (let i = 0; i < d.data.length; i += 4) {
+        if (d.data[i+3] > 0) { // only touch visible pixels — invert black→white, keep transparency
+          d.data[i]   = 255 - d.data[i];
+          d.data[i+1] = 255 - d.data[i+1];
+          d.data[i+2] = 255 - d.data[i+2];
+        }
+      }
+      tctx.putImageData(d, 0, 0);
+      troveLogoCv = tmp;
+      drawHoldCanvas(0);
+    };
+    _troveImg.src = './TroveOh.png';
+
+    /* ── Trove wordmark (original black, for white card header) ── */
+    const troveWordmark = new Image();
+    troveWordmark.src = './TroveLogo.png';
+
+    /* ── notification canvas system ── */
+    const SYS_FONT     = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif';
+    const notifEntries = []; // { text, spawnTime }
+    let   notifCtx     = null;
+    let   notifTex     = null;
+
+    // Canvas layout constants (pixels on the 512×1024 notif canvas)
+    const NC_W      = 512, NC_H  = 1024;
+    const NC_CARD_H = 148, NC_CARD_G = 14, NC_MARGIN = 18;
+    const NC_BOTTOM = 980; // y of the bottom edge of the lowest card slot
+
+    function drawNotifCard(ctx, x, y, w, h, text) {
+      // Rounded rect
+      const r = 30;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y,      x + w, y + r,     r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.arcTo(x + w, y + h,  x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h);
+      ctx.arcTo(x,      y + h, x,       y + h - r, r);
+      ctx.lineTo(x, y + r);
+      ctx.arcTo(x,      y,     x + r,   y,         r);
+      ctx.closePath();
+
+      // ── Liquid glass (matches henliz.github.io navbar) ──
+      // 1. Dark base — 68% opaque, not fully black
+      ctx.fillStyle = 'rgba(15,20,25,0.68)';
+      ctx.fill();
+
+      // 2. Diagonal shimmer overlay — top-left light catch
+      const shimmer = ctx.createLinearGradient(x, y, x + w * 0.65, y + h * 0.65);
+      shimmer.addColorStop(0,    'rgba(255,255,255,0.13)');
+      shimmer.addColorStop(0.35, 'rgba(255,255,255,0.04)');
+      shimmer.addColorStop(1,    'rgba(255,255,255,0)');
+      ctx.fillStyle = shimmer;
+      ctx.fill();
+
+      // 3. Border — teal-tinted like the navbar
+      ctx.strokeStyle = 'rgba(168,218,220,0.32)';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      // 4. Specular inner rim — bright top-left inset highlight
+      ctx.save();
+      ctx.clip(); // clip to card shape
+      const specular = ctx.createLinearGradient(x, y, x + w, y + h);
+      specular.addColorStop(0,   'rgba(255,255,255,0.48)');
+      specular.addColorStop(0.2, 'rgba(255,255,255,0.13)');
+      specular.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.strokeStyle = specular;
+      ctx.lineWidth   = 3;
+      ctx.stroke();
+      ctx.restore();
+
+      // Avatar
+      const aR  = 28, aCX = x + 18 + aR, aCY = y + h / 2;
+      const ag  = ctx.createRadialGradient(aCX - 6, aCY - 6, 2, aCX, aCY, aR);
+      ag.addColorStop(0, '#a2f04a');
+      ag.addColorStop(1, '#68c226');
+      ctx.beginPath();
+      ctx.arc(aCX, aCY, aR, 0, Math.PI * 2);
+      ctx.fillStyle = ag;
+      ctx.fill();
+
+      ctx.shadowColor   = 'rgba(0,0,0,0.6)';
+      ctx.shadowBlur    = 8;
+      ctx.fillStyle     = '#ffffff';
+      ctx.font          = `700 22px ${SYS_FONT}`;
+      ctx.textAlign     = 'center';
+      ctx.textBaseline  = 'middle';
+      ctx.fillText('T', aCX, aCY);
+
+      const cX = aCX + aR + 14;
+      ctx.shadowBlur    = 10;
+      ctx.shadowOffsetY = 1;
+
+      // App name
+      ctx.fillStyle    = 'rgba(255,255,255,0.65)';
+      ctx.font         = `600 16px ${SYS_FONT}`;
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('TROVE', cX, y + 42);
+
+      // Timestamp
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font      = `400 15px ${SYS_FONT}`;
+      ctx.textAlign = 'right';
+      ctx.fillText('now', x + w - 18, y + 42);
+
+      // Message body
+      ctx.fillStyle = '#ffffff';
+      ctx.font      = `400 24px ${SYS_FONT}`;
+      ctx.textAlign = 'left';
+      ctx.fillText(text, cX, y + 94);
+
+      ctx.shadowColor   = 'transparent';
+      ctx.shadowBlur    = 0;
+      ctx.shadowOffsetY = 0;
+    }
+
+    function drawNotifCanvas() {
+      if (!notifCtx || notifEntries.length === 0) return;
+      notifCtx.clearRect(0, 0, NC_W, NC_H);
+
+      const now        = performance.now();
+      const newestTime = notifEntries[0].spawnTime;
+      const newestDur  = notifEntries[0].dur;
+      const shiftEase  = Math.min(1, 1 - Math.pow(Math.max(0, 1 - (now - newestTime) / newestDur), 3));
+
+      function slotY(i) {
+        if (i <= 2) return NC_BOTTOM - NC_CARD_H - i * (NC_CARD_H + NC_CARD_G);
+        const d = i - 2;
+        return (NC_BOTTOM - NC_CARD_H - 2 * (NC_CARD_H + NC_CARD_G)) - d * 8;
+      }
+
+      const count = Math.min(notifEntries.length, 8);
+      for (let i = count - 1; i >= 0; i--) {
+        const entry = notifEntries[i];
+        const fY    = slotY(i);
+        let   drawY;
+
+        if (i === 0) {
+          // Newest: slides up from below canvas
+          const ease = Math.min(1, 1 - Math.pow(Math.max(0, 1 - (now - entry.spawnTime) / entry.dur), 3));
+          drawY = NC_H + (fY - NC_H) * ease;
+        } else {
+          // Existing: shift up from their previous slot as new card enters
+          drawY = slotY(i - 1) + (fY - slotY(i - 1)) * shiftEase;
+        }
+
+        const d     = Math.max(0, i - 2);
+        const scale = i > 2 ? Math.max(0.82, 1 - d * 0.06) : 1;
+        const alpha = i > 2 ? Math.max(0.10, 1 - d * 0.28) : 1;
+
+        notifCtx.save();
+        notifCtx.globalAlpha = alpha;
+        if (scale < 1) {
+          const cx = NC_W / 2, cy = drawY + NC_CARD_H / 2;
+          notifCtx.translate(cx, cy);
+          notifCtx.scale(scale, scale);
+          notifCtx.translate(-cx, -cy);
+        }
+        drawNotifCard(notifCtx, NC_MARGIN, drawY, NC_W - NC_MARGIN * 2, NC_CARD_H, entry.text);
+        notifCtx.restore();
+      }
+
+      notifTex.needsUpdate = true;
+    }
+
+    const loader = new GLTFLoader();
+    loader.load('./iphone.glb', (gltf) => {
+      phoneMesh = gltf.scene;
+
+      // Original bbox (no transforms) — for screen plane sizing
+      const box0  = new THREE.Box3().setFromObject(phoneMesh);
+      const size0 = box0.getSize(new THREE.Vector3());
+      const mid0  = box0.getCenter(new THREE.Vector3());
+
+      phoneScreenMeta = { maxX: box0.max.x, midY: mid0.y, midZ: mid0.z, sizeY: size0.y, sizeZ: size0.z };
+
+      // Scale: fit largest XY dimension to 3.5 world units
+      const sf = 3.5 / Math.max(size0.x, size0.y);
+      phoneMesh.scale.setScalar(sf);
+
+      // Pose: screen faces +X in GLB → tilted for drama at start
+      phoneMesh.rotation.order = 'YXZ';
+      phoneMesh.rotation.y = -Math.PI / 2 + 0.35;
+      phoneMesh.rotation.x = 0.26;
+
+      // Proper centering: compute bbox AFTER rotation+scale are applied,
+      // then offset position so the bbox center lands exactly at group origin
+      phoneMesh.updateMatrixWorld(true);
+      const boxFinal    = new THREE.Box3().setFromObject(phoneMesh);
+      const centerFinal = boxFinal.getCenter(new THREE.Vector3());
+      phoneMesh.position.copy(centerFinal).negate();
+
+      phoneGroup.add(phoneMesh);
+
+      // ── Lock screen clock ──────────────────────────────────────────────────
+      // Screen face is +X in GLB local space. PlaneGeometry (default +Z normal)
+      // rotated Y +π/2 faces +X. Positioned at box0.max.x = the screen surface.
+      const clockCanvas   = document.createElement('canvas');
+      clockCanvas.width   = 512;
+      clockCanvas.height  = 1024;
+      const cctx = clockCanvas.getContext('2d');
+
+      function drawClock() {
+        const now  = new Date();
+        const h    = now.getHours() % 12 || 12;
+        const m    = String(now.getMinutes()).padStart(2, '0');
+        const day  = now.toLocaleDateString('en-US', { weekday: 'long' });
+        const date = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
+        cctx.clearRect(0, 0, 512, 1024);
+        // No background fill — text floats over the phone surface
+
+        // Soft drop shadow for lift
+        cctx.shadowColor   = 'rgba(0, 0, 0, 0.55)';
+        cctx.shadowBlur    = 14;
+        cctx.shadowOffsetY = 3;
+
+        // Date line
+        cctx.font      = `300 30px ${SYS_FONT}`;
+        cctx.fillStyle = 'rgba(255,255,255,0.82)';
+        cctx.textAlign = 'center';
+        cctx.fillText(`${day}, ${date}`, 256, 78);
+
+        // Time — ultra-light, large
+        cctx.font      = `200 158px ${SYS_FONT}`;
+        cctx.fillStyle = '#ffffff';
+        cctx.fillText(`${h}:${m}`, 256, 230);
+
+        cctx.shadowColor = 'transparent';
+      }
+
+      drawClock();
+      const clockTex = new THREE.CanvasTexture(clockCanvas);
+      setInterval(() => { drawClock(); clockTex.needsUpdate = true; }, 10000);
+
+      // Plane covers the screen face; sized from original GLB bbox
+      const clockPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(size0.z * 0.88, size0.y * 0.85),
+        new THREE.MeshBasicMaterial({ map: clockTex, transparent: true, depthTest: false })
+      );
+      clockPlane.rotation.y  = Math.PI / 2;
+      clockPlane.position.set(box0.max.x + 0.001, mid0.y, mid0.z);
+      clockPlane.renderOrder = 1;
+      phoneMesh.add(clockPlane);
+
+      // ── Notification canvas plane — same size/position, renderOrder 2 (in front of clock) ──
+      const notifCv    = document.createElement('canvas');
+      notifCv.width    = NC_W;
+      notifCv.height   = NC_H;
+      notifCtx         = notifCv.getContext('2d');
+      notifTex         = new THREE.CanvasTexture(notifCv);
+      const notifPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(size0.z * 0.88, size0.y * 0.85),
+        new THREE.MeshBasicMaterial({ map: notifTex, transparent: true, depthTest: false })
+      );
+      notifPlane.rotation.y  = Math.PI / 2;
+      notifPlane.position.set(box0.max.x + 0.002, mid0.y, mid0.z);
+      notifPlane.renderOrder = 2;
+      phoneMesh.add(notifPlane);
+
+      // ── Question canvas plane — fades in after spin ──────────────────────────
+      const qCv   = document.createElement('canvas');
+      qCv.width   = 512;
+      qCv.height  = 1024;
+      qctx        = qCv.getContext('2d');
+      qTex        = new THREE.CanvasTexture(qCv);
+      questionMat = new THREE.MeshBasicMaterial({ map: qTex, transparent: true, depthTest: false, opacity: 0 });
+      qPlane      = new THREE.Mesh(new THREE.PlaneGeometry(size0.z * 0.88, size0.y * 0.85), questionMat);
+      qPlane.rotation.y  = Math.PI / 2;
+      qPlane.position.set(box0.max.x + 0.003, mid0.y, mid0.z);
+      qPlane.renderOrder = 3;
+      phoneMesh.add(qPlane);
+
+      // ── Hold-to-begin canvas plane — visible at start, hides when seq starts ──
+      const holdCv   = document.createElement('canvas');
+      holdCv.width   = 512;
+      holdCv.height  = 1024;
+      holdCtx        = holdCv.getContext('2d');
+      holdTex        = new THREE.CanvasTexture(holdCv);
+      holdMat        = new THREE.MeshBasicMaterial({ map: holdTex, transparent: true, depthTest: false, opacity: 1 });
+      const holdPlane = new THREE.Mesh(new THREE.PlaneGeometry(size0.z * 0.88, size0.y * 0.85), holdMat);
+      holdPlane.rotation.y  = Math.PI / 2;
+      holdPlane.position.set(box0.max.x + 0.004, mid0.y, mid0.z);
+      holdPlane.renderOrder = 4;
+      phoneMesh.add(holdPlane);
+
+      // ── Screen reference plane — invisible, sized to full phone display face ──
+      // Used only for projecting tangle overlay bounds; covers the actual screen glass area
+      screenRefPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(size0.z * 0.92, size0.y * 0.965),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      screenRefPlane.rotation.y = Math.PI / 2;
+      screenRefPlane.position.set(box0.max.x + 0.003, mid0.y, mid0.z);
+      phoneMesh.add(screenRefPlane);
+
+      drawHoldCanvas(0); // initial ring state
+
+      // ── Brand-green halo — MeshBasicMaterial, totally unlit, behind the phone ──
+      const haloCv = document.createElement('canvas');
+      haloCv.width = haloCv.height = 256;
+      const haloCtx = haloCv.getContext('2d');
+      const haloGr  = haloCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
+      haloGr.addColorStop(0,    'rgba(143,230,60,0.26)');
+      haloGr.addColorStop(0.45, 'rgba(143,230,60,0.12)');
+      haloGr.addColorStop(1,    'rgba(143,230,60,0)');
+      haloCtx.fillStyle = haloGr;
+      haloCtx.fillRect(0, 0, 256, 256);
+      const haloMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(4.2, 7.0),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(haloCv), transparent: true, depthWrite: false })
+      );
+      haloMesh.position.set(0, 0, -0.4);
+      haloMesh.renderOrder = -2;
+      phoneGroup.add(haloMesh);
+
+    });
+
+    /* ── shatter particles ── */
+    let particles      = [];
+    let shatterStart   = 0;
+    let shatterRunning = false;
+
+    function spawnParticles() {
+      for (let i = 0; i < 50; i++) {
+        const sz  = 0.05 + Math.random() * 0.20;
+        const geo = new THREE.BufferGeometry();
+        const v   = new Float32Array([
+          0, 0, 0,
+          (Math.random() - 0.5) * sz * 3, (Math.random() - 0.5) * sz * 3, 0,
+          (Math.random() - 0.5) * sz * 3, (Math.random() - 0.5) * sz * 3, 0,
+        ]);
+        geo.setAttribute('position', new THREE.BufferAttribute(v, 3));
+
+        // Color mix: 28% lime green, 18% light cream, rest dark charcoal
+        const rnd = Math.random();
+        const col = rnd < 0.28 ? 0x8fe63c
+                  : rnd < 0.46 ? 0xd8d8c0
+                  : 0x2a2a38;
+
+        const mat = new THREE.MeshBasicMaterial({
+          color:       col,
+          transparent: true,
+          opacity:     1,
+          side:        THREE.DoubleSide,
+          depthWrite:  false,
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+
+        // Launch from phone center with outward velocity
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.0 + Math.random() * 4.5;
+        mesh.userData = {
+          vx: Math.cos(angle) * speed,
+          vy: (Math.random() * 0.6 + 0.1) * speed * (Math.random() < 0.7 ? 1 : -1),
+          vz: Math.sin(angle) * speed * 0.55,
+          rx: (Math.random() - 0.5) * 12,
+          ry: (Math.random() - 0.5) * 12,
+          rz: (Math.random() - 0.5) * 12,
+        };
+
+        scene.add(mesh);
+        particles.push(mesh);
+      }
+    }
+
+    function clearParticles() {
+      for (const p of particles) {
+        p.geometry.dispose();
+        p.material.dispose();
+        scene.remove(p);
+      }
+      particles = [];
+    }
+
+    /* ── notification texts + spawn ── */
+    const notifTexts = [
+      'hired the wrong person.',
+      'ghosted on date 3.',
+      'trusted the wrong founder.',
+      'promoted the wrong manager.',
+      'invested in the wrong startup.',
+    ];
+
+    function spawnNotif(text, burst = false) {
+      burst ? HAPTIC.burst() : HAPTIC.notif();
+      notifEntries.unshift({ text, spawnTime: performance.now(), dur: burst ? 90 : 340 });
+      joltTime = performance.now();
+      const orig = keyLight.intensity;
+      keyLight.intensity = burst ? 9.5 : 7.0;
+      setTimeout(() => { keyLight.intensity = orig; }, burst ? 35 : 75);
+    }
+
+    function explodeNotifCards() {
+      notifEntries.length = 0;
+      if (notifCtx) { notifCtx.clearRect(0, 0, NC_W, NC_H); notifTex.needsUpdate = true; }
+
+      const cols = [0x0c0c18, 0x1a1a2e, 0xffffff, 0xa8dadc, 0x8fe63c, 0xd4f54a];
+      const sm   = phoneScreenMeta;
+
+      for (let i = 0; i < 90; i++) {
+        // Shard shape: sharp irregular triangles (glass-like)
+        const sw = 0.03 + Math.random() * 0.16;
+        const sh = 0.02 + Math.random() * 0.09;
+        const jx = () => (Math.random() - 0.5) * sw * 2.2;
+        const jy = () => (Math.random() - 0.5) * sh * 2.2;
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+          0, 0, 0,   jx(), jy(), 0,   jx(), jy(), 0,
+        ]), 3));
+
+        const mat  = new THREE.MeshBasicMaterial({
+          color: cols[Math.floor(Math.random() * cols.length)],
+          transparent: true, opacity: 0.88 + Math.random() * 0.12,
+          side: THREE.DoubleSide, depthWrite: false,
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+
+        // Spawn from a random point on the phone screen face in world space
+        if (sm && phoneMesh) {
+          const lx = sm.maxX + 0.002;
+          const ly = sm.midY + (Math.random() - 0.5) * sm.sizeY * 0.85;
+          const lz = sm.midZ + (Math.random() - 0.5) * sm.sizeZ * 0.88;
+          mesh.position.copy(new THREE.Vector3(lx, ly, lz).applyMatrix4(phoneMesh.matrixWorld));
+        }
+
+        // Velocity: burst outward from screen (mostly toward camera)
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 2.0 + Math.random() * 4.0;
+        mesh.userData = {
+          vx: Math.cos(ang) * spd * 0.35,
+          vy: (Math.random() - 0.35) * spd * 0.65,
+          vz: (0.55 + Math.random() * 0.9) * spd,
+          rx: (Math.random() - 0.5) * 18,
+          ry: (Math.random() - 0.5) * 18,
+          rz: (Math.random() - 0.5) * 18,
+        };
+        scene.add(mesh);
+        particles.push(mesh);
+      }
+    }
+
+    /* ── hold canvas ── */
+    function drawHoldCanvas(progress) {
+      if (!holdCtx) return;
+      const now = performance.now();
+      holdCtx.clearRect(0, 0, 512, 1024);
+
+      const cx = 256, logoSize = 148;
+      // Logo sits near the bottom — text at ~y=960, logo above it
+      const textY = 1000;
+      const cy    = textY - logoSize / 2 - 56;
+      // Fade everything out in the last 20% of hold
+      const fadeOut = progress > 0.8 ? Math.max(0, 1 - (progress - 0.8) / 0.2) : 1;
+
+      if (troveLogoCv) {
+        let angle, scale;
+        if (progress <= 0) {
+          // Breathing at rest
+          scale = 1 + 0.025 * Math.sin(now * 0.001);
+          angle = 0;
+        } else {
+          // Accelerating spin while holding
+          const spinAge = now - holdStart;
+          angle = spinAge * 0.004 + spinAge * spinAge * 0.0000014;
+          scale = 1 + progress * 0.07;
+        }
+
+        holdCtx.save();
+        holdCtx.globalAlpha = fadeOut;
+        holdCtx.translate(cx, cy);
+        holdCtx.rotate(angle);
+        holdCtx.scale(scale, scale);
+        holdCtx.drawImage(troveLogoCv, -logoSize / 2, -logoSize / 2, logoSize, logoSize);
+        holdCtx.restore();
+      }
+
+      // "hold to untangle" — fades away as spin kicks in
+      const textAlpha = fadeOut * (progress > 0 ? Math.max(0, 1 - progress * 2.5) : 1);
+      if (textAlpha > 0.01) {
+        holdCtx.save();
+        holdCtx.globalAlpha   = textAlpha;
+        holdCtx.shadowColor   = 'rgba(0,0,0,0.5)';
+        holdCtx.shadowBlur    = 12;
+        holdCtx.shadowOffsetY = 2;
+        holdCtx.fillStyle     = 'rgba(255,255,255,0.85)';
+        holdCtx.font          = `500 34px ${SYS_FONT}`;
+        holdCtx.textAlign     = 'center';
+        holdCtx.textBaseline  = 'alphabetic';
+        holdCtx.fillText('hold to untangle', cx, textY);
+        holdCtx.restore();
+      }
+
+      holdTex.needsUpdate = true;
+    }
+
+    /* ── rounded rect helper ── */
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y,     x + w, y + r,     r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h);
+      ctx.arcTo(x,     y + h, x,       y + h - r, r);
+      ctx.lineTo(x, y + r);
+      ctx.arcTo(x,     y,     x + r,   y,         r);
+      ctx.closePath();
+    }
+
+    /* ── iOS Priority Notification card ── */
+    const CARD_W = 480, CARD_H = 230, CARD_X = 16, CARD_FINAL_Y = 340;
+
+    function drawPriorityCard(progress) {
+      if (!qctx || !qTex || !fontsReady) return;
+      qctx.clearRect(0, 0, 512, 1024);
+
+      // Slide up from below canvas
+      const ease  = 1 - Math.pow(1 - Math.min(1, progress), 3);
+      const cardY = 1024 + (CARD_FINAL_Y - 1024) * ease;
+
+      // ── Card: shadow ──
+      qctx.save();
+      qctx.shadowColor   = 'rgba(0,0,0,0.20)';
+      qctx.shadowBlur    = 36;
+      qctx.shadowOffsetY = 12;
+      roundRect(qctx, CARD_X, cardY, CARD_W, CARD_H, 28);
+      qctx.fillStyle = 'rgba(0,0,0,0.01)'; // shadow-only fill trick
+      qctx.fill();
+      qctx.restore();
+
+      // ── Card: liquid glass base ──
+      roundRect(qctx, CARD_X, cardY, CARD_W, CARD_H, 28);
+      qctx.fillStyle = 'rgba(238,242,236,0.80)';
+      qctx.fill();
+
+      // Diagonal shimmer (top-left catch)
+      const shimmer = qctx.createLinearGradient(CARD_X, cardY, CARD_X + CARD_W * 0.55, cardY + CARD_H * 0.55);
+      shimmer.addColorStop(0,   'rgba(255,255,255,0.52)');
+      shimmer.addColorStop(0.4, 'rgba(255,255,255,0.14)');
+      shimmer.addColorStop(1,   'rgba(255,255,255,0)');
+      qctx.fillStyle = shimmer;
+      qctx.fill();
+
+      // Outer border
+      roundRect(qctx, CARD_X, cardY, CARD_W, CARD_H, 28);
+      qctx.strokeStyle = 'rgba(255,255,255,0.70)';
+      qctx.lineWidth   = 1.5;
+      qctx.stroke();
+
+      // Specular inner rim (clipped)
+      qctx.save();
+      roundRect(qctx, CARD_X, cardY, CARD_W, CARD_H, 28);
+      qctx.clip();
+      const spec = qctx.createLinearGradient(CARD_X, cardY, CARD_X + CARD_W, cardY + CARD_H);
+      spec.addColorStop(0,   'rgba(255,255,255,0.60)');
+      spec.addColorStop(0.18,'rgba(255,255,255,0.12)');
+      spec.addColorStop(1,   'rgba(255,255,255,0)');
+      qctx.strokeStyle = spec;
+      qctx.lineWidth   = 3;
+      qctx.stroke();
+      qctx.restore();
+
+      // ── Header row ──
+      const hY = cardY + 14;
+      if (_troveImg.complete) {
+        qctx.drawImage(_troveImg, CARD_X + 18, hY, 26, 26);
+      }
+      qctx.fillStyle    = 'rgba(0,0,0,0.68)';
+      qctx.font         = `600 16px ${SYS_FONT}`;
+      qctx.textAlign    = 'left';
+      qctx.textBaseline = 'middle';
+      qctx.fillText('Trove', CARD_X + 18 + 26 + 8, hY + 13);
+      qctx.fillStyle    = 'rgba(0,0,0,0.30)';
+      qctx.font         = `400 15px ${SYS_FONT}`;
+      qctx.textAlign    = 'right';
+      qctx.fillText('now', CARD_X + CARD_W - 18, hY + 13);
+
+      // Separator
+      qctx.fillStyle = 'rgba(0,0,0,0.08)';
+      qctx.fillRect(CARD_X + 18, cardY + 54, CARD_W - 36, 1);
+
+      // ── Body: avatar + text ──
+      const bodyY = cardY + 68;
+      const aR = 24, aCX = CARD_X + 18 + aR, aCY = bodyY + aR;
+      const ag  = qctx.createRadialGradient(aCX - 6, aCY - 6, 2, aCX, aCY, aR);
+      ag.addColorStop(0, '#a2f04a');
+      ag.addColorStop(1, '#68c226');
+      qctx.beginPath();
+      qctx.arc(aCX, aCY, aR, 0, Math.PI * 2);
+      qctx.fillStyle = ag;
+      qctx.fill();
+      qctx.shadowColor  = 'rgba(0,0,0,0.25)';
+      qctx.shadowBlur   = 5;
+      qctx.fillStyle    = '#ffffff';
+      qctx.font         = `700 18px ${SYS_FONT}`;
+      qctx.textAlign    = 'center';
+      qctx.textBaseline = 'middle';
+      qctx.fillText('T', aCX, aCY);
+      qctx.shadowColor  = 'transparent';
+      qctx.shadowBlur   = 0;
+
+      // Text — 2 wide lines, Nunito
+      const tX = CARD_X + 18 + aR * 2 + 14;
+      const msgLines = ['What if you had xray vision', 'for how people actually behave?'];
+      qctx.fillStyle    = '#111111';
+      qctx.font         = `600 25px "Nunito", sans-serif`;
+      qctx.textAlign    = 'left';
+      qctx.textBaseline = 'alphabetic';
+      msgLines.forEach((line, i) => qctx.fillText(line, tX, bodyY + 28 + i * 34));
+
+      // ── Button — small pill, bottom-right of card ──
+      const btnW = 196, btnH = 50, btnR = 25;
+      const btnX = CARD_X + CARD_W - 18 - btnW;
+      const btnY = cardY + CARD_H - 16 - btnH;
+      roundRect(qctx, btnX, btnY, btnW, btnH, btnR);
+      qctx.fillStyle = '#d4f54a';
+      qctx.fill();
+      const btnGlow = qctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH * 0.5);
+      btnGlow.addColorStop(0, 'rgba(255,255,255,0.32)');
+      btnGlow.addColorStop(1, 'rgba(255,255,255,0)');
+      qctx.fillStyle = btnGlow;
+      qctx.fill();
+      qctx.fillStyle    = '#1a2a00';
+      qctx.font         = `700 18px "Nunito", sans-serif`;
+      qctx.textAlign    = 'center';
+      qctx.textBaseline = 'middle';
+      qctx.fillText("Let\u2019s find out \u2192", btnX + btnW / 2, btnY + btnH / 2);
+
+      if (progress >= 1) {
+        // btnY is already absolute on the animated canvas; at rest cardY === CARD_FINAL_Y
+        const finalBtnY = CARD_FINAL_Y + CARD_H - 16 - btnH;
+        prioBtnCanvas = { x: btnX, y: finalBtnY, w: btnW, h: btnH };
+        if (!btnVisible) btnVisible = true;
+        qAnimDone = true;
+      }
+
+      qTex.needsUpdate = true;
+    }
+
+    /* ── fade cover ── */
+    const fadeCover = document.getElementById('fade-cover');
+
+    /* ── hold to begin — pointer events on canvas ── */
+    let seqStarted = false;
+
+    function cancelHold() {
+      if (!isHolding) return;
+      isHolding = false;
+      holdStart = 0;
+      clearInterval(holdHapticInterval);
+      holdHapticInterval = null;
+      if (!seqStarted) drawHoldCanvas(0);
+    }
+
+    renderer.domElement.addEventListener('pointerdown', () => {
+      if (seqStarted) return;
+      isHolding = true;
+      holdStart = performance.now();
+      let pulseCount = 0;
+      holdHapticInterval = setInterval(() => {
+        if (!isHolding) return;
+        pulseCount++;
+        haptics.trigger([{ duration: 40, intensity: Math.min(1.0, 0.2 + pulseCount * 0.12) }]);
+      }, 250);
+    });
+
+    renderer.domElement.addEventListener('pointerup',    cancelHold);
+    renderer.domElement.addEventListener('pointercancel', cancelHold);
+
+    /* ── raycast click — "Let's find out." button on qPlane ── */
+    const raycaster = new THREE.Raycaster();
+    const _mouse    = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('click', (e) => {
+      if (!btnVisible || !qPlane || !prioBtnCanvas) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      _mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      _mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+      raycaster.setFromCamera(_mouse, camera);
+      const hits = raycaster.intersectObject(qPlane);
+      if (!hits.length) return;
+      const uv = hits[0].uv;
+      // Convert canvas pixel button bounds → Three.js UV (V is flipped: v = 1 - y/1024)
+      const { x: bx, y: by, w: bw, h: bh } = prioBtnCanvas;
+      const u0 = bx / 512,       u1 = (bx + bw) / 512;
+      const v0 = 1 - (by + bh) / 1024, v1 = 1 - by / 1024;
+      if (uv.x >= u0 && uv.x <= u1 && uv.y >= v0 && uv.y <= v1) {
+        HAPTIC.begin();
+        startTangle();
+      }
+    });
+
+    /* ── state ── */
+    let joltTime      = 0;
+    let isGlitching   = false;
+    let glitchStart   = 0;
+    const clock       = new THREE.Clock();
+    let seqStart      = null;
+
+    /* ── timeline ── */
+    const burstTexts = [
+      'ignored the red flags.',
+      'missed the deadline.',
+      'lost the deal.',
+      'the investor said no.',
+      'wrong call.',
+      'they ghosted. again.',
+      'you missed it.',
+      'the offer fell through.',
+      'wrong person. again.',
+      'too late.',
+      'it\'s gone.',
+      'you weren\'t ready.',
+    ];
+
+    const timeline = [
+      { t: 2.0, fn: () => spawnNotif(notifTexts[0]) },
+      { t: 3.0, fn: () => spawnNotif(notifTexts[1]) },
+      { t: 4.0, fn: () => spawnNotif(notifTexts[2]) },
+      { t: 5.0, fn: () => spawnNotif(notifTexts[3]) },
+      { t: 6.0, fn: () => spawnNotif(notifTexts[4]) },
+      {
+        t: 7.0,
+        fn: () => {
+          // rapid-fire burst — ~200ms apart, escalating haptics
+          burstTexts.forEach((msg, i) => {
+            setTimeout(() => spawnNotif(msg, true), i * 195);
+          });
+        },
+      },
+      {
+        t: 9.6,
+        fn: () => {
+          HAPTIC.shatter();
+          isGlitching = true;
+          explodeNotifCards(); // clear canvas + spawn card fragments
+
+          setTimeout(() => {
+            isGlitching    = false;
+            shatterRunning = true;
+            shatterStart   = performance.now();
+            isSpinning     = true;
+            spinStart      = performance.now();
+          }, 280);
+        },
+      },
+    ];
+
+    let tlIdx = 0;
+
+    /* ── animation loop ── */
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta   = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      const t = seqStart !== null ? elapsed - seqStart : -1;
+
+      // Fire timeline (only after tap)
+      while (seqStarted && tlIdx < timeline.length && t >= timeline[tlIdx].t) {
+        timeline[tlIdx].fn();
+        tlIdx++;
+      }
+
+      // Phone idle + reactions
+      if (phoneGroup) {
+        if (isSpinning) {
+          // ── Spin + zoom ──────────────────────────────────────────────────────
+          const spinAge = performance.now() - spinStart;
+          const spinP   = Math.min(1, spinAge / 1700);
+          const spinE   = spinP < 0.5 ? 2*spinP*spinP : 1 - Math.pow(-2*spinP+2,2)/2;
+          phoneGroup.rotation.y = Math.PI * 2 * spinE;
+          // Arc sideways + wobble during spin
+          phoneGroup.position.x = Math.sin(spinE * Math.PI) * 0.28;
+          phoneGroup.position.y = Math.sin(spinE * Math.PI * 2) * 0.15;
+
+          // Un-tilt toward face-on during spin (starts at 20%, complete by 95%)
+          if (phoneMesh) {
+            const tiltP = Math.max(0, Math.min(1, (spinP - 0.2) / 0.75));
+            const tiltE = tiltP < 0.5 ? 2*tiltP*tiltP : 1 - Math.pow(-2*tiltP+2,2)/2;
+            phoneMesh.rotation.y = -Math.PI/2 + 0.35 * (1 - tiltE);
+            phoneMesh.rotation.x = 0.26 * (1 - tiltE);
+          }
+
+          // Camera zooms in over slightly longer window
+          const zoomP = Math.min(1, spinAge / 2100);
+          const zoomE = zoomP < 0.5 ? 2*zoomP*zoomP : 1 - Math.pow(-2*zoomP+2,2)/2;
+          camera.position.z = 7 + (5.0 - 7) * zoomE;
+
+          if (spinP >= 1 && !spinDone) {
+            spinDone = true;
+            isSpinning = false;
+            phoneGroup.rotation.y = 0;
+            phoneGroup.position.x = 0;
+
+            // Phone is already face-on from un-tilt during spin — just fade in question
+            if (phoneMesh) { phoneMesh.rotation.y = -Math.PI/2; phoneMesh.rotation.x = 0; }
+            let qFadeStart = null;
+            function fadeQuestion(ts) {
+              if (!qFadeStart) qFadeStart = ts;
+              const p = Math.min(1, (ts - qFadeStart) / 700);
+              if (questionMat) questionMat.opacity = p;
+              if (p < 1) requestAnimationFrame(fadeQuestion);
+              else { qAnimStart = performance.now(); HAPTIC.card(); }
+            }
+            requestAnimationFrame(fadeQuestion);
+          }
+
+        } else {
+          // ── Normal idle ──────────────────────────────────────────────────────
+          if (!isGlitching) phoneGroup.position.y = Math.sin(elapsed * 0.8) * 0.05;
+
+          // Parallax look — smooth lerp toward mouse / device-orientation target
+          if (!tangleOpen) {
+            const lf = 1 - Math.pow(0.018, delta);
+            lookX += (lookTargetX - lookX) * lf;
+            lookY += (lookTargetY - lookY) * lf;
+            if (!isGlitching) {
+              phoneGroup.rotation.x = lookX;
+              phoneGroup.rotation.y = lookY;
+            }
+          }
+
+          if (phoneMesh) {
+            if (joltTime > 0) {
+              const je = (performance.now() - joltTime) / 1000;
+              if (je < 0.22) {
+                phoneMesh.rotation.z = Math.sin(je * 40) * 0.04;
+              } else {
+                phoneMesh.rotation.z *= 0.88;
+                if (Math.abs(phoneMesh.rotation.z) < 0.0008) { phoneMesh.rotation.z = 0; joltTime = 0; }
+              }
+            }
+            if (isGlitching) {
+              phoneGroup.position.x = (Math.random() - 0.5) * 0.06;
+              phoneGroup.position.y = (Math.random() - 0.5) * 0.04;
+              keyLight.intensity = 1.5 + Math.random() * 6.0;
+            } else {
+              phoneGroup.position.x = 0;
+            }
+
+            // Tangle tilt — opposite direction of startup tilt
+            if (tangleTiltDir !== 0 && tangleTiltStart !== null) {
+              const age = performance.now() - tangleTiltStart;
+              const p = Math.min(1, age / 1100);
+              const e = 1 - Math.pow(1 - p, 3); // easeOutCubic — snappy start, buttery settle
+              const frac = tangleTiltDir > 0 ? e : (1 - e);
+              phoneMesh.rotation.y = -Math.PI/2 - 0.35 * frac;
+              phoneMesh.rotation.x = -0.26 * frac;
+              if (p >= 1) tangleTiltDir = 0;
+            }
+          }
+        }
+      }
+
+      // Fragment particles (notif cards + any other debris)
+      if (shatterRunning && particles.length > 0) {
+        const progress = (performance.now() - shatterStart) / 900;
+        for (const p of particles) {
+          p.userData.vy   -= 4.8 * delta;
+          p.position.x    += p.userData.vx * delta;
+          p.position.y    += p.userData.vy * delta;
+          p.position.z    += p.userData.vz * delta;
+          p.rotation.x    += p.userData.rx * delta;
+          p.rotation.y    += p.userData.ry * delta;
+          p.rotation.z    += p.userData.rz * delta;
+          p.material.opacity = Math.max(0, 1 - progress);
+        }
+        if (progress >= 1) { clearParticles(); shatterRunning = false; keyLight.intensity = 2.0; }
+      }
+
+      // Hold-to-begin progress
+      if (!seqStarted) {
+        if (isHolding) {
+          const hp = Math.min(1, (performance.now() - holdStart) / 2000);
+          drawHoldCanvas(hp);
+          if (hp >= 1) {
+            isHolding = false;
+            clearInterval(holdHapticInterval);
+            holdHapticInterval = null;
+            seqStarted = true;
+            seqStart   = clock.getElapsedTime();
+            HAPTIC.tap();
+            if (holdMat) holdMat.opacity = 0;
+          }
+        } else {
+          drawHoldCanvas(0); // breathing idle
+        }
+      }
+
+      // Priority notification card slide-in
+      if (qAnimStart !== null) drawPriorityCard((performance.now() - qAnimStart) / 620);
+
+      // Track tangle overlay to phone screen every frame via corner projection
+      if (tangleOpen && screenRefPlane) {
+        phoneGroup.updateMatrixWorld(true);
+        const { width: pw, height: ph } = screenRefPlane.geometry.parameters;
+        const corners = [[-pw/2, ph/2], [pw/2, ph/2], [-pw/2, -ph/2], [pw/2, -ph/2]]
+          .map(([x, y]) => {
+            const v = new THREE.Vector3(x, y, 0).applyMatrix4(screenRefPlane.matrixWorld).project(camera);
+            return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+          });
+        document.getElementById('tangle-screen').style.transform =
+          homographyCSS(tangleFaceOnW, tangleFaceOnH, corners);
+      }
+
+      drawNotifCanvas();
+      renderer.render(scene, camera);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       TANGLE ENGINE — slides up inside phone screen on CTA tap
+    ══════════════════════════════════════════════════════════════ */
+    let tangleSceneIdx = 0, tangleLastChoice = 0, tangleOpen = false;
+    let tangleTiltStart = null, tangleTiltDir = 0;
+    let tangleFaceOnW = 0, tangleFaceOnH = 0;
+
+    function setupHeroLogo() {
+      requestAnimationFrame(() => {
+        const wrap = document.querySelector('.t-hero-logo');
+        if (!wrap) return;
+        const wordImg = wrap.querySelector('.t-hero-word');
+        const ohImg   = wrap.querySelector('.t-hero-oh');
+        if (!wordImg || !ohImg) return;
+
+        const W    = wordImg.offsetWidth || 88;
+        const ohW  = ohImg.offsetWidth   || 28;
+        const gap  = 18;
+
+        // TroveOh starts right of the wordmark
+        const startX = W + gap;
+        // Ends at roughly where the O sits in "Trove" (~42% from left, centred)
+        const endX   = Math.round(W * 0.48 - ohW / 2);
+
+        const totalDur      = 2100;  // ms
+        const crossfadeAt   = 0.62;  // 62% through = first clear intersection
+        const crossfadeDur  = 620;   // ms
+        const totalRotation = 720;   // degrees (2 full spins → lands upright)
+
+        // Ease-in-out
+        function ease(p) { return p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2; }
+
+        ohImg.style.opacity   = '1';
+        wordImg.style.opacity = '0';
+        wordImg.style.transition = 'none';
+
+        let startTime = null;
+        function frame(ts) {
+          if (!startTime) startTime = ts;
+          const elapsed = ts - startTime;
+          const p  = Math.min(1, elapsed / totalDur);
+          const e  = ease(p);
+
+          const x   = startX + (endX - startX) * e;
+          const deg = e * totalRotation;
+          ohImg.style.transform = `translateX(${x}px) rotate(${deg}deg)`;
+
+          const cp = Math.max(0, Math.min(1, (elapsed - totalDur * crossfadeAt) / crossfadeDur));
+          ohImg.style.opacity   = String(1 - cp);
+          wordImg.style.opacity = String(cp);
+
+          if (p < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    const tScenes = [
+      { chapter: 'An Investor Story',
+        render: () => `
+          <div class="t-chapter-label">An Investor Story</div>
+          <div class="t-hero-logo">
+            <img class="t-hero-oh" src="./TroveOh.png" alt="">
+            <img class="t-hero-word" src="./TroveLogo.png" alt="Trove">
+          </div>
+          <div class="t-scene-text" style="font-size:12px;font-weight:400;color:#6a6a5a;font-style:italic;margin-bottom:10px">The world's first behavioural identity layer.</div>
+          <div class="t-scene-text">You're about to experience a tangle.<br><br>Not as a user — as an investor.<br><br><em style="color:#6a6a5a;font-style:italic">Every choice will reveal something. About the opportunity. About you.</em></div>
+          <div class="t-choices">
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>I've seen a thousand pitch decks. Show me something different.</button>
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>I'm sceptical. Convince me.</button>
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>I like behavioural science. You have my attention.</button>
+          </div>`},
+
+      { chapter: 'Chapter 01 — The World',
+        render: () => `
+          <div class="t-chapter-label">Chapter 01 — The World</div>
+          <div class="t-scene-text">It's a Tuesday morning. You're reviewing candidates for a key hire.<br><br>Three people made it to final round. Polished CVs. Sharp interviews. One of them tanked a $2M project at their last company. <strong>You won't find out until six months after you hire them.</strong></div>
+          <div class="t-choices">
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>This happens to every company. It's just the cost of hiring.</button>
+            <button class="t-choice-btn" onclick="window.tNext(1)"><span class="t-choice-icon">→</span>There has to be a better signal than a CV and a good interview.</button>
+          </div>`},
+
+      { chapter: 'Chapter 02 — The Problem',
+        render: (c) => `
+          <div class="t-chapter-label">Chapter 02 — The Problem</div>
+          <div class="t-scene-text">${c===1?'<em style="color:#6a6a5a">That instinct is right.</em> The hiring example is just the surface.<br><br>':'It is — and it\'s a $25B problem in hiring alone.<br><br>'}Our most important decisions are based on <strong>what people say about themselves</strong>. Not how they actually behave.</div>
+          <div class="t-reveal-list">
+            <div class="t-reveal-item" style="animation-delay:.1s"><span class="t-reveal-marker">01</span>Resumes. Profiles. LinkedIn. Self-reported.</div>
+            <div class="t-reveal-item" style="animation-delay:.25s"><span class="t-reveal-marker">02</span>Interviews. Assessment centres. Personality tests. Self-reported.</div>
+            <div class="t-reveal-item" style="animation-delay:.4s"><span class="t-reveal-marker">03</span>Dating profiles. Reference checks. Pitch decks. <em>All self-reported.</em></div>
+          </div>
+          <div class="t-scene-text" style="margin-top:8px">And now? AI can generate any of those in seconds. <strong>Self-reporting is dead.</strong></div>
+          <button class="t-continue-btn" onclick="window.tNext()">Continue →</button>`},
+
+      { chapter: 'Chapter 03 — The Question',
+        render: () => `
+          <div class="t-chapter-label">Chapter 03 — The Question</div>
+          <div class="t-scene-text">If you couldn't ask someone to describe themselves — <em style="color:#6a6a5a">if that signal was gone</em> — how would you actually understand who they are?</div>
+          <div class="t-pull-quote">"What if you were measured by your actions and not just your answers?"</div>
+          <div class="t-choices">
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>You'd watch them under pressure. See how they behave when stakes are real.</button>
+            <button class="t-choice-btn" onclick="window.tNext(1)"><span class="t-choice-icon">→</span>You'd give them a real scenario. Something emotionally charged, hard to fake.</button>
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>You'd look at their history of actual decisions, not their narrative about them.</button>
+          </div>`},
+
+      { chapter: 'Chapter 04 — The Solution',
+        render: (c) => `
+          <div class="t-chapter-label">Chapter 04 — The Solution</div>
+          <div class="t-scene-text">${c===1?'<em style="color:#6a6a5a">Exactly.</em> Emotionally charged. Hard to fake.':'<em style="color:#6a6a5a">Yes.</em> That\'s the insight.'}</div>
+          <div class="t-scene-text">Trove builds <strong>tangles</strong> — interactive, story-based micro-simulations that put you inside high-stakes moments. A first date. A workplace conflict. A creative crisis at 2am.<br><br>You make choices. Real ones. <em style="color:#6a6a5a">The kind you can't game.</em><br><br>And our behavioural science engine reads what those choices actually mean.</div>
+          <div class="t-pull-quote">Fun to play. Hard to game. Impossible to fake.</div>
+          <button class="t-continue-btn" onclick="window.tNext()">Continue →</button>`},
+
+      { chapter: 'Chapter 05 — You Just Did It',
+        render: () => `
+          <div class="t-chapter-label">Chapter 05 — You Just Did It</div>
+          <div class="t-scene-text">The choices you've been making since you opened this?</div>
+          <div class="t-reveal-list">
+            <div class="t-reveal-item" style="animation-delay:.1s"><span class="t-reveal-marker">→</span>How fast you read before clicking.</div>
+            <div class="t-reveal-item" style="animation-delay:.3s"><span class="t-reveal-marker">→</span>Whether you picked the sceptical or curious option.</div>
+            <div class="t-reveal-item" style="animation-delay:.5s"><span class="t-reveal-marker">→</span>Which framing of the problem resonated.</div>
+            <div class="t-reveal-item" style="animation-delay:.7s"><span class="t-reveal-marker">→</span>The language that made you lean forward.</div>
+          </div>
+          <div class="t-scene-text" style="margin-top:8px"><strong>That's a tangle.</strong> You just experienced the product.<br><br><em style="color:#6a6a5a">Now imagine 24,000 data points from 2,100 people doing this across two weeks.</em></div>
+          <button class="t-continue-btn" onclick="window.tNext()">Show me the numbers →</button>`},
+
+      { chapter: 'Chapter 06 — Traction',
+        render: () => `
+          <div class="t-chapter-label">Chapter 06 — Traction</div>
+          <div class="t-scene-text">Two weeks. Valentine's Day. <strong>$0 spend.</strong> 500 emails. No paid ads.</div>
+          <div class="t-stat-row">
+            <div class="t-stat-cell"><span class="t-stat-num">8×</span><div class="t-stat-label">organic amplification</div></div>
+            <div class="t-stat-cell"><span class="t-stat-num">78%</span><div class="t-stat-label">multi-day return rate</div></div>
+            <div class="t-stat-cell"><span class="t-stat-num">7 min</span><div class="t-stat-label">median session</div></div>
+            <div class="t-stat-cell"><span class="t-stat-num">3</span><div class="t-stat-label">unsolicited B2B inbounds</div></div>
+          </div>
+          <div class="t-scene-text">People came back. Unprompted. <em style="color:#6a6a5a">Three companies asked about using it for recruiting. We hadn't pitched a single one.</em></div>
+          <div class="t-choices">
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>Impressive. Tell me about the business model.</button>
+            <button class="t-choice-btn" onclick="window.tNext(1)"><span class="t-choice-icon">→</span>That B2B signal is interesting. Who are these companies?</button>
+          </div>`},
+
+      { chapter: 'Chapter 07 — The Model',
+        render: (c) => `
+          <div class="t-chapter-label">Chapter 07 — The Model</div>
+          <div class="t-scene-text">${c===1?'The B2B signal came from <em style="color:#6a6a5a">recruiting teams</em>. Companies want behavioural data on candidates that isn\'t a personality test. That\'s the enterprise play.<br><br>But the flywheel starts with B2C.':'Two revenue streams. One compounding moat.'}</div>
+          <div class="t-ask-row">
+            <div class="t-ask-cell"><div class="t-ask-label">B2C</div><div class="t-ask-val">Free → Premium</div><div class="t-ask-sub">$0.10/play → profile worth $5</div></div>
+            <div class="t-ask-cell"><div class="t-ask-label">B2B</div><div class="t-ask-val">"Sign in with Trove"</div><div class="t-ask-sub">Profile worth $50–200 to enterprise</div></div>
+          </div>
+          <div class="t-pull-quote">Not a ChatGPT wrapper. The dataset compounds with every play. You can't shortcut this with GPUs.</div>
+          <button class="t-continue-btn" onclick="window.tNext()">Who's building this? →</button>`},
+
+      { chapter: 'Chapter 08 — The Team',
+        render: () => `
+          <div class="t-chapter-label">Chapter 08 — The Team</div>
+          <div class="t-scene-text">Second-time founders who know what they don't know.</div>
+          <div class="t-team-list">
+            <div class="t-team-card"><div class="t-team-name">Helen Huang</div><div class="t-team-bio">Founder. Ex-Microsoft & Zynga PM. Bootstrapped a profitable edtech startup to 7-figures. Forbes 30 Under 30. 30K+ tech audience.</div></div>
+            <div class="t-team-card"><div class="t-team-name">David Potgieter</div><div class="t-team-bio">Founding Engineer. 20 years shipping game-like interactive experiences for Ogilvy & Nokia.</div></div>
+            <div class="t-team-card"><div class="t-team-name">Designer</div><div class="t-team-bio">Ex-founder. $1.5M ARR design studio. Founding team at Abdoe.</div></div>
+          </div>
+          <button class="t-continue-btn" onclick="window.tNext()">The market →</button>`},
+
+      { chapter: 'Chapter 09 — The Market',
+        render: () => `
+          <div class="t-chapter-label">Chapter 09 — The Market</div>
+          <div class="t-scene-text"><strong>$65B+</strong> spent every year trying to figure people out.</div>
+          <div class="t-stat-row">
+            <div class="t-stat-cell"><span class="t-stat-num">$25B</span><div class="t-stat-label">Hiring & Assessment</div></div>
+            <div class="t-stat-cell"><span class="t-stat-num">$10B</span><div class="t-stat-label">Dating Platforms</div></div>
+            <div class="t-stat-cell"><span class="t-stat-num">$15B</span><div class="t-stat-label">Learning & Admissions</div></div>
+            <div class="t-stat-cell"><span class="t-stat-num">$15B</span><div class="t-stat-label">Team & Therapy</div></div>
+          </div>
+          <div class="t-scene-text"><em style="color:#6a6a5a">Every single one of these markets is built on self-report.</em><br><br>Trove is the infrastructure layer that sits underneath all of them.</div>
+          <button class="t-continue-btn" onclick="window.tNext()">The ask →</button>`},
+
+      { chapter: 'Chapter 10 — The Ask',
+        render: () => `
+          <div class="t-chapter-label">Chapter 10 — The Ask</div>
+          <div class="t-scene-text">Raising <strong>$1.5M</strong>.</div>
+          <div class="t-ask-row">
+            <div class="t-ask-cell"><div class="t-ask-label">Already in</div><div class="t-ask-val">$525K</div><div class="t-ask-sub">Betaworks, True Ventures, Slack Fund</div></div>
+            <div class="t-ask-cell"><div class="t-ask-label">Raising now</div><div class="t-ask-val">$1.5M</div><div class="t-ask-sub">SAFEs · 7 people · 18–25 months</div></div>
+          </div>
+          <div class="t-reveal-list">
+            <div class="t-reveal-item" style="animation-delay:.1s"><span class="t-reveal-marker">01</span>Full product built out</div>
+            <div class="t-reveal-item" style="animation-delay:.25s"><span class="t-reveal-marker">02</span>100K active behavioural profiles</div>
+            <div class="t-reveal-item" style="animation-delay:.4s"><span class="t-reveal-marker">03</span>B2B model validated</div>
+          </div>
+          <div class="t-choices">
+            <button class="t-choice-btn" onclick="window.tNext(0)"><span class="t-choice-icon">→</span>Tell me what kind of investor Trove is looking for.</button>
+            <button class="t-choice-btn" onclick="window.tNext(1)"><span class="t-choice-icon">→</span>Show me the results of my tangle first.</button>
+          </div>`},
+
+      { chapter: 'Chapter 11 — Who We\'re Looking For',
+        render: (c) => `
+          <div class="t-chapter-label">Chapter 11 — Who We're Looking For</div>
+          <div class="t-scene-text">${c===1?'Your profile is coming. But first — a question.<br><br>':''}Trove is looking for investors who understand that <strong>behavioural data is the last unfakeable signal</strong>.<br><br>Who have backed consumer-to-enterprise plays before. Who are patient enough to let a dataset compound.</div>
+          <div class="t-inv-tags">
+            <span class="t-inv-tag">Consumer → Enterprise</span>
+            <span class="t-inv-tag">Data Infrastructure</span>
+            <span class="t-inv-tag">Future of Work</span>
+            <span class="t-inv-tag">AI-Native Behaviour</span>
+            <span class="t-inv-tag active">You?</span>
+          </div>
+          <button class="t-continue-btn" onclick="window.tNext()">Reveal my investor profile →</button>`},
+
+      { chapter: 'Chapter 12 — Your Behavioural Profile',
+        render: () => `
+          <div class="t-chapter-label">Chapter 12 — Your Behavioural Profile</div>
+          <div class="t-scene-text">Based on the choices you made — <em style="color:#6a6a5a">how you read, what you clicked, what you needed to hear</em> — here's what we see.</div>
+          <div class="t-profile-reveal">
+            <div class="t-profile-title">Your investor archetype</div>
+            <div class="t-profile-type">The Pattern Recogniser</div>
+            <div class="t-profile-desc">You don't need to be sold the vision — you've already connected the dots. You're looking for proof that the team can execute, and a model that compounds. You'll push hard on the moat. That's exactly the right question.</div>
+          </div>
+          <div class="t-scene-text" style="font-size:11px;color:#8a8a7a;font-style:italic">In a real Trove profile, this gets richer with every tangle you complete. Across contexts. Over time. That's the compounding dataset.</div>
+          <button class="t-continue-btn" onclick="window.tNext()">The close →</button>`},
+
+      { chapter: 'Chapter 13 — The Close',
+        render: () => `
+          <div class="t-chapter-label">Chapter 13 — The Close</div>
+          <div class="t-scene-text" style="color:#7a7a6a;font-style:italic;font-weight:400">In a world where AI can copy our words, our faces, our voices —</div>
+          <div class="t-scene-text" style="font-size:18px;font-weight:800;margin:10px 0;line-height:1.3">the only thing that remains irreducibly human<br>is your character.</div>
+          <div style="width:36px;height:3px;background:#d4f54a;margin:12px 0;border-radius:2px"></div>
+          <div class="t-scene-text" style="color:#5a6a5a;font-style:italic;font-weight:400">Trove is how the world finally captures that.<br>And we're just getting started.</div>
+          <div class="t-contact">
+            <div class="t-contact-name">Helen Huang · Founder</div>
+            <div><a href="mailto:helen@trove.garden">helen@trove.garden</a> &nbsp;·&nbsp; <a href="https://trove.is" target="_blank">trove.is</a></div>
+          </div>
+          <button class="t-continue-btn" onclick="window.tRestart()" style="background:rgba(26,26,46,0.12);color:#3a3a2a;margin-top:10px;font-size:12px">↺ Play again with different choices</button>`}
+    ];
+
+    window.tNext = function(choice = 0) {
+      tangleLastChoice = choice;
+      haptics.trigger([{ duration: 30, intensity: 0.55 }]);
+      const btn = event && event.target ? event.target.closest('.t-choice-btn') : null;
+      if (btn) { btn.classList.add('selected'); }
+      setTimeout(() => showTScene(tangleSceneIdx + 1), 160);
+    };
+
+    window.tRestart = function() {
+      tangleSceneIdx = 0; tangleLastChoice = 0; showTScene(0);
+    };
+
+    window.tClose = function() {
+      tangleOpen = false;
+      tangleTiltStart = performance.now(); tangleTiltDir = -1;
+      const scr   = document.getElementById('tangle-screen');
+      const slide = document.getElementById('tangle-slide');
+      if (slide) {
+        slide.style.transition = 'transform 320ms cubic-bezier(0.4,0,0.2,1)';
+        slide.style.transform  = 'translateY(100%)';
+      }
+      setTimeout(() => { scr.classList.remove('active'); scr.innerHTML = ''; if (questionMat) questionMat.opacity = 1; }, 320);
+    };
+
+    function showTScene(idx) {
+      if (idx >= tScenes.length) idx = tScenes.length - 1;
+      tangleSceneIdx = idx;
+      const scr  = document.getElementById('tangle-slide') || document.getElementById('tangle-screen');
+      const pct  = Math.round((idx / (tScenes.length - 1)) * 100);
+      const fill = scr.querySelector('#t-progress-fill');
+      if (fill) fill.style.width = pct + '%';
+      // Update status time
+      const tEl = scr.querySelector('#t-status-time');
+      if (tEl) { const n = new Date(); tEl.textContent = `${n.getHours()%12||12}:${String(n.getMinutes()).padStart(2,'0')}`; }
+
+      const old = scr.querySelector('.t-scene');
+      if (old) {
+        old.classList.add('slide-out');
+        setTimeout(() => { old.remove(); renderTScene(scr, tScenes[idx], pct); }, 300);
+      } else {
+        renderTScene(scr, tScenes[idx], pct);
+      }
+      if (idx === 5)  setTimeout(() => showTToast('Behavioural insight collected'), 900);
+      if (idx === 12) setTimeout(() => showTToast('Profile archetype unlocked'), 700);
+    }
+
+    function renderTScene(scr, scene, pct) {
+      const div = document.createElement('div');
+      div.className = 't-scene slide-in-prepare';
+      div.innerHTML = scene.render(tangleLastChoice);
+      scr.querySelector('#t-content').appendChild(div);
+      div.getBoundingClientRect(); // force reflow
+      div.classList.remove('slide-in-prepare');
+      div.classList.add('slide-in');
+      div.querySelectorAll('.t-reveal-item').forEach((el, i) => { el.style.animationDelay = (0.1 + i * 0.15) + 's'; });
+      if (tangleSceneIdx === 0) setupHeroLogo();
+    }
+
+    function showTToast(text) {
+      const root  = document.getElementById('tangle-slide') || document.getElementById('tangle-screen');
+      const toast = root.querySelector('.t-toast');
+      if (!toast) return;
+      toast.textContent = '✦ ' + text;
+      toast.classList.add('visible');
+      setTimeout(() => toast.classList.remove('visible'), 2400);
+    }
+
+    // Compute CSS matrix3d that maps a w×h rect at origin to 4 arbitrary screen points [TL,TR,BL,BR]
+    function homographyCSS(w, h, dst) {
+      function adj(m) {
+        return [
+          m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+          m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+          m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3]
+        ];
+      }
+      function mulMM(a, b) {
+        return [
+          a[0]*b[0]+a[1]*b[3]+a[2]*b[6], a[0]*b[1]+a[1]*b[4]+a[2]*b[7], a[0]*b[2]+a[1]*b[5]+a[2]*b[8],
+          a[3]*b[0]+a[4]*b[3]+a[5]*b[6], a[3]*b[1]+a[4]*b[4]+a[5]*b[7], a[3]*b[2]+a[4]*b[5]+a[5]*b[8],
+          a[6]*b[0]+a[7]*b[3]+a[8]*b[6], a[6]*b[1]+a[7]*b[4]+a[8]*b[7], a[6]*b[2]+a[7]*b[5]+a[8]*b[8]
+        ];
+      }
+      function mulMV(m, v) {
+        return [m[0]*v[0]+m[1]*v[1]+m[2]*v[2], m[3]*v[0]+m[4]*v[1]+m[5]*v[2], m[6]*v[0]+m[7]*v[1]+m[8]*v[2]];
+      }
+      function basis(x0,y0, x1,y1, x2,y2, x3,y3) {
+        const m = [x0,x1,x2, y0,y1,y2, 1,1,1];
+        const v = mulMV(adj(m), [x3,y3,1]);
+        return mulMM(m, [v[0],0,0, 0,v[1],0, 0,0,v[2]]);
+      }
+      const s = basis(0,0, w,0, 0,h, w,h);
+      const d = basis(dst[0].x,dst[0].y, dst[1].x,dst[1].y, dst[2].x,dst[2].y, dst[3].x,dst[3].y);
+      const t = mulMM(d, adj(s));
+      const n = t[8];
+      return `matrix3d(${t[0]/n},${t[3]/n},0,${t[6]/n},${t[1]/n},${t[4]/n},0,${t[7]/n},0,0,1,0,${t[2]/n},${t[5]/n},0,1)`;
+    }
+
+    function startTangle() {
+      if (!qPlane || !screenRefPlane) return;
+      questionMat.opacity = 0;
+
+      // Measure face-on dimensions (phone is still flat here)
+      phoneGroup.updateMatrixWorld(true);
+      const { width: pw, height: ph } = screenRefPlane.geometry.parameters;
+      const corners = [[-pw/2, ph/2], [pw/2, ph/2], [-pw/2, -ph/2], [pw/2, -ph/2]]
+        .map(([x, y]) => {
+          const v = new THREE.Vector3(x, y, 0).applyMatrix4(screenRefPlane.matrixWorld).project(camera);
+          return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+        });
+      const left = Math.min(...corners.map(c => c.x));
+      const top  = Math.min(...corners.map(c => c.y));
+      tangleFaceOnW = Math.max(...corners.map(c => c.x)) - left;
+      tangleFaceOnH = Math.max(...corners.map(c => c.y)) - top;
+
+      const scr = document.getElementById('tangle-screen');
+      Object.assign(scr.style, {
+        left: '0px', top: '0px',
+        width: tangleFaceOnW+'px', height: tangleFaceOnH+'px',
+        transformOrigin: '0 0',
+        borderRadius: Math.round(tangleFaceOnW * 0.14)+'px',
+        transform: homographyCSS(tangleFaceOnW, tangleFaceOnH, corners),
+        transition: 'none'
+      });
+
+      const now = new Date();
+      const hh  = now.getHours() % 12 || 12, mm = String(now.getMinutes()).padStart(2,'0');
+      scr.innerHTML = `<div id="tangle-slide">
+        <div class="t-status">
+          <span id="t-status-time">${hh}:${mm}</span>
+          <div class="t-status-icons">
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="#1a1a2e"><rect x="0" y="3" width="2.5" height="8" rx=".5"/><rect x="3.5" y="2" width="2.5" height="9" rx=".5"/><rect x="7" y="0" width="2.5" height="11" rx=".5"/><rect x="10.5" y="0" width="4.5" height="11" rx=".5"/></svg>
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x=".5" y=".5" width="15" height="11" rx="2" stroke="#1a1a2e" stroke-width="1"/><rect x="16" y="3.5" width="1.5" height="5" rx=".5" fill="#1a1a2e"/><rect x="1.5" y="1.5" width="11" height="9" rx="1" fill="#1a1a2e"/></svg>
+          </div>
+        </div>
+        <div class="t-nav">
+          <button class="t-close-btn" onclick="window.tClose()">×</button>
+          <div class="t-progress-track"><div id="t-progress-fill" class="t-progress-fill"></div></div>
+          <div class="t-avatars"><div class="t-avatar"></div><div class="t-avatar" style="opacity:.4"></div></div>
+          <button class="t-help-btn">?</button>
+        </div>
+        <div id="t-content" class="t-content"></div>
+        <div class="t-toast"></div>
+      </div>`;
+
+      tangleOpen = true;
+      scr.classList.add('active');
+
+      // Slide up via #tangle-slide child — #tangle-screen is free for 3D rotation
+      requestAnimationFrame(() => {
+        const slide = document.getElementById('tangle-slide');
+        if (slide) slide.style.transform = 'translateY(0)';
+        setTimeout(() => { tangleTiltStart = performance.now(); tangleTiltDir = 1; }, 440);
+      });
+
+      tangleSceneIdx = 0; tangleLastChoice = 0;
+      showTScene(0);
+    }
+
+    /* ── mouse / device-orientation parallax ── */
+    let lookTargetX = 0, lookTargetY = 0, lookX = 0, lookY = 0;
+    const LOOK_MAX = 0.12; // ≈ 7° max tilt
+
+    animate();
+
+    window.addEventListener('mousemove', e => {
+      if (tangleOpen) return;
+      lookTargetY =  ((e.clientX / innerWidth)  - 0.5) * 2 * LOOK_MAX;
+      lookTargetX = -((e.clientY / innerHeight) - 0.5) * 2 * LOOK_MAX;
+    });
+    window.addEventListener('mouseleave', () => { lookTargetX = lookTargetY = 0; });
+
+    function handleOrientation(e) {
+      if (tangleOpen || e.gamma == null) return;
+      lookTargetY = THREE.MathUtils.clamp(e.gamma / 25, -1, 1) * LOOK_MAX;
+      lookTargetX = THREE.MathUtils.clamp((e.beta - 90) / 25, -1, 1) * LOOK_MAX;
+    }
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      // iOS 13+ — request on first touch
+      document.addEventListener('touchstart', async function reqOrient() {
+        document.removeEventListener('touchstart', reqOrient);
+        try {
+          if (await DeviceOrientationEvent.requestPermission() === 'granted')
+            window.addEventListener('deviceorientation', handleOrientation);
+        } catch(e) {}
+      }, { once: true });
+    } else if (window.DeviceOrientationEvent) {
+      window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    /* ── resize ── */
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>
