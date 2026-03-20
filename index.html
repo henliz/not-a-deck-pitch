@@ -557,8 +557,6 @@
       const textY = 1000;
       const cy    = textY - logoSize / 2 - 56;
       // Fade everything out in the last 20% of hold
-      const fadeOut = progress > 0.8 ? Math.max(0, 1 - (progress - 0.8) / 0.2) : 1;
-
       if (troveLogoCv) {
         let angle, scale;
         if (progress <= 0) {
@@ -566,14 +564,15 @@
           scale = 1 + 0.025 * Math.sin(now * 0.001);
           angle = 0;
         } else {
-          // Accelerating spin — stops after 800ms (40% of hold), ring keeps filling
-          const spinAge = Math.min(now - holdStart, 800);
-          angle = spinAge * 0.004 + spinAge * spinAge * 0.0000014;
+          // Spin: accelerate up to 800ms, then coast at that velocity
+          const spinAge = now - holdStart;
+          const spinAccel = Math.min(spinAge, 800);
+          angle = spinAge * 0.004 + spinAccel * spinAccel * 0.0000014;
           scale = 1 + progress * 0.07;
         }
 
         holdCtx.save();
-        holdCtx.globalAlpha = fadeOut;
+        holdCtx.globalAlpha = 1;
         holdCtx.translate(cx, cy);
         holdCtx.rotate(angle);
         holdCtx.scale(scale, scale);
@@ -582,7 +581,7 @@
       }
 
       // "hold to untangle" — fades away as spin kicks in
-      const textAlpha = fadeOut * (progress > 0 ? Math.max(0, 1 - progress * 2.5) : 1);
+      const textAlpha = progress > 0 ? Math.max(0, 1 - progress * 2.5) : 1;
       if (textAlpha > 0.01) {
         holdCtx.save();
         holdCtx.globalAlpha   = textAlpha;
@@ -755,9 +754,8 @@
       if (!isHolding) return;
       isHolding = false;
       holdStart = 0;
-      // Don't call haptics.cancel() — debug mode fires a visual flash on cancel.
-      // The buzz is 2000ms = same as hold duration, so it expires naturally on completion.
-      // On early release it fades out on its own; brief tail is less bad than a flash.
+      holdFadeStart = null;
+      if (holdMat) holdMat.opacity = 1;
       vibe(0);
       _scheduledHapticIds.forEach(clearTimeout);
       _scheduledHapticIds = [];
@@ -774,13 +772,13 @@
       isHolding = true;
       holdStart = performance.now();
       // Pre-schedule notification burst + shatter haptics from this gesture context.
-      // Hold = 2000ms, notif burst at seq t=7.0s each 195ms apart, shatter at t=9.6s.
+      // Hold = 2000ms, burst at seq t=7.2s each 195ms apart, shatter at t=9.8s.
       const HOLD_MS = 2000;
       _scheduledHapticIds = [
         ...burstTexts.map((_, i) =>
-          setTimeout(() => haptics.trigger([{ duration: 20, intensity: 1.0 }]), HOLD_MS + 7000 + i * 195)
+          setTimeout(() => haptics.trigger([{ duration: 20, intensity: 1.0 }]), HOLD_MS + 7200 + i * 195)
         ),
-        setTimeout(() => haptics.trigger([{ duration: 8 }, { delay: 60, duration: 8 }, { delay: 60, duration: 8 }], { intensity: 0.5 }), HOLD_MS + 9600),
+        setTimeout(() => haptics.trigger([{ duration: 8 }, { delay: 60, duration: 8 }, { delay: 60, duration: 8 }], { intensity: 0.5 }), HOLD_MS + 9800),
       ];
     });
 
@@ -834,13 +832,13 @@
     ];
 
     const timeline = [
-      { t: 2.0, fn: () => spawnNotif(notifTexts[0]) },
-      { t: 3.0, fn: () => spawnNotif(notifTexts[1]) },
-      { t: 4.0, fn: () => spawnNotif(notifTexts[2]) },
-      { t: 5.0, fn: () => spawnNotif(notifTexts[3]) },
-      { t: 6.0, fn: () => spawnNotif(notifTexts[4]) },
+      { t: 0.6, fn: () => spawnNotif(notifTexts[0]) },
+      { t: 1.9, fn: () => spawnNotif(notifTexts[1]) },
+      { t: 3.2, fn: () => spawnNotif(notifTexts[2]) },
+      { t: 4.5, fn: () => spawnNotif(notifTexts[3]) },
+      { t: 5.8, fn: () => spawnNotif(notifTexts[4]) },
       {
-        t: 7.0,
+        t: 7.2,
         fn: () => {
           // rapid-fire burst — ~200ms apart, escalating haptics
           burstTexts.forEach((msg, i) => {
@@ -849,7 +847,7 @@
         },
       },
       {
-        t: 9.6,
+        t: 9.8,
         fn: () => {
           HAPTIC.shatter();
           isGlitching = true;
@@ -993,15 +991,14 @@
         if (isHolding) {
           const hp = Math.min(1, (performance.now() - holdStart) / 2000);
           drawHoldCanvas(hp);
-          if (holdFadeStart === null && (performance.now() - holdStart) >= 800) {
-            holdFadeStart = performance.now(); // start fading when spin stops
+          if (holdFadeStart === null && hp >= 0.6) {
+            holdFadeStart = performance.now(); // fade starts mid-hold while still spinning
+            troveBtn.style.pointerEvents = 'none'; // button done its job
           }
           if (hp >= 1) {
             isHolding  = false;
             seqStarted = true;
-            troveBtn.style.pointerEvents = 'none';
             troveBtn.style.display = 'none';
-            // Short delay so logo fade is visible before seq begins
             setTimeout(() => { seqStart = clock.getElapsedTime(); }, 400);
           }
         } else {
