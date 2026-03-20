@@ -8,7 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
+    }
 
     html, body {
       width: 100%; height: 100%;
@@ -29,6 +33,7 @@
       width: 100vw;
       height: 100vh;
       display: block;
+      touch-action: none;
     }
 
     /* ── fade cover ── */
@@ -1645,21 +1650,26 @@
 
     function handleOrientation(e) {
       if (e.gamma == null) return;
-      lookTargetY = THREE.MathUtils.clamp(e.gamma / 25, -1, 1) * LOOK_MAX;
-      lookTargetX = THREE.MathUtils.clamp((e.beta - 90) / 25, -1, 1) * LOOK_MAX;
+      lookTargetY = THREE.MathUtils.clamp(e.gamma / 20, -1, 1) * LOOK_MAX;
+      lookTargetX = THREE.MathUtils.clamp((e.beta - 90) / 20, -1, 1) * LOOK_MAX;
     }
+
+    function attachOrientation() {
+      window.addEventListener('deviceorientation', handleOrientation);
+    }
+
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+ — request on first touch
-      document.addEventListener('touchstart', async function reqOrient() {
-        document.removeEventListener('touchstart', reqOrient);
-        try {
-          if (await DeviceOrientationEvent.requestPermission() === 'granted')
-            window.addEventListener('deviceorientation', handleOrientation);
-        } catch(e) {}
+      // iOS 13+ — requestPermission must be called synchronously inside a gesture handler
+      // async/await suspends the function and breaks that contract; use .then() instead
+      document.addEventListener('touchstart', function() {
+        DeviceOrientationEvent.requestPermission()
+          .then(state => { if (state === 'granted') attachOrientation(); })
+          .catch(() => {});
       }, { once: true });
-    } else if (window.DeviceOrientationEvent) {
-      window.addEventListener('deviceorientation', handleOrientation);
+    } else {
+      // Android + desktop — events fire freely
+      attachOrientation();
     }
 
     /* ── resize ── */
