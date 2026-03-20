@@ -235,7 +235,7 @@
 <body>
 
   <canvas id="webgl"></canvas>
-  <button id="hold-btn" aria-label="Hold to begin" style="position:fixed;inset:0;z-index:2;background:transparent;border:none;outline:none;-webkit-appearance:none;touch-action:none;cursor:pointer;"></button>
+  <button id="trove-btn" aria-label="Hold to begin" style="position:fixed;z-index:2;background:transparent;border:none;outline:none;-webkit-appearance:none;touch-action:manipulation;cursor:pointer;border-radius:50%;pointer-events:none;"></button>
   <div id="vignette"></div>
 
   <div id="tangle-overlay"><div id="tangle-screen"></div></div>
@@ -315,6 +315,7 @@
     let phoneScreenMeta = null; // { maxX, midY, midZ, sizeY, sizeZ } in phoneMesh local space
     let holdCtx = null, holdTex = null, holdMat = null;
     let isHolding = false, holdStart = 0, holdHapticInterval = null;
+    let holdFadeStart = null; // set when ring fills — logo fades over 1500ms then seq starts
     let _scheduledHapticIds = [];
     let qAnimStart = null, qAnimDone = false, btnVisible = false;
     let prioBtnCanvas = null; // {x,y,w,h} canvas pixel coords of the button
@@ -796,8 +797,8 @@
           scale = 1 + 0.025 * Math.sin(now * 0.001);
           angle = 0;
         } else {
-          // Accelerating spin while holding
-          const spinAge = now - holdStart;
+          // Accelerating spin — stops after 800ms (40% of hold), ring keeps filling
+          const spinAge = Math.min(now - holdStart, 800);
           angle = spinAge * 0.004 + spinAge * spinAge * 0.0000014;
           scale = 1 + progress * 0.07;
         }
@@ -985,20 +986,21 @@
       if (!isHolding) return;
       isHolding = false;
       holdStart = 0;
-      haptics.cancel();
+      // Don't call haptics.cancel() — debug mode fires a visual flash on cancel.
+      // The buzz is 2000ms = same as hold duration, so it expires naturally on completion.
+      // On early release it fades out on its own; brief tail is less bad than a flash.
       vibe(0);
-      // cancel pre-scheduled notification haptics if hold was released before completing
       _scheduledHapticIds.forEach(clearTimeout);
       _scheduledHapticIds = [];
       if (!seqStarted) drawHoldCanvas(0);
     }
 
-    const holdBtn = document.getElementById('hold-btn');
+    const troveBtn = document.getElementById('trove-btn');
 
-    holdBtn.addEventListener('pointerdown', () => {
+    troveBtn.addEventListener('pointerdown', () => {
       // Real <button> = native iOS haptic on touch. Buzz from gesture context.
       haptics.trigger([{ duration: 2000 }], { intensity: 1 });
-      vibe(15);
+      vibe(2000);
       if (seqStarted) return;
       isHolding = true;
       holdStart = performance.now();
@@ -1013,8 +1015,8 @@
       ];
     });
 
-    holdBtn.addEventListener('pointerup',    cancelHold);
-    holdBtn.addEventListener('pointercancel', cancelHold);
+    troveBtn.addEventListener('pointerup',    cancelHold);
+    troveBtn.addEventListener('pointercancel', cancelHold);
 
     /* ── raycast click — "Let's find out." button on qPlane ── */
     const raycaster = new THREE.Raycaster();
@@ -1117,7 +1119,7 @@
         if (isSpinning) {
           // ── Spin + zoom ──────────────────────────────────────────────────────
           const spinAge = performance.now() - spinStart;
-          const spinP   = Math.min(1, spinAge / 1700);
+          const spinP   = Math.min(1, spinAge / 1000);
           const spinE   = spinP < 0.5 ? 2*spinP*spinP : 1 - Math.pow(-2*spinP+2,2)/2;
           phoneGroup.rotation.y = Math.PI * 2 * spinE;
           // Arc sideways + wobble during spin
@@ -1193,8 +1195,8 @@
               const p = Math.min(1, age / 1100);
               const e = 1 - Math.pow(1 - p, 3); // easeOutCubic — snappy start, buttery settle
               const frac = tangleTiltDir > 0 ? e : (1 - e);
-              phoneMesh.rotation.y = -Math.PI/2 - 0.35 * frac;
-              phoneMesh.rotation.x = -0.26 * frac;
+              phoneMesh.rotation.y = -Math.PI/2 - 0.2 * frac;
+              phoneMesh.rotation.x = -0.15 * frac;
               if (p >= 1) tangleTiltDir = 0;
             }
           }
@@ -1222,20 +1224,50 @@
         if (isHolding) {
           const hp = Math.min(1, (performance.now() - holdStart) / 2000);
           drawHoldCanvas(hp);
+          if (holdFadeStart === null && (performance.now() - holdStart) >= 800) {
+            holdFadeStart = performance.now(); // start fading when spin stops
+          }
           if (hp >= 1) {
-            isHolding = false;
+            isHolding  = false;
             seqStarted = true;
-            seqStart   = clock.getElapsedTime();
-            holdBtn.style.pointerEvents = 'none'; // let canvas receive "Let's find out" click
-            if (holdMat) holdMat.opacity = 0;
+            troveBtn.style.pointerEvents = 'none';
+            troveBtn.style.display = 'none';
+            // Short delay so logo fade is visible before seq begins
+            setTimeout(() => { seqStart = clock.getElapsedTime(); }, 400);
           }
         } else {
           drawHoldCanvas(0); // breathing idle
         }
       }
+      // Fade hold canvas out over 1500ms after ring fills
+      if (holdFadeStart !== null && holdMat) {
+        const fadeP = Math.min(1, (performance.now() - holdFadeStart) / 400);
+        holdMat.opacity = 1 - fadeP;
+        if (fadeP >= 1) holdFadeStart = null;
+      }
 
       // Priority notification card slide-in
       if (qAnimStart !== null) drawPriorityCard((performance.now() - qAnimStart) / 620);
+
+      // Track trove-btn over TroveOh logo every frame
+      if (!seqStarted && screenRefPlane) {
+        phoneGroup.updateMatrixWorld(true);
+        const { width: pw, height: ph } = screenRefPlane.geometry.parameters;
+        // TroveOh UV on hold canvas: u=0.5, v≈154/1024 from bottom (cy=870, canvas=1024)
+        const ly = (154 / 1024 - 0.5) * ph;
+        const logoR3d = (74 / 512) * pw; // canvas radius 74px out of 512
+        const proj = (x, y) => {
+          const v = new THREE.Vector3(x, y, 0).applyMatrix4(screenRefPlane.matrixWorld).project(camera);
+          return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+        };
+        const c = proj(0, ly);
+        const r = Math.abs(proj(logoR3d, ly).x - c.x);
+        Object.assign(troveBtn.style, {
+          left: (c.x - r) + 'px', top: (c.y - r) + 'px',
+          width: (r * 2) + 'px',  height: (r * 2) + 'px',
+          pointerEvents: 'auto',
+        });
+      }
 
       // Track tangle overlay to phone screen every frame via corner projection
       if (tangleOpen && screenRefPlane) {
@@ -1673,10 +1705,10 @@
 
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+ — requestPermission() must be called synchronously inside a trusted user gesture.
-      // touchend is more reliably treated as a trusted gesture than pointerdown on iOS Safari.
-      renderer.domElement.addEventListener('touchend', function iOSOrient() {
-        renderer.domElement.removeEventListener('touchend', iOSOrient);
+      // iOS 13+ — must call requestPermission() inside a real gesture handler.
+      // holdBtn gets the first touch, so request from its pointerdown.
+      troveBtn.addEventListener('pointerdown', function iOSOrient() {
+        troveBtn.removeEventListener('pointerdown', iOSOrient);
         DeviceOrientationEvent.requestPermission()
           .then(state => { if (state === 'granted') attachOrientation(); })
           .catch(() => {});
