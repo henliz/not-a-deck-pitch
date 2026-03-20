@@ -993,15 +993,17 @@
     }
 
     renderer.domElement.addEventListener('pointerdown', () => {
+      // One touch — buzz fires immediately from gesture context, runs for 1s.
+      // The hold ring is totally unrelated. Cancel just happens to cut it off on release.
+      haptics.trigger([{ duration: 1000 }], { intensity: 1 });
+      vibe(15);
       if (seqStarted) return;
-      // Single long buzz for the hold — reliable gesture-context call, cancel on release
-      haptics.trigger([{ duration: 2000 }], { intensity: 1.0 });
-      vibe([50, 80, 50, 80, 50]); // Android vibrate pattern for hold feel
       isHolding = true;
       holdStart = performance.now();
-      // Pre-schedule notification burst + shatter haptics from gesture context right now,
-      // so the browser sees them as user-initiated even though they fire 9s later.
-      // Hold = 2000ms, notif burst at seq t=7.0s, each 195ms apart, shatter at t=9.6s.
+      // Pre-schedule notification burst + shatter haptics from this gesture context.
+      // They fire 9s from now but the browser sees them as user-initiated because they
+      // originate from this pointerdown handler. Cleared in cancelHold if released early.
+      // Hold = 2000ms, notif burst at seq t=7.0s each 195ms apart, shatter at t=9.6s.
       const HOLD_MS = 2000;
       _scheduledHapticIds = [
         ...burstTexts.map((_, i) =>
