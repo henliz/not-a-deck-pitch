@@ -235,6 +235,7 @@
 <body>
 
   <canvas id="webgl"></canvas>
+  <button id="hold-btn" aria-label="Hold to begin" style="position:fixed;inset:0;z-index:2;background:transparent;border:none;outline:none;-webkit-appearance:none;touch-action:none;cursor:pointer;"></button>
   <div id="vignette"></div>
 
   <div id="tangle-overlay"><div id="tangle-screen"></div></div>
@@ -992,17 +993,16 @@
       if (!seqStarted) drawHoldCanvas(0);
     }
 
-    renderer.domElement.addEventListener('pointerdown', () => {
-      // One touch — buzz fires immediately from gesture context, runs for 1s.
-      // The hold ring is totally unrelated. Cancel just happens to cut it off on release.
-      haptics.trigger([{ duration: 1000 }], { intensity: 1 });
+    const holdBtn = document.getElementById('hold-btn');
+
+    holdBtn.addEventListener('pointerdown', () => {
+      // Real <button> = native iOS haptic on touch. Buzz from gesture context.
+      haptics.trigger([{ duration: 2000 }], { intensity: 1 });
       vibe(15);
       if (seqStarted) return;
       isHolding = true;
       holdStart = performance.now();
       // Pre-schedule notification burst + shatter haptics from this gesture context.
-      // They fire 9s from now but the browser sees them as user-initiated because they
-      // originate from this pointerdown handler. Cleared in cancelHold if released early.
       // Hold = 2000ms, notif burst at seq t=7.0s each 195ms apart, shatter at t=9.6s.
       const HOLD_MS = 2000;
       _scheduledHapticIds = [
@@ -1013,8 +1013,8 @@
       ];
     });
 
-    renderer.domElement.addEventListener('pointerup',    cancelHold);
-    renderer.domElement.addEventListener('pointercancel', cancelHold);
+    holdBtn.addEventListener('pointerup',    cancelHold);
+    holdBtn.addEventListener('pointercancel', cancelHold);
 
     /* ── raycast click — "Let's find out." button on qPlane ── */
     const raycaster = new THREE.Raycaster();
@@ -1034,7 +1034,7 @@
       const u0 = bx / 512,       u1 = (bx + bw) / 512;
       const v0 = 1 - (by + bh) / 1024, v1 = 1 - by / 1024;
       if (uv.x >= u0 && uv.x <= u1 && uv.y >= v0 && uv.y <= v1) {
-        HAPTIC.begin();
+        HAPTIC.tap();
         startTangle();
       }
     });
@@ -1226,6 +1226,7 @@
             isHolding = false;
             seqStarted = true;
             seqStart   = clock.getElapsedTime();
+            holdBtn.style.pointerEvents = 'none'; // let canvas receive "Let's find out" click
             if (holdMat) holdMat.opacity = 0;
           }
         } else {
