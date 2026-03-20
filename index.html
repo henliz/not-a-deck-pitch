@@ -1142,15 +1142,13 @@
           // ── Normal idle ──────────────────────────────────────────────────────
           if (!isGlitching) phoneGroup.position.y = Math.sin(elapsed * 0.8) * 0.05;
 
-          // Parallax look — smooth lerp toward mouse / device-orientation target
-          if (!tangleOpen) {
-            const lf = 1 - Math.pow(0.018, delta);
-            lookX += (lookTargetX - lookX) * lf;
-            lookY += (lookTargetY - lookY) * lf;
-            if (!isGlitching) {
-              phoneGroup.rotation.x = lookX;
-              phoneGroup.rotation.y = lookY;
-            }
+          // Parallax look — runs always; matrix3d overlay tracks phoneGroup automatically
+          const lf = 1 - Math.pow(0.018, delta);
+          lookX += (lookTargetX - lookX) * lf;
+          lookY += (lookTargetY - lookY) * lf;
+          if (!isGlitching) {
+            phoneGroup.rotation.x = lookX;
+            phoneGroup.rotation.y = lookY;
           }
 
           if (phoneMesh) {
@@ -1640,14 +1638,13 @@
     animate();
 
     window.addEventListener('mousemove', e => {
-      if (tangleOpen) return;
       lookTargetY =  ((e.clientX / innerWidth)  - 0.5) * 2 * LOOK_MAX;
       lookTargetX = -((e.clientY / innerHeight) - 0.5) * 2 * LOOK_MAX;
     });
     window.addEventListener('mouseleave', () => { lookTargetX = lookTargetY = 0; });
 
     function handleOrientation(e) {
-      if (tangleOpen || e.gamma == null) return;
+      if (e.gamma == null) return;
       lookTargetY = THREE.MathUtils.clamp(e.gamma / 25, -1, 1) * LOOK_MAX;
       lookTargetX = THREE.MathUtils.clamp((e.beta - 90) / 25, -1, 1) * LOOK_MAX;
     }
