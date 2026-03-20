@@ -226,7 +226,8 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js"
+      "three":       "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js",
+      "web-haptics": "https://unpkg.com/web-haptics@0.0.6/dist/index.mjs"
     }
   }
   </script>
@@ -242,43 +243,24 @@
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/loaders/GLTFLoader.js';
-    /* ── haptics — dual path, no library ─────────────────────────────────────────────
-       navigator.vibrate  → Android native vibration. Sticky activation is granted on
-                            the first real gesture (pointerdown), so setInterval/rAF
-                            calls work everywhere after that.
-       Web Audio clicks   → Band-pass filtered white noise bursts for iOS (vibrate is
-                            unsupported there). AudioContext is unlocked synchronously
-                            via _unlockAudio() at the top of the first pointerdown —
-                            no async/await, so it's guaranteed running before any
-                            setInterval or rAF fires. */
-    let _actx = null;
-    function _unlockAudio() {
-      if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_actx.state === 'suspended') _actx.resume();
-    }
-    function playClick(duration = 10, intensity = 0.7) {
-      try {
-        if (!_actx || _actx.state !== 'running') return;
-        const len = Math.max(1, Math.round(_actx.sampleRate * duration / 1000));
-        const buf = _actx.createBuffer(1, len, _actx.sampleRate);
-        const d   = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.3));
-        const src = _actx.createBufferSource(); src.buffer = buf;
-        const flt = _actx.createBiquadFilter();
-        flt.type = 'bandpass'; flt.frequency.value = 3000 + intensity * 1000; flt.Q.value = 8;
-        const gain = _actx.createGain(); gain.gain.value = intensity * 0.8;
-        src.connect(flt); flt.connect(gain); gain.connect(_actx.destination);
-        src.start();
-      } catch(e) {}
-    }
+    import { WebHaptics } from 'web-haptics';
+
+    /* ── haptics ──────────────────────────────────────────────────────────────────────
+       setDebug(true)      → enables Web Audio click simulation (the sound you hear on
+                             iOS — this is NOT just for testing, it IS the iOS haptic path)
+       setShowSwitch(false) → hides the debug toggle UI so nothing visible appears
+       navigator.vibrate   → Android physical buzz, fired alongside for dual coverage   */
+    const haptics = new WebHaptics();
+    haptics.setDebug(true);
+    haptics.setShowSwitch(false);
     const vibe = (p) => navigator.vibrate?.(p);
     const HAPTIC = {
-      tap:     () => { vibe(10);            playClick(10, 0.6); },
-      notif:   () => { vibe([35, 80, 25]);  playClick(35, 0.8); setTimeout(() => playClick(25, 0.6), 115); },
-      burst:   () => { vibe(15);            playClick(15, 0.5); },
-      shatter: () => { vibe([8,50,8,50,8]); [0, 58, 116].forEach(t => setTimeout(() => playClick(8, 0.85), t)); },
-      begin:   () => { vibe(8);             playClick(8,  0.7); },
-      card:    () => { vibe([55, 60, 25]);  playClick(55, 0.7); setTimeout(() => playClick(25, 0.5), 115); },
+      tap:     () => { vibe(10);            haptics.trigger('selection'); },
+      notif:   () => { vibe([35, 80, 25]);  haptics.trigger([{ duration: 40, intensity: 0.8 }, { delay: 100, duration: 40, intensity: 0.6 }]); },
+      burst:   () => { vibe(15);            haptics.trigger([{ duration: 20, intensity: 1.0 }]); },
+      shatter: () => { vibe([8,50,8,50,8]); haptics.trigger([{ duration: 8 }, { delay: 60, duration: 8 }, { delay: 60, duration: 8 }], { intensity: 0.5 }); },
+      begin:   () => { vibe(8);             haptics.trigger([{ duration: 8 }], { intensity: 0.3 }); },
+      card:    () => { vibe([55, 60, 25]);  haptics.trigger([{ duration: 80, intensity: 0.8 }, { delay: 80, duration: 50, intensity: 0.3 }]); },
     };
 
     /* ── renderer ── */
@@ -332,6 +314,7 @@
     let phoneScreenMeta = null; // { maxX, midY, midZ, sizeY, sizeZ } in phoneMesh local space
     let holdCtx = null, holdTex = null, holdMat = null;
     let isHolding = false, holdStart = 0, holdHapticInterval = null;
+    let _scheduledHapticIds = [];
     let qAnimStart = null, qAnimDone = false, btnVisible = false;
     let prioBtnCanvas = null; // {x,y,w,h} canvas pixel coords of the button
     let fontsReady = false;
@@ -1001,23 +984,31 @@
       if (!isHolding) return;
       isHolding = false;
       holdStart = 0;
-      clearInterval(holdHapticInterval);
-      holdHapticInterval = null;
+      haptics.cancel();
+      vibe(0);
+      // cancel pre-scheduled notification haptics if hold was released before completing
+      _scheduledHapticIds.forEach(clearTimeout);
+      _scheduledHapticIds = [];
       if (!seqStarted) drawHoldCanvas(0);
     }
 
     renderer.domElement.addEventListener('pointerdown', () => {
-      _unlockAudio(); // unlock AudioContext synchronously in gesture context — no async, guaranteed running
-      vibe(5);        // grant sticky vibrate activation on Android
       if (seqStarted) return;
+      // Single long buzz for the hold — reliable gesture-context call, cancel on release
+      haptics.trigger([{ duration: 2000 }], { intensity: 1.0 });
+      vibe([50, 80, 50, 80, 50]); // Android vibrate pattern for hold feel
       isHolding = true;
       holdStart = performance.now();
-      let pulseCount = 0;
-      holdHapticInterval = setInterval(() => {
-        if (!isHolding) return;
-        pulseCount++;
-        HAPTIC.tap();
-      }, 220);
+      // Pre-schedule notification burst + shatter haptics from gesture context right now,
+      // so the browser sees them as user-initiated even though they fire 9s later.
+      // Hold = 2000ms, notif burst at seq t=7.0s, each 195ms apart, shatter at t=9.6s.
+      const HOLD_MS = 2000;
+      _scheduledHapticIds = [
+        ...burstTexts.map((_, i) =>
+          setTimeout(() => haptics.trigger([{ duration: 20, intensity: 1.0 }]), HOLD_MS + 7000 + i * 195)
+        ),
+        setTimeout(() => haptics.trigger([{ duration: 8 }, { delay: 60, duration: 8 }, { delay: 60, duration: 8 }], { intensity: 0.5 }), HOLD_MS + 9600),
+      ];
     });
 
     renderer.domElement.addEventListener('pointerup',    cancelHold);
@@ -1231,11 +1222,8 @@
           drawHoldCanvas(hp);
           if (hp >= 1) {
             isHolding = false;
-            clearInterval(holdHapticInterval);
-            holdHapticInterval = null;
             seqStarted = true;
             seqStart   = clock.getElapsedTime();
-            HAPTIC.tap();
             if (holdMat) holdMat.opacity = 0;
           }
         } else {
