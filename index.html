@@ -244,22 +244,19 @@
     import * as THREE from 'three';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/loaders/GLTFLoader.js';
     import { WebHaptics } from 'web-haptics';
-
-    /* ── haptics ── */
+    /* ── haptics — web-haptics (Web Audio API)
+       AudioContext is suspended by default. It MUST be unlocked synchronously inside a
+       real gesture handler (pointerdown). We fire a silent 1ms trigger at the very top of
+       the first pointerdown — after that the AudioContext is running and every subsequent
+       call from setInterval / rAF works fine too. */
     const haptics = new WebHaptics();
-
-    // Named patterns for each moment in the sequence
     const HAPTIC = {
-      tap:    () => haptics.trigger('selection'),
-      notif:  () => haptics.trigger([{ duration: 40, intensity: 0.8 }, { delay: 100, duration: 40, intensity: 0.6 }]),
-      burst:  () => haptics.trigger([{ duration: 20, intensity: 1.0 }]),
-      shatter:() => haptics.trigger([
-                      { duration: 8 },
-                      { delay: 60, duration: 8 },
-                      { delay: 60, duration: 8 },
-                    ], { intensity: 0.5 }),
-      begin:  () => haptics.trigger([{ duration: 8 }], { intensity: 0.3 }),
-      card:   () => haptics.trigger([{ duration: 80, intensity: 0.8 }, { delay: 80, duration: 50, intensity: 0.3 }]),
+      tap:     () => haptics.trigger([{ duration: 10,  intensity: 0.6  }]),
+      notif:   () => haptics.trigger([{ duration: 35,  intensity: 0.8  }, { duration: 80,  intensity: 0 }, { duration: 25,  intensity: 0.6  }]),
+      burst:   () => haptics.trigger([{ duration: 15,  intensity: 0.5  }]),
+      shatter: () => haptics.trigger([{ duration: 8,   intensity: 0.9  }, { duration: 50,  intensity: 0 }, { duration: 8,   intensity: 0.7  }, { duration: 50, intensity: 0 }, { duration: 8, intensity: 0.9 }]),
+      begin:   () => haptics.trigger([{ duration: 8,   intensity: 0.7  }]),
+      card:    () => haptics.trigger([{ duration: 55,  intensity: 0.7  }, { duration: 60,  intensity: 0 }, { duration: 25,  intensity: 0.5  }]),
     };
 
     /* ── renderer ── */
@@ -988,6 +985,7 @@
     }
 
     renderer.domElement.addEventListener('pointerdown', () => {
+      haptics.trigger([{ duration: 1, intensity: 0.01 }]); // unlock AudioContext on first touch
       if (seqStarted) return;
       isHolding = true;
       holdStart = performance.now();
@@ -995,7 +993,7 @@
       holdHapticInterval = setInterval(() => {
         if (!isHolding) return;
         pulseCount++;
-        haptics.trigger([{ duration: 8 }], { intensity: Math.min(0.6, 0.15 + pulseCount * 0.06) });
+        HAPTIC.tap();
       }, 220);
     });
 
@@ -1478,7 +1476,7 @@
 
     window.tNext = function(choice = 0) {
       tangleLastChoice = choice;
-      haptics.trigger([{ duration: 30, intensity: 0.55 }]);
+      haptics.trigger([{ duration: 20, intensity: 0.55 }]);
       const btn = event && event.target ? event.target.closest('.t-choice-btn') : null;
       if (btn) { btn.classList.add('selected'); }
       setTimeout(() => showTScene(tangleSceneIdx + 1), 160);
