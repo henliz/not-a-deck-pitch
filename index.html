@@ -244,19 +244,25 @@
     import * as THREE from 'three';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/loaders/GLTFLoader.js';
     import { WebHaptics } from 'web-haptics';
-    /* ── haptics — web-haptics (Web Audio API)
-       AudioContext is suspended by default. It MUST be unlocked synchronously inside a
-       real gesture handler (pointerdown). We fire a silent 1ms trigger at the very top of
-       the first pointerdown — after that the AudioContext is running and every subsequent
-       call from setInterval / rAF works fine too. */
+    /* ── haptics — dual path ──────────────────────────────────────────────────────────
+       navigator.vibrate  → Android native vibration. Sticky activation is granted on
+                            the first real gesture (pointerdown), so setInterval/rAF
+                            calls work everywhere after that.
+       web-haptics        → Web Audio click sounds for iOS (where vibrate is unsupported).
+                            AudioContext must be unlocked synchronously inside a gesture
+                            handler. We fire a real trigger at the very top of pointerdown
+                            so ensureAudio() runs in gesture context. After that all
+                            subsequent calls from setInterval / rAF work.
+       Both paths fire together so every device gets the best it supports. */
     const haptics = new WebHaptics();
+    const vibe = (p) => navigator.vibrate?.(p);
     const HAPTIC = {
-      tap:     () => haptics.trigger([{ duration: 10,  intensity: 0.6  }]),
-      notif:   () => haptics.trigger([{ duration: 35,  intensity: 0.8  }, { duration: 80,  intensity: 0 }, { duration: 25,  intensity: 0.6  }]),
-      burst:   () => haptics.trigger([{ duration: 15,  intensity: 0.5  }]),
-      shatter: () => haptics.trigger([{ duration: 8,   intensity: 0.9  }, { duration: 50,  intensity: 0 }, { duration: 8,   intensity: 0.7  }, { duration: 50, intensity: 0 }, { duration: 8, intensity: 0.9 }]),
-      begin:   () => haptics.trigger([{ duration: 8,   intensity: 0.7  }]),
-      card:    () => haptics.trigger([{ duration: 55,  intensity: 0.7  }, { duration: 60,  intensity: 0 }, { duration: 25,  intensity: 0.5  }]),
+      tap:     () => { vibe(10);              haptics.trigger([{ duration: 10, intensity: 0.6 }]); },
+      notif:   () => { vibe([35, 80, 25]);    haptics.trigger([{ duration: 35, intensity: 0.8 }, { delay: 80,  duration: 25, intensity: 0.6 }]); },
+      burst:   () => { vibe(15);              haptics.trigger([{ duration: 15, intensity: 0.5 }]); },
+      shatter: () => { vibe([8,50,8,50,8]);   haptics.trigger([{ duration: 8,  intensity: 0.9 }, { delay: 50,  duration: 8,  intensity: 0.7 }, { delay: 50, duration: 8, intensity: 0.9 }]); },
+      begin:   () => { vibe(8);               haptics.trigger([{ duration: 8,  intensity: 0.7 }]); },
+      card:    () => { vibe([55, 60, 25]);    haptics.trigger([{ duration: 55, intensity: 0.7 }, { delay: 60,  duration: 25, intensity: 0.5 }]); },
     };
 
     /* ── renderer ── */
@@ -985,7 +991,8 @@
     }
 
     renderer.domElement.addEventListener('pointerdown', () => {
-      haptics.trigger([{ duration: 1, intensity: 0.01 }]); // unlock AudioContext on first touch
+      haptics.trigger([{ duration: 10, intensity: 0.5 }]); // unlock AudioContext in gesture context (required for Web Audio / iOS)
+      vibe(5); // grant sticky vibrate activation on Android
       if (seqStarted) return;
       isHolding = true;
       holdStart = performance.now();
@@ -1476,7 +1483,7 @@
 
     window.tNext = function(choice = 0) {
       tangleLastChoice = choice;
-      haptics.trigger([{ duration: 20, intensity: 0.55 }]);
+      HAPTIC.tap();
       const btn = event && event.target ? event.target.closest('.t-choice-btn') : null;
       if (btn) { btn.classList.add('selected'); }
       setTimeout(() => showTScene(tangleSceneIdx + 1), 160);
