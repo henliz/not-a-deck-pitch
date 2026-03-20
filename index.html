@@ -255,10 +255,10 @@
       notif:  () => haptics.trigger([{ duration: 40, intensity: 0.8 }, { delay: 100, duration: 40, intensity: 0.6 }]),
       burst:  () => haptics.trigger([{ duration: 20, intensity: 1.0 }]),
       shatter:() => haptics.trigger([
-                      { duration: 80,  intensity: 1.0 },
-                      { delay: 40,  duration: 60,  intensity: 0.8 },
-                      { delay: 30,  duration: 120, intensity: 1.0 },
-                    ]),
+                      { duration: 8 },
+                      { delay: 60, duration: 8 },
+                      { delay: 60, duration: 8 },
+                    ], { intensity: 0.5 }),
       begin:  () => haptics.trigger([{ duration: 8 }], { intensity: 0.3 }),
       card:   () => haptics.trigger([{ duration: 80, intensity: 0.8 }, { delay: 80, duration: 50, intensity: 0.3 }]),
     };
@@ -996,8 +996,8 @@
       holdHapticInterval = setInterval(() => {
         if (!isHolding) return;
         pulseCount++;
-        haptics.trigger([{ duration: 40, intensity: Math.min(1.0, 0.2 + pulseCount * 0.12) }]);
-      }, 250);
+        haptics.trigger([{ duration: 8 }], { intensity: Math.min(0.6, 0.15 + pulseCount * 0.06) });
+      }, 220);
     });
 
     renderer.domElement.addEventListener('pointerup',    cancelHold);
@@ -1660,15 +1660,16 @@
 
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+ — requestPermission must be called synchronously inside a gesture handler
-      // async/await suspends the function and breaks that contract; use .then() instead
-      document.addEventListener('touchstart', function() {
+      // iOS 13+ — must call requestPermission() synchronously inside a real gesture handler.
+      // Use the hold pointerdown on the canvas — it's the first touch and guaranteed to be a gesture.
+      renderer.domElement.addEventListener('pointerdown', function iOSOrient() {
+        renderer.domElement.removeEventListener('pointerdown', iOSOrient);
         DeviceOrientationEvent.requestPermission()
           .then(state => { if (state === 'granted') attachOrientation(); })
           .catch(() => {});
       }, { once: true });
     } else {
-      // Android + desktop — events fire freely
+      // Android + desktop — events fire without permission
       attachOrientation();
     }
 
