@@ -226,8 +226,7 @@
   <script type="importmap">
   {
     "imports": {
-      "three":       "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js",
-      "web-haptics": "https://unpkg.com/web-haptics@0.0.6/dist/index.mjs"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js"
     }
   }
   </script>
@@ -243,26 +242,43 @@
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/loaders/GLTFLoader.js';
-    import { WebHaptics } from 'web-haptics';
-    /* ── haptics — dual path ──────────────────────────────────────────────────────────
+    /* ── haptics — dual path, no library ─────────────────────────────────────────────
        navigator.vibrate  → Android native vibration. Sticky activation is granted on
                             the first real gesture (pointerdown), so setInterval/rAF
                             calls work everywhere after that.
-       web-haptics        → Web Audio click sounds for iOS (where vibrate is unsupported).
-                            AudioContext must be unlocked synchronously inside a gesture
-                            handler. We fire a real trigger at the very top of pointerdown
-                            so ensureAudio() runs in gesture context. After that all
-                            subsequent calls from setInterval / rAF work.
-       Both paths fire together so every device gets the best it supports. */
-    const haptics = new WebHaptics();
+       Web Audio clicks   → Band-pass filtered white noise bursts for iOS (vibrate is
+                            unsupported there). AudioContext is unlocked synchronously
+                            via _unlockAudio() at the top of the first pointerdown —
+                            no async/await, so it's guaranteed running before any
+                            setInterval or rAF fires. */
+    let _actx = null;
+    function _unlockAudio() {
+      if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_actx.state === 'suspended') _actx.resume();
+    }
+    function playClick(duration = 10, intensity = 0.7) {
+      try {
+        if (!_actx || _actx.state !== 'running') return;
+        const len = Math.max(1, Math.round(_actx.sampleRate * duration / 1000));
+        const buf = _actx.createBuffer(1, len, _actx.sampleRate);
+        const d   = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.3));
+        const src = _actx.createBufferSource(); src.buffer = buf;
+        const flt = _actx.createBiquadFilter();
+        flt.type = 'bandpass'; flt.frequency.value = 3000 + intensity * 1000; flt.Q.value = 8;
+        const gain = _actx.createGain(); gain.gain.value = intensity * 0.8;
+        src.connect(flt); flt.connect(gain); gain.connect(_actx.destination);
+        src.start();
+      } catch(e) {}
+    }
     const vibe = (p) => navigator.vibrate?.(p);
     const HAPTIC = {
-      tap:     () => { vibe(10);              haptics.trigger([{ duration: 10, intensity: 0.6 }]); },
-      notif:   () => { vibe([35, 80, 25]);    haptics.trigger([{ duration: 35, intensity: 0.8 }, { delay: 80,  duration: 25, intensity: 0.6 }]); },
-      burst:   () => { vibe(15);              haptics.trigger([{ duration: 15, intensity: 0.5 }]); },
-      shatter: () => { vibe([8,50,8,50,8]);   haptics.trigger([{ duration: 8,  intensity: 0.9 }, { delay: 50,  duration: 8,  intensity: 0.7 }, { delay: 50, duration: 8, intensity: 0.9 }]); },
-      begin:   () => { vibe(8);               haptics.trigger([{ duration: 8,  intensity: 0.7 }]); },
-      card:    () => { vibe([55, 60, 25]);    haptics.trigger([{ duration: 55, intensity: 0.7 }, { delay: 60,  duration: 25, intensity: 0.5 }]); },
+      tap:     () => { vibe(10);            playClick(10, 0.6); },
+      notif:   () => { vibe([35, 80, 25]);  playClick(35, 0.8); setTimeout(() => playClick(25, 0.6), 115); },
+      burst:   () => { vibe(15);            playClick(15, 0.5); },
+      shatter: () => { vibe([8,50,8,50,8]); [0, 58, 116].forEach(t => setTimeout(() => playClick(8, 0.85), t)); },
+      begin:   () => { vibe(8);             playClick(8,  0.7); },
+      card:    () => { vibe([55, 60, 25]);  playClick(55, 0.7); setTimeout(() => playClick(25, 0.5), 115); },
     };
 
     /* ── renderer ── */
@@ -991,8 +1007,8 @@
     }
 
     renderer.domElement.addEventListener('pointerdown', () => {
-      haptics.trigger([{ duration: 10, intensity: 0.5 }]); // unlock AudioContext in gesture context (required for Web Audio / iOS)
-      vibe(5); // grant sticky vibrate activation on Android
+      _unlockAudio(); // unlock AudioContext synchronously in gesture context — no async, guaranteed running
+      vibe(5);        // grant sticky vibrate activation on Android
       if (seqStarted) return;
       isHolding = true;
       holdStart = performance.now();
@@ -1654,20 +1670,22 @@
 
     function handleOrientation(e) {
       if (e.gamma == null) return;
-      lookTargetY = THREE.MathUtils.clamp(e.gamma / 20, -1, 1) * LOOK_MAX;
-      lookTargetX = THREE.MathUtils.clamp((e.beta - 90) / 20, -1, 1) * LOOK_MAX;
+      // divisor 45 = full effect at 45° tilt (smoother than 20)
+      lookTargetY = THREE.MathUtils.clamp(e.gamma / 45, -1, 1) * LOOK_MAX;
+      lookTargetX = THREE.MathUtils.clamp((e.beta - 90) / 45, -1, 1) * LOOK_MAX;
     }
 
     function attachOrientation() {
-      window.addEventListener('deviceorientation', handleOrientation);
+      // true = capture phase; more reliable cross-browser for deviceorientation
+      window.addEventListener('deviceorientation', handleOrientation, true);
     }
 
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function') {
-      // iOS 13+ — must call requestPermission() synchronously inside a real gesture handler.
-      // Use the hold pointerdown on the canvas — it's the first touch and guaranteed to be a gesture.
-      renderer.domElement.addEventListener('pointerdown', function iOSOrient() {
-        renderer.domElement.removeEventListener('pointerdown', iOSOrient);
+      // iOS 13+ — requestPermission() must be called synchronously inside a trusted user gesture.
+      // touchend is more reliably treated as a trusted gesture than pointerdown on iOS Safari.
+      renderer.domElement.addEventListener('touchend', function iOSOrient() {
+        renderer.domElement.removeEventListener('touchend', iOSOrient);
         DeviceOrientationEvent.requestPermission()
           .then(state => { if (state === 'granted') attachOrientation(); })
           .catch(() => {});
