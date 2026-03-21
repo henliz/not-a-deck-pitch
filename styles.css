@@ -344,8 +344,6 @@ canvas#webgl {
   font-family: 'DM Serif Display', serif;
   font-size: 17px; font-weight: 400; font-style: normal;
   color: #1a1a2e; line-height: 1.2;
-  white-space: nowrap;
-  overflow: visible;
 }
 
 .tg-intro-tagline {
@@ -589,3 +587,8 @@ canvas#webgl {
   transition: opacity 120ms ease;
 }
 .tg-end-btn:active { opacity: 0.75; }
+
+@media (max-width: 480px) {
+  .tg-intro-scene { padding: 6px 8px; }
+  .tg-intro-body  { padding: 8px 10px 14px; }
+}

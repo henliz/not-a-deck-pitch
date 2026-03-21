@@ -215,9 +215,7 @@ window.tTogglePause = function () {
   window.tgPaused = !window.tgPaused;
   const btn = document.getElementById('t-pause-btn');
   if (!btn) return;
-  btn.innerHTML = window.tgPaused
-    ? `<svg width="12" height="14" viewBox="0 0 12 14" fill="white"><path d="M2 1.5 L11 7 L2 12.5 Z"/></svg>`
-    : `<svg width="12" height="14" viewBox="0 0 12 14" fill="white"><rect x="1" y="1" width="3.5" height="12" rx="1"/><rect x="7.5" y="1" width="3.5" height="12" rx="1"/></svg>`;
+  btn.textContent = window.tgPaused ? '▶' : '⏸';
 };
 
 /* ── Speed control ── */
