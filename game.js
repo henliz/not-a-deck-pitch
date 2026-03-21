@@ -11,41 +11,54 @@ function replyText(str) {
   return dash >= 0 ? str.slice(0, dash) : str;
 }
 
-/* Particle disintegration — Mr. Stark I don't feel so good */
+/* Particle disintegration — palette colours + GSAP */
 function disintegrate(el) {
-  const rect = el.getBoundingClientRect();
-  const N = 26;
-  for (let i = 0; i < N; i++) {
+  const rect    = el.getBoundingClientRect();
+  const palette = ['#DBD59C','#88ABE3','#C3D9FF','#F9F9F2','#FFFBCD'];
+  for (let i = 0; i < 32; i++) {
     const p   = document.createElement('div');
-    const sz  = 1.5 + Math.random() * 3;
+    const sz  = 1.5 + Math.random() * 4;
+    const col = palette[Math.floor(Math.random() * palette.length)];
     const sx  = rect.left + Math.random() * rect.width;
     const sy  = rect.top  + Math.random() * rect.height;
     const ang = Math.random() * Math.PI * 2;
-    const mag = 18 + Math.random() * 48;
-    const dur = 380 + Math.random() * 320;
+    const mag = 24 + Math.random() * 60;
     p.style.cssText =
       `position:fixed;width:${sz}px;height:${sz}px;border-radius:50%;` +
-      `background:#1a1a2e;left:${sx}px;top:${sy}px;` +
-      `pointer-events:none;z-index:9999;opacity:1;` +
-      `transition:transform ${dur}ms ease-out,opacity ${dur * 0.75}ms ease-in;`;
+      `background:${col};left:${sx}px;top:${sy}px;` +
+      `pointer-events:none;z-index:9999;opacity:0.75;` +
+      `box-shadow:0 0 ${sz*2}px ${col}60;`;
     document.body.appendChild(p);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      p.style.transform = `translate(${Math.cos(ang)*mag}px,${Math.sin(ang)*mag - 10}px) scale(0.1)`;
-      p.style.opacity   = '0';
-    }));
-    setTimeout(() => p.remove(), dur + 80);
+    if (window.gsap) {
+      gsap.to(p, {
+        x: Math.cos(ang)*mag, y: Math.sin(ang)*mag - 20,
+        opacity: 0, scale: 0.1,
+        duration: (380 + Math.random()*350) / 1000,
+        ease: 'power2.out',
+        onComplete: () => p.remove(),
+      });
+    } else {
+      const dur = 380 + Math.random() * 350;
+      p.style.transition = `transform ${dur}ms ease-out, opacity ${dur*0.75}ms ease-in`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        p.style.transform = `translate(${Math.cos(ang)*mag}px,${Math.sin(ang)*mag-20}px) scale(0.1)`;
+        p.style.opacity = '0';
+      }));
+      setTimeout(() => p.remove(), dur + 80);
+    }
   }
-  // freeze height so collapse animates (slides content up) rather than snapping
-  el.style.overflow     = 'hidden';
-  el.style.height       = el.offsetHeight + 'px';
-  el.style.transition   = 'opacity 220ms ease, transform 220ms ease, height 340ms 60ms cubic-bezier(0.4,0,0.2,1), margin-bottom 340ms 60ms cubic-bezier(0.4,0,0.2,1)';
-  requestAnimationFrame(() => {
-    el.style.opacity      = '0';
-    el.style.transform    = 'scale(0.96)';
-    el.style.height       = '0';
-    el.style.marginBottom = '0';
-  });
-  setTimeout(() => el.remove(), 460);
+  if (window.gsap) {
+    gsap.to(el, { opacity: 0, scale: 0.94, height: 0, marginBottom: 0,
+      duration: 0.4, ease: 'power2.inOut', onComplete: () => el.remove() });
+  } else {
+    el.style.overflow = 'hidden';
+    el.style.height   = el.offsetHeight + 'px';
+    el.style.transition = 'opacity 220ms ease, height 340ms 60ms ease, margin-bottom 340ms 60ms ease';
+    requestAnimationFrame(() => {
+      el.style.opacity = '0'; el.style.height = '0'; el.style.marginBottom = '0';
+    });
+    setTimeout(() => el.remove(), 460);
+  }
 }
 
 /* ── tgAPI ── */
@@ -234,168 +247,364 @@ window.tSetSpeed = function (mult) {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   GAME NARRATIVE — "Someone Thought of You"
+   PITCH — "What if you had xray vision?"
 ══════════════════════════════════════════════════════════════ */
 window.tgInitGame = async function () {
-  const api = window.tgAPI;
-  api.setProgress(0);
+  const pitch = document.getElementById('tg-pitch');
+  if (!pitch) return;
 
-  /* ── Beat 1: The message ── */
+  const hasGSAP  = !!(window.gsap && window.SplitText);
+  const hasScrTx = !!(window.ScrambleTextPlugin);
+  const hasCE    = !!(window.CustomEase);
 
-  api.addImage('a phone on a table. lamp light. city outside doing its thing. the kind of Thursday evening that was going fine.');
-  await api.wait(1000);
-
-  api.addNarration('Your phone buzzes at 9pm.');
-  await api.wait(2800);
-
-  api.addNarration("It's Cass. Three words, no punctuation, which means they're already on their way.");
-  await api.wait(3200);
-
-  await api.addBubble('are you home', 1400);
-  await api.wait(2500);
-
-  api.addNarration("You look at your apartment. The lamp is on. There's something on the stove. You were, by any reasonable measure, having a perfectly good Thursday.");
-  await api.wait(4200);
-
-  api.addNarration('You type yes before you\'ve decided to.');
-  await api.wait(3000);
-
-  await api.addBubble('okay good', 900);
-  await api.wait(800);
-  await api.addBubble('I found something', 1000);
-  await api.wait(800);
-  await api.addBubble("well. I've been sitting on it for three weeks actually", 1600);
-  await api.wait(900);
-  await api.addBubble("I kept thinking I was wrong but I'm not wrong", 1500);
-  await api.wait(900);
-  await api.addBubble("I'm not texting you about it. you need to see it", 1400);
-  await api.wait(800);
-  await api.addBubble("are you eating? I'll bring food", 1200);
-  await api.wait(1800);
-
-  api.addNarration('You put your phone down.');
-  await api.wait(2500);
-  api.addNarration('You check the stove.');
-  await api.wait(2200);
-  api.addNarration('You put your phone back up.');
-  await api.wait(2800);
-
-  const c1 = await api.showChoicesAsync([
-    '"come over" \u2014 you knew when you saw the name.',
-    '"it\'s late" \u2014 you say this. you both know it\'s not a real objection.',
-    '"what did you find" \u2014 you\'re not agreeing to anything. you just want to know.',
-    '"...how far away are you" \u2014 they\'re already on their way. you can tell.',
-  ]);
-  api.setProgress(25);
-  await api.wait(1800);
-
-  /* ── Beat 2: The knock ── */
-
-  api.addImage('your door from the inside. someone knocking. the specific quality of a knock that knows you\'re home.');
-  await api.wait(1000);
-
-  api.addNarration('Twenty-two minutes later, Cass is at your door.');
-  await api.wait(3200);
-
-  api.addNarration("They're holding a bottle of something and a paper bag that smells like the Thai place two blocks over. They brought food. They said they'd bring food. This is notable because Cass does not usually follow through on logistical specifics \u2014 they follow through on the things that matter, and apparently tonight, the food mattered.");
-  await api.wait(5500);
-
-  api.addNarration("They're already talking.");
-  await api.wait(2500);
-
-  await api.addBubble("okay so I know what you're going to say \u2014", 1400);
-  await api.wait(1800);
-
-  api.addNarration("You haven't said anything. You opened the door.");
-  await api.wait(3000);
-
-  await api.addBubble("you're going to say 'Cass this is another one of your things' and I need you to not do that right now because this is not another one of my things.\n\nthis is the thing.", 2400);
-  await api.wait(1200);
-
-  api.addImage("Cass inside now. jacket still on \u2014 they never take the jacket off, they're always half-leaving \u2014 laptop open on your coffee table before they've sat down properly. the bottle beside it. they brought two glasses. they always know where the glasses are.");
-  await api.wait(1200);
-
-  api.addNarration('You take the food.');
-  await api.wait(2500);
-
-  api.addNarration("You notice they've been nervous. Not visibly, not in a way most people would catch \u2014 but you've known Cass long enough to read the specific frequency of their energy tonight. This isn't the manic excitement of someone who found an interesting thing. This is the careful, barely-contained energy of someone who found something they're afraid to be wrong about.");
-  await api.wait(5500);
-
-  await api.addBubble('have you heard of Trove?', 1400);
-  await api.wait(2000);
-
-  api.addNarration('You have not heard of Trove.');
-  await api.wait(2800);
-
-  const c2 = await api.showChoicesAsync([
-    '"No. What is it." \u2014 flat. you\'re listening.',
-    '"Should I have?" \u2014 a small challenge. Cass loves a small challenge.',
-    '"Is this what you\'ve been texting me about for three weeks?" \u2014 you\'ve been paying more attention than you let on.',
-    '"Pour first." \u2014 priorities.',
-  ]);
-  if (c2 === 3) {
-    await api.wait(800);
-    api.collect('\u{1F943}', 'The Scotch');
+  if (hasGSAP) {
+    gsap.registerPlugin(SplitText);
+    if (hasScrTx) gsap.registerPlugin(ScrambleTextPlugin);
+    if (hasCE)    gsap.registerPlugin(CustomEase);
   }
-  api.setProgress(50);
-  await api.wait(1800);
 
-  /* ── Beat 3: The pitch ── */
-
-  await api.addBubble('okay so.', 1000);
-  await api.wait(1500);
-
-  api.addNarration("They sit down. Cross-legged, obviously. They turn the laptop toward you.");
-  await api.wait(3500);
-
-  await api.addBubble("the problem \u2014 and I need you to actually think about this, not just nod at me \u2014 is that every important decision we make about people is based on what they say about themselves.", 2200);
-  await api.wait(1000);
-  await api.addBubble("resumes. dating profiles. interviews. reference checks.\n\nall of it. every single signal we use to understand people. self-reported. meaning: someone decided what to tell you, chose the framing, ran it through whatever version of themselves they wanted you to see.", 2800);
-  await api.wait(1000);
-  await api.addBubble("and now AI can generate any of those in about four seconds.", 1600);
-  await api.wait(1500);
-
-  api.addImage("the laptop screen angled toward us. a company name \u2014 Trove \u2014 and the suggestion of data we can't fully read yet. something that looks like numbers. good numbers.");
-  await api.wait(1200);
-
-  await api.addBubble("so the signal is dead. everything we built to understand people \u2014 broken. and most people haven't noticed yet.", 2000);
-  await api.wait(900);
-  await api.addBubble("except the people who are about to make a lot of money noticing.", 1500);
-  await api.wait(1500);
-
-  api.addNarration('You look at the screen. You look at Cass.');
-  await api.wait(3500);
-
-  const c3 = await api.showChoicesAsync([
-    "This is a real problem. You've felt it. \u2014 a hire that looked perfect. a partnership that didn't survive contact with reality.",
-    "Everyone says the signal is broken. That's not the same as having a solution. \u2014 you're listening but you want the other half of the sentence.",
-    "You want to know who noticed. \u2014 skip the problem. get to the company.",
-    "You want to know why Cass has been sitting on this for three weeks. \u2014 the pitch is interesting. Cass is more interesting.",
-  ]);
-  if (c3 === 3) {
-    await api.wait(800);
-    api.collect('\u{1F56F}\uFE0F', 'The Candle');
+  if (hasCE) {
+    CustomEase.create('slam',    'M0,0 C0.08,0 0.12,1.3 0.32,1.08 0.52,0.86 0.52,1 1,1');
+    CustomEase.create('unfurl',  'M0,0 C0.28,0 0.16,1 1,1');
+    CustomEase.create('yank',    'M0,0 C0.6,0 0.4,1.6 1,1');
+    CustomEase.create('hesitate','M0,0 C0.02,0 0.04,0.02 0.3,0.02 0.5,0.02 0.6,1 1,1');
+    CustomEase.create('snap',    'M0,0 C0,0 0.05,0.9 0.1,1 0.15,1.1 0.25,0.95 1,1');
   }
-  api.setProgress(75);
-  await api.wait(1800);
 
-  /* ── Beat 4: The close ── */
+  const w = ms => new Promise(r => setTimeout(r, ms * window.tgSpeedMult));
 
-  await api.addBubble('so.', 900);
-  await api.wait(1500);
+  function scrollPitch() {
+    if (hasGSAP) {
+      gsap.to(pitch, { scrollTop: pitch.scrollHeight, duration: 0.6, ease: 'power3.out', overwrite: true });
+    } else {
+      pitch.scrollTop = pitch.scrollHeight;
+    }
+  }
 
-  api.addNarration("They close the laptop halfway. Open it again. A tell \u2014 they only do this when they're about to say the part they've been rehearsing.");
-  await api.wait(4000);
+  function line(html, cls, mt = 0) {
+    const d = document.createElement('div');
+    d.className = 'tg-pl ' + (cls || '');
+    d.innerHTML = html;
+    if (mt) d.style.marginTop = mt + 'px';
+    pitch.appendChild(d);
+    scrollPitch();
+    return d;
+  }
 
-  api.addNarration("They look at you properly for the first time since they walked in.");
-  await api.wait(2800);
+  /* Flash + scene shake — animate scene, not pitch (avoids clipping shift) */
+  function flash(double = false) {
+    const scene = pitch.closest('.tg-pitch-scene');
+    if (!scene) return;
+    scene.classList.add('tg-flash');
+    if (hasGSAP) {
+      gsap.fromTo(scene, { x: -10, rotation: -0.7 },
+        { x: 0, rotation: 0, duration: 0.9, ease: 'elastic.out(1, 0.28)', overwrite: true });
+      gsap.fromTo(scene, { y: -5 },
+        { y: 0, duration: 0.6, ease: 'elastic.out(1, 0.35)', delay: 0.04, overwrite: false });
+    }
+    setTimeout(() => {
+      scene.classList.remove('tg-flash');
+      if (double) {
+        setTimeout(() => {
+          scene.classList.add('tg-flash');
+          if (hasGSAP) {
+            gsap.fromTo(scene, { x: 7, rotation: 0.5 },
+              { x: 0, rotation: 0, duration: 0.75, ease: 'elastic.out(1, 0.35)', overwrite: true });
+          }
+          setTimeout(() => scene.classList.remove('tg-flash'), 60);
+        }, 85);
+      }
+    }, 60);
+  }
 
-  await api.addBubble("I've been wrong about things before. I know that. I'm not wrong about this.", 2000);
+  /* GSAP reveal — SplitText + blur from-state + stagger with its own ease */
+  function reveal(el, opts = {}) {
+    if (!hasGSAP) return Promise.resolve();
+    const splitType = opts.type || 'words';
+    const split     = new SplitText(el, { type: splitType });
+    const targets   = splitType === 'chars' ? split.chars : split.words;
+    // Blur words-level by default, skip for chars (too heavy per-char)
+    const applyBlur = opts.blur ?? (splitType === 'words');
+    const defaultEase = hasCE
+      ? (opts.impact ? 'slam' : 'unfurl')
+      : (opts.impact ? 'back.out(3)' : 'back.out(2)');
 
-  await api.wait(3000);
-  const scroll = document.getElementById('tg-scroll');
-  if (scroll) scroll.scrollTop = scroll.scrollHeight;
-  await api.wait(900);
-  api.setProgress(100);
-  api.showEnd("that's all for now, folks.\n\ncheck back later to finish the thrilling adventure of you & Cass.");
+    return new Promise(r =>
+      gsap.from(targets, {
+        opacity:  0,
+        y:        opts.y        ?? 32,
+        x:        opts.x        ?? 0,
+        scale:    opts.scale    ?? 1,
+        rotation: opts.rotation ?? 0,
+        ...(applyBlur ? { filter: 'blur(10px)' } : {}),
+        duration: opts.duration ?? 0.55,
+        ease:     opts.ease     ?? defaultEase,
+        stagger:  {
+          each: opts.stagger      ?? 0.07,
+          from: opts.from         ?? 'start',
+          ease: opts.staggerEase  ?? 'power2.inOut',
+        },
+        onComplete: r,
+        clearProps: 'transform,x,y,rotation,scale,filter',
+      })
+    );
+  }
+
+  // ── Drum dial builder (keep exactly as-is) ─────────────────────
+  const ITEM_H = 46;
+  const VISIBLE = 5;
+  const DIAL_H  = ITEM_H * VISIBLE;
+  const DIAL_PAD = (DIAL_H - ITEM_H) / 2;
+
+  function buildDial(words, settleIdx) {
+    const wrap  = document.createElement('div');
+    wrap.className = 'tg-dial-wrap'; // no tg-pl — GSAP handles entrance, avoids transform conflict
+
+    const tick = document.createElement('div');
+    tick.className = 'tg-dial-line';
+
+    const fade  = document.createElement('div');
+    fade.className = 'tg-dial-fade';
+
+    const track = document.createElement('div');
+    track.className = 'tg-dial-track';
+    track.style.cssText = `padding-top:${DIAL_PAD}px;padding-bottom:${DIAL_PAD}px;`;
+
+    const items = words.map(word => {
+      const el = document.createElement('div');
+      el.className = 'tg-dial-item';
+      el.textContent = word;
+      track.appendChild(el);
+      return el;
+    });
+
+    wrap.append(tick, fade, track);
+
+    function syncActive() {
+      const center = track.scrollTop;
+      items.forEach((el, i) => {
+        const dist = Math.abs(i * ITEM_H - center) / ITEM_H;
+        el.style.opacity   = Math.max(0.15, 1 - dist * 0.42);
+        el.style.transform = `scale(${Math.max(0.62, 1 - dist * 0.15)})`;
+        el.classList.toggle('active', dist < 0.5);
+      });
+    }
+    track.addEventListener('scroll', syncActive, { passive: true });
+    syncActive();
+
+    const done = new Promise(resolve => {
+      let count = 0;
+      const total = 34;
+      function step() {
+        const p = count / total;
+        const delay = p < 0.42 ? 52 : p < 0.74 ? 105 : 195;
+        if (count < total) {
+          track.scrollTop = (count % words.length) * ITEM_H;
+          syncActive();
+          count++;
+          setTimeout(step, delay * window.tgSpeedMult);
+        } else {
+          const from  = track.scrollTop;
+          const to    = settleIdx * ITEM_H;
+          const start = performance.now();
+          const dur   = 420;
+          (function settle(now) {
+            const t = Math.min(1, (now - start) / dur);
+            const e = 1 - Math.pow(1 - t, 3);
+            track.scrollTop = from + (to - from) * e;
+            syncActive();
+            if (t < 1) requestAnimationFrame(settle);
+            else resolve();
+          })(performance.now());
+        }
+      }
+      setTimeout(step, 80 * window.tgSpeedMult);
+    });
+
+    return { el: wrap, done };
+  }
+
+  window.tgAPI.setProgress(0);
+
+  // ── Beat 1: You're an investor ────────────────────────────────
+  // Impact slam — chars scatter from random y/x/rotation, land together
+  {
+    const el = line("You're an investor.", 'tg-pl--big');
+    if (hasGSAP) {
+      const split = new SplitText(el, { type: 'chars' });
+      await new Promise(r => gsap.from(split.chars, {
+        opacity: 0,
+        y: () => gsap.utils.random(60, 120),
+        x: () => gsap.utils.random(-18, 18),
+        rotation: () => gsap.utils.random(-22, 22),
+        scale: () => gsap.utils.random(0.05, 0.35),
+        duration: 0.85, ease: hasCE ? 'slam' : 'back.out(3)',
+        stagger: { each: 0.055, from: 'center', ease: 'power3.in' },
+        clearProps: 'transform,x,y,rotation,scale',
+        onComplete: r,
+      }));
+    }
+  }
+  await w(1100);
+
+  // ── Beat 2: Wrong call — one tight line ───────────────────────
+  await reveal(line('You made the wrong call on someone.', 'tg-pl--med', 28), {
+    y: 24, stagger: 0.07, staggerEase: 'power2.out', duration: 0.52, blur: true,
+    ease: hasCE ? 'unfurl' : 'power3.out',
+  });
+  await w(900);
+
+  window.tgAPI.setProgress(20);
+
+  // ── Beat 3: A [dial] ─────────────────────────────────────────
+  await reveal(line('A', 'tg-pl--dim', 28), { y: 18, duration: 0.32, blur: false });
+  await w(260);
+
+  const dial2 = buildDial(['hire','co-founder','partner','date','friend'], 2);
+  dial2.el.style.marginTop = '18px';
+  pitch.appendChild(dial2.el);
+  if (hasGSAP) gsap.from(dial2.el, { opacity: 0, y: 28, filter: 'blur(6px)', duration: 0.55, ease: 'power3.out', clearProps: 'filter' });
+  pitch.scrollTop = pitch.scrollHeight;
+  await dial2.done;
+  await w(500);
+
+  await reveal(line('who looked right on paper.', 'tg-pl--med'), {
+    y: 22, stagger: 0.07, staggerEase: 'power2.inOut', duration: 0.48, blur: true,
+  });
+  await w(1000);
+
+  window.tgAPI.setProgress(45);
+
+  // ── Beat 4: What happened? — chars from center, blur, stagger ease ────
+  flash();
+  await reveal(line('What happened?', 'tg-pl--impact', 18), {
+    type: 'chars', blur: false,
+    y: 0,
+    scale: () => gsap.utils.random(0.1, 0.5),
+    rotation: () => gsap.utils.random(-30, 30),
+    stagger: 0.05, from: 'center', staggerEase: 'power2.inOut',
+    ease: 'back.out(3.5)', duration: 0.75,
+  });
+  await w(380);
+
+  const choiceTexts = [
+    "They couldn't deliver when it mattered.",
+    'They were different in practice than in person.',
+    "You ignored something you saw early. You wish you hadn't.",
+    "Honestly? You still don't fully know.",
+  ];
+
+  const choiceWrap = document.createElement('div');
+  choiceWrap.className = 'tg-pl tg-pitch-choices';
+  choiceWrap.innerHTML = choiceTexts
+    .map((c, i) => `<button class="tg-pitch-choice" onclick="window._pitchChoose(${i})">${c}</button>`)
+    .join('');
+  pitch.appendChild(choiceWrap);
+  scrollPitch();
+
+  if (hasGSAP) {
+    // edgeReveal — buttons alternate from left/right edges
+    gsap.from([...choiceWrap.querySelectorAll('.tg-pitch-choice')], {
+      opacity: 0,
+      x: (i) => i % 2 === 0 ? 48 : -28,
+      scale: 0.88,
+      filter: 'blur(4px)',
+      duration: 0.52,
+      ease: hasCE ? 'yank' : 'back.out(2)',
+      stagger: { each: 0.09, ease: 'power2.inOut' },
+      clearProps: 'filter,x,scale',
+    });
+  }
+
+  window._pitchChosen = false;
+  const chosen = await new Promise(resolve => {
+    window._pitchChoose = idx => {
+      if (window._pitchChosen) return;
+      window._pitchChosen = true;
+      const btns = [...choiceWrap.querySelectorAll('.tg-pitch-choice')];
+      btns.forEach((b, i) => { b.disabled = true; if (i !== idx) disintegrate(b); });
+      const sel = btns[idx];
+      sel.classList.add('selected');
+      if (hasGSAP) {
+        gsap.to(sel, {
+          scale: 1.06, duration: 0.12, ease: 'power2.out',
+          onComplete: () => gsap.to(sel, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.38)' }),
+        });
+      }
+      setTimeout(() => resolve(idx), 540);
+    };
+  });
+  window.tgAPI.setProgress(70);
+
+  scrollPitch();
+  await w(800);
+
+  // ── Beat 5: xray vision ───────────────────────────────────────
+  await reveal(line('What if you had', 'tg-pl--dim', 28), {
+    y: 20, stagger: 0.07, duration: 0.42, blur: true,
+    ease: hasCE ? 'unfurl' : 'power3.out',
+  });
+  await w(420);
+
+  flash(true);
+  const xrayEl = line('xray vision', 'tg-pl--huge');
+
+  if (hasGSAP && hasScrTx) {
+    xrayEl.textContent = '';
+    await new Promise(r =>
+      gsap.to(xrayEl, {
+        duration: 1.7,
+        scrambleText: {
+          text: 'xray vision',
+          chars: '!<>-_\\/[]{}—=+*^?#XR4YV1S10N@░▒▓',
+          revealDelay: 0.32, speed: 0.42, newClass: 'tg-scramble-char',
+        },
+        ease: 'none', onComplete: r,
+      })
+    );
+    // Bloom ring expanding outward
+    const ring = document.createElement('div');
+    ring.style.cssText = `position:fixed;left:50%;top:50%;width:4px;height:4px;
+      margin:-2px 0 0 -2px;border-radius:50%;
+      border:1px solid var(--trace);pointer-events:none;z-index:9999;`;
+    document.body.appendChild(ring);
+    gsap.to(ring, {
+      width:'140vw', height:'140vw', marginTop:'-70vw', marginLeft:'-70vw',
+      opacity:0, duration:1.1, ease:'power2.out', onComplete:()=>ring.remove(),
+    });
+    // Chromatic glitch on the element
+    const r2 = xrayEl.cloneNode(true), b2 = xrayEl.cloneNode(true);
+    r2.style.cssText = `position:absolute;top:0;left:0;color:var(--shift);mix-blend-mode:multiply;pointer-events:none;`;
+    b2.style.cssText = `position:absolute;top:0;left:0;color:var(--trace);mix-blend-mode:multiply;pointer-events:none;`;
+    xrayEl.style.position = 'relative';
+    xrayEl.appendChild(r2); xrayEl.appendChild(b2);
+    const steps = 8;
+    gsap.timeline()
+      .to(r2, { x: () => (Math.random()-0.5)*16, duration:0.05, ease:'steps(1)', repeat:steps, yoyo:true })
+      .to(b2, { x: () => (Math.random()-0.5)*16, duration:0.05, ease:'steps(1)', repeat:steps, yoyo:true }, '<')
+      .to(xrayEl, { skewX: () => (Math.random()-0.5)*3, duration:0.08, ease:'steps(1)', repeat:3, yoyo:true }, '<')
+      .call(() => { r2.remove(); b2.remove(); xrayEl.style.position=''; });
+  } else if (hasGSAP) {
+    const xraySplit = new SplitText(xrayEl, { type: 'chars' });
+    await new Promise(r =>
+      gsap.from(xraySplit.chars, {
+        opacity: 0,
+        y: () => gsap.utils.random(-90, 90), x: () => gsap.utils.random(-28, 28),
+        scale: () => gsap.utils.random(0.05, 0.45), rotation: () => gsap.utils.random(-70, 70),
+        duration: 1.15, ease: 'elastic.out(1, 0.42)',
+        stagger: { each: 0.075, from: 'random' },
+        clearProps: 'transform,x,y,rotation,scale', onComplete: r,
+      })
+    );
+  }
+
+  await w(400);
+  await reveal(line('for how people actually behave?', 'tg-pl--med'), {
+    y: 24, stagger: 0.065, staggerEase: 'power2.inOut', duration: 0.52, blur: true,
+    ease: hasCE ? 'unfurl' : 'power3.out',
+  });
+  await w(1600);
+
+  window.tgAPI.setProgress(100);
+  window.tgAPI.showEnd("That's what Trove does.\n\nWant to find out how it works?");
 };

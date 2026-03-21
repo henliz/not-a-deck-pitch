@@ -1,3 +1,42 @@
+:root {
+  /* Palette */
+  --anchor: #222222;
+  --still:  #F9F9F2;
+  --shift:  #DBD59C;
+  --light:  #FFFBCD;
+  --trace:  #88ABE3;
+  --echo:   #C3D9FF;
+
+  /* Light mode tokens */
+  --bg:     var(--still);
+  --text:   var(--anchor);
+  --border: rgba(34,34,34,0.12);
+  --muted:  rgba(34,34,34,0.38);
+
+  /* Semantic aliases */
+  --color-bg:     var(--still);
+  --color-text:   var(--anchor);
+  --color-accent: var(--shift);
+  --color-cool:   var(--trace);
+  --color-ghost:  var(--echo);
+  --color-glow:   var(--light);
+
+  /* Glow shadows */
+  --glow-warm: 0 0 20px rgba(219,213,156,0.3), 0 0 40px rgba(219,213,156,0.1);
+  --glow-cool: 0 0 20px rgba(136,171,227,0.3), 0 0 40px rgba(136,171,227,0.1);
+  --glow-text: 0 0 30px rgba(255,251,205,0.5);
+
+  /* Typography */
+  --font-display: 'Playfair Display', serif;
+  --font-label:   'DM Mono', monospace;
+  --font-body:    'Syne', sans-serif;
+
+  /* Motion */
+  --ease-slam:   cubic-bezier(0.08, 1.3, 0.52, 1);
+  --ease-unfurl: cubic-bezier(0.28, 0, 0.16, 1);
+  --ease-yank:   cubic-bezier(0.6, 0, 0.4, 1.6);
+}
+
 *, *::before, *::after {
   box-sizing: border-box; margin: 0; padding: 0;
   -webkit-user-select: none; user-select: none;
@@ -7,13 +46,8 @@
 html, body {
   width: 100%; height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 75% 65% at 12% 58%, rgba(143,230,60,0.22) 0%, transparent 62%),
-    radial-gradient(ellipse 55% 75% at 88% 18%, rgba(110,215,80,0.13) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 50% at 60% 90%, rgba(143,230,60,0.10) 0%, transparent 50%),
-    #f0f0e0;
-
-  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -51,7 +85,7 @@ canvas#webgl {
 /* ── credit ── */
 #credit {
   position: fixed; bottom: 18px; right: 24px;
-  font-family: 'Inter', sans-serif; font-size: 11px;
+  font-family: var(--font-body); font-size: 11px;
   color: #555550; letter-spacing: 0.04em;
   pointer-events: none; z-index: 9; margin: 0;
   user-select: none;
@@ -84,7 +118,7 @@ canvas#webgl {
   padding: 8px 22px 5px; background: #ffffff;
   font-size: 12px; font-weight: 700; color: #1a1a2e;
   letter-spacing: -0.01em; flex-shrink: 0;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
 }
 .t-status-icons { display: flex; align-items: center; gap: 5px; }
 
@@ -124,7 +158,7 @@ canvas#webgl {
 .t-speed-option {
   background: none; border: none; cursor: pointer;
   padding: 7px 10px; border-radius: 8px;
-  font-size: 12px; font-family: 'Inter', sans-serif;
+  font-size: 12px; font-family: var(--font-body);
   text-align: left; color: #1a1a2e; white-space: nowrap;
 }
 .t-speed-option:hover { background: #F5F0E8; }
@@ -145,71 +179,71 @@ canvas#webgl {
 
 .t-chapter-label {
   font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
-  color: #9a9a88; margin-bottom: 10px; font-family: 'Inter', sans-serif;
+  color: #9a9a88; margin-bottom: 10px; font-family: var(--font-body);
 }
 .t-prev-text {
   font-size: 11px; color: #aaa898; font-style: italic;
-  margin-bottom: 10px; line-height: 1.4; font-family: 'Inter', sans-serif;
+  margin-bottom: 10px; line-height: 1.4; font-family: var(--font-body);
 }
 .t-scene-text {
   font-size: 14px; font-weight: 600; color: #1a1a1a;
-  line-height: 1.65; margin-bottom: 10px; font-family: 'Nunito', sans-serif;
+  line-height: 1.65; margin-bottom: 10px; font-family: var(--font-body);
 }
 .t-pull-quote {
   border-left: 3px solid #d4f54a; padding: 8px 0 8px 12px;
   margin: 8px 0; font-size: 13px; font-style: italic; color: #4a4a3a; line-height: 1.5;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--font-body);
 }
 .t-speech-bubble {
   background: #ffffff; border-radius: 14px 14px 14px 4px;
   padding: 10px 14px; font-size: 13px; color: #1a1a1a;
   line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  margin: 8px 0; font-family: 'Inter', sans-serif;
+  margin: 8px 0; font-family: var(--font-body);
 }
 .t-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
 .t-stat-cell { background: rgba(26,26,46,0.06); border-radius: 10px; padding: 10px 12px; text-align: center; }
-.t-stat-num { font-size: 20px; font-weight: 800; color: #1a1a2e; display: block; line-height: 1; margin-bottom: 4px; font-family: 'Nunito', sans-serif; }
-.t-stat-label { font-size: 9px; color: #6a6a5a; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; font-family: 'Inter', sans-serif; }
+.t-stat-num { font-size: 20px; font-weight: 800; color: #1a1a2e; display: block; line-height: 1; margin-bottom: 4px; font-family: var(--font-body); }
+.t-stat-label { font-size: 9px; color: #6a6a5a; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; font-family: var(--font-body); }
 
 .t-ask-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; }
 .t-ask-cell { background: rgba(26,26,46,0.06); border-radius: 10px; padding: 10px 12px; }
-.t-ask-label { font-size: 9px; letter-spacing: 0.1em; color: #8a8a7a; text-transform: uppercase; margin-bottom: 4px; font-family: 'Inter', sans-serif; }
-.t-ask-val { font-size: 15px; font-weight: 800; color: #1a1a2e; font-family: 'Nunito', sans-serif; }
-.t-ask-sub { font-size: 10px; color: #7a7a6a; margin-top: 3px; font-style: italic; font-family: 'Inter', sans-serif; }
+.t-ask-label { font-size: 9px; letter-spacing: 0.1em; color: #8a8a7a; text-transform: uppercase; margin-bottom: 4px; font-family: var(--font-body); }
+.t-ask-val { font-size: 15px; font-weight: 800; color: #1a1a2e; font-family: var(--font-body); }
+.t-ask-sub { font-size: 10px; color: #7a7a6a; margin-top: 3px; font-style: italic; font-family: var(--font-body); }
 
 .t-reveal-list { margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
 .t-reveal-item {
   display: flex; align-items: flex-start; gap: 10px;
   font-size: 12px; color: #3a3a2a; line-height: 1.4;
   opacity: 0; transform: translateY(4px);
-  animation: tFadeUp 0.4s ease forwards; font-family: 'Nunito', sans-serif;
+  animation: tFadeUp 0.4s ease forwards; font-family: var(--font-body);
 }
-.t-reveal-marker { color: #8a8a7a; font-size: 9px; letter-spacing: 0.1em; flex-shrink: 0; margin-top: 2px; font-family: 'Inter', sans-serif; }
+.t-reveal-marker { color: #8a8a7a; font-size: 9px; letter-spacing: 0.1em; flex-shrink: 0; margin-top: 2px; font-family: var(--font-body); }
 @keyframes tFadeUp { to { opacity: 1; transform: translateY(0); } }
 
 .t-team-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 .t-team-card { background: rgba(26,26,46,0.06); border-radius: 10px; padding: 10px 12px; }
-.t-team-name { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; font-family: 'Nunito', sans-serif; }
-.t-team-bio { font-size: 11px; color: #5a5a4a; line-height: 1.4; font-style: italic; font-family: 'Inter', sans-serif; }
+.t-team-name { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; font-family: var(--font-body); }
+.t-team-bio { font-size: 11px; color: #5a5a4a; line-height: 1.4; font-style: italic; font-family: var(--font-body); }
 
 .t-inv-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
-.t-inv-tag { border: 1px solid rgba(26,26,46,0.2); border-radius: 4px; padding: 4px 8px; font-size: 9px; letter-spacing: 0.08em; color: #6a6a5a; text-transform: uppercase; font-family: 'Inter', sans-serif; }
+.t-inv-tag { border: 1px solid rgba(26,26,46,0.2); border-radius: 4px; padding: 4px 8px; font-size: 9px; letter-spacing: 0.08em; color: #6a6a5a; text-transform: uppercase; font-family: var(--font-body); }
 .t-inv-tag.active { border-color: #d4f54a; color: #1a2a00; background: rgba(212,245,74,0.18); }
 
 .t-profile-reveal { background: rgba(26,26,46,0.06); border-radius: 12px; border: 1px solid rgba(26,26,46,0.1); padding: 14px; margin: 8px 0; }
-.t-profile-title { font-size: 9px; letter-spacing: 0.15em; color: #8a8a7a; text-transform: uppercase; margin-bottom: 6px; font-family: 'Inter', sans-serif; }
-.t-profile-type { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; font-family: 'Nunito', sans-serif; }
-.t-profile-desc { font-size: 12px; color: #4a4a3a; line-height: 1.5; font-style: italic; font-family: 'Inter', sans-serif; }
+.t-profile-title { font-size: 9px; letter-spacing: 0.15em; color: #8a8a7a; text-transform: uppercase; margin-bottom: 6px; font-family: var(--font-body); }
+.t-profile-type { font-size: 18px; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; font-family: var(--font-body); }
+.t-profile-desc { font-size: 12px; color: #4a4a3a; line-height: 1.5; font-style: italic; font-family: var(--font-body); }
 
-.t-contact { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 11px; color: #7a7a6a; line-height: 1.9; font-family: 'Inter', sans-serif; }
+.t-contact { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08); font-size: 11px; color: #7a7a6a; line-height: 1.9; font-family: var(--font-body); }
 .t-contact a { color: #4a6a4a; text-decoration: none; }
-.t-contact-name { font-weight: 700; color: #2a2a1a; font-size: 12px; font-family: 'Nunito', sans-serif; }
+.t-contact-name { font-weight: 700; color: #2a2a1a; font-size: 12px; font-family: var(--font-body); }
 
 .t-choices { margin-top: auto; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .t-choice-btn {
   background: #1a1a2e; color: white; border: none; border-radius: 50px;
   padding: 13px 18px; min-height: 52px; font-size: 13px; font-weight: 500;
-  font-family: 'Nunito', sans-serif; text-align: left; cursor: pointer;
+  font-family: var(--font-body); text-align: left; cursor: pointer;
   display: flex; align-items: center; gap: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   transition: transform 80ms ease, background 200ms ease;
@@ -221,7 +255,7 @@ canvas#webgl {
 .t-continue-btn {
   margin-top: 14px; background: #1a1a2e; color: white; border: none;
   border-radius: 50px; padding: 14px 20px; font-size: 13px; font-weight: 700;
-  font-family: 'Nunito', sans-serif; cursor: pointer; width: 100%;
+  font-family: var(--font-body); cursor: pointer; width: 100%;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15); transition: transform 80ms ease;
 }
@@ -243,7 +277,7 @@ canvas#webgl {
   position: absolute; top: 10px; right: 10px;
   background: #d4f54a; color: #1a2a00; border-radius: 999px;
   padding: 6px 12px; font-size: 11px; font-weight: 700;
-  font-family: 'Nunito', sans-serif; transform: translateX(130%);
+  font-family: var(--font-body); transform: translateX(130%);
   transition: transform 300ms cubic-bezier(0.4,0,0.2,1);
   pointer-events: none; z-index: 10; white-space: nowrap;
 }
@@ -324,7 +358,7 @@ canvas#webgl {
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.09em; text-transform: uppercase;
   padding: 5px 11px; border-radius: 50px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
 }
 
 .tg-intro-body {
@@ -350,24 +384,24 @@ canvas#webgl {
 }
 
 .tg-intro-title {
-  font-family: 'DM Serif Display', serif;
+  font-family: var(--font-display);
   font-size: 17px; font-weight: 400; font-style: normal;
   color: #1a1a2e; line-height: 1.2;
 }
 
 .tg-intro-tagline {
-  font-family: 'DM Serif Display', serif;
+  font-family: var(--font-display);
   font-size: 12px; font-style: italic;
   color: #7a7a6a; line-height: 1.5;
 }
 
 .tg-intro-text {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-size: 11px; color: #3a3a2a; line-height: 1.6;
 }
 
 .tg-intro-subtext {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   font-size: 10px; color: #7a7a6a;
   font-style: italic; line-height: 1.5;
 }
@@ -377,7 +411,7 @@ canvas#webgl {
   background: #1a1a2e; color: white; border: none;
   border-radius: 50px; padding: 8px 16px;
   font-size: 11px; font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   cursor: pointer; width: 100%;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: transform 80ms ease;
@@ -412,7 +446,7 @@ canvas#webgl {
 }
 
 .tg-narration {
-  font-family: 'DM Serif Display', serif;
+  font-family: var(--font-display);
   font-size: 17px; color: #1a1a2e;
   line-height: 1.55; margin-bottom: 22px;
 }
@@ -431,7 +465,7 @@ canvas#webgl {
   display: flex; align-items: flex-end;
   padding: 10px 12px;
   font-size: 10px; letter-spacing: 0.04em;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   color: rgba(255,255,255,0.45);
   opacity: 0;
   animation: tgFadeUp 0.5s ease forwards;
@@ -453,7 +487,7 @@ canvas#webgl {
   width: 22px; height: 22px; border-radius: 50%;
   background: #1a1a2e; color: white;
   font-size: 10px; font-weight: 700;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -461,7 +495,7 @@ canvas#webgl {
 .tg-bubble-name {
   font-size: 9px; font-weight: 600;
   letter-spacing: 0.1em; text-transform: uppercase;
-  color: #8a8a7a; font-family: 'Inter', sans-serif;
+  color: #8a8a7a; font-family: var(--font-body);
 }
 
 .tg-bubble {
@@ -469,7 +503,7 @@ canvas#webgl {
   border-radius: 4px 14px 14px 14px;
   padding: 9px 13px;
   font-size: 13px; color: #1a1a1a; line-height: 1.45;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   box-shadow: 0 4px 18px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
   max-width: 92%;
 }
@@ -507,7 +541,7 @@ canvas#webgl {
   border-radius: 18px 4px 18px 18px;
   padding: 10px 14px;
   font-size: 14px; line-height: 1.5;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   max-width: 82%;
 }
 
@@ -537,7 +571,7 @@ canvas#webgl {
   background: #1a1a2e; color: white; border: none;
   border-radius: 50px; padding: 0 14px; min-height: 40px;
   font-size: 12px; font-weight: 500;
-  font-family: 'Inter', sans-serif; text-align: left;
+  font-family: var(--font-body); text-align: left;
   cursor: pointer; width: 100%;
   display: flex; align-items: center;
   margin-bottom: 6px;
@@ -552,7 +586,7 @@ canvas#webgl {
   position: absolute; top: 10px; right: 10px;
   background: #d4f54a; color: #1a2a00; border-radius: 50px;
   padding: 7px 13px; font-size: 11px; font-weight: 700;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-body);
   transform: translateX(140%);
   transition: transform 300ms cubic-bezier(0.4,0,0.2,1);
   pointer-events: none; z-index: 20; white-space: nowrap;
@@ -584,7 +618,7 @@ canvas#webgl {
 .tg-end-card.visible .tg-end-inner { transform: translateY(0); }
 .tg-end-ornament { font-size: 20px; color: #d4f54a; margin-bottom: 18px; }
 .tg-end-text {
-  font-family: 'DM Serif Display', serif;
+  font-family: var(--font-display);
   font-size: 17px; color: #1a1a2e; line-height: 1.65;
   margin-bottom: 28px; white-space: pre-line;
 }
@@ -592,10 +626,116 @@ canvas#webgl {
   background: #1a1a2e; color: #ffffff; border: none;
   border-radius: 50px; padding: 13px 36px;
   font-size: 13px; font-weight: 600;
-  font-family: 'Inter', sans-serif; cursor: pointer;
+  font-family: var(--font-body); cursor: pointer;
   transition: opacity 120ms ease;
 }
 .tg-end-btn:active { opacity: 0.75; }
+
+/* ══════════════════════════════════════════════════════════════
+   PITCH SCENE
+══════════════════════════════════════════════════════════════ */
+
+.tg-pitch-scene {
+  position: absolute; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: background 60ms ease;
+}
+.tg-pitch-scene.tg-flash { background: var(--shift); transition: background 0ms; }
+
+.tg-pitch-scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 28px 18px 48px;
+  display: flex; flex-direction: column;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.tg-pitch-scroll::-webkit-scrollbar { display: none; }
+
+/* ── GSAP owns all pitch entrances. Only the recurring glitch loop lives in CSS. ── */
+@keyframes xrayGlitch {
+  0%, 86%, 100% { text-shadow: none; letter-spacing: inherit; }
+  87%  { text-shadow:  4px 0 rgba(219,213,156,0.9),  -4px 0 rgba(136,171,227,0.9);  letter-spacing:  0.05em; }
+  88%  { text-shadow: -5px 0 rgba(219,213,156,0.7),   6px 0 rgba(136,171,227,0.7);  letter-spacing: -0.04em; }
+  89%  { text-shadow:  3px 0 rgba(136,171,227,0.95), -3px 0 rgba(219,213,156,0.8);  letter-spacing:  0.02em; }
+  90%  { text-shadow: none; letter-spacing: inherit; }
+}
+
+/* visual/layout only — no animation */
+.tg-pl         { margin-bottom: 8px; }
+.tg-pl--big    { font-family: var(--font-display); font-size: 32px; line-height: 1.15; color: var(--text); margin-bottom: 8px; }
+.tg-pl--med    { font-family: var(--font-body); font-size: 17px; font-weight: 500; line-height: 1.55; color: rgba(34,34,34,0.72); margin-bottom: 3px; }
+.tg-pl--dim    { font-family: var(--font-body); font-size: 14px; font-weight: 400; line-height: 1.5; color: rgba(34,34,34,0.42); }
+.tg-pl--italic { font-style: italic; }
+.tg-pl--impact { font-family: var(--font-display); font-size: 32px; line-height: 1.1; color: var(--text); margin-bottom: 6px; }
+.tg-pl--huge   {
+  font-family: var(--font-display); font-size: 44px; line-height: 1;
+  color: var(--shift); margin-bottom: 4px;
+  /* chromatic-aberration glitch loop — starts after GSAP elastic entrance finishes */
+  animation: xrayGlitch 5s 1.5s infinite;
+}
+
+/* ── Drum dial ── */
+.tg-dial-wrap {
+  position: relative;
+  width: 100%; height: 230px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+.tg-dial-line {
+  position: absolute; left: 0; right: 0; z-index: 2;
+  top: 50%; transform: translateY(-50%);
+  height: 46px;
+  border-top: 1.5px solid var(--border);
+  border-bottom: 1.5px solid var(--border);
+  pointer-events: none;
+}
+.tg-dial-fade {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(to bottom,
+    var(--bg) 0%, transparent 30%,
+    transparent 70%, var(--bg) 100%);
+}
+.tg-dial-track {
+  height: 100%;
+  overflow-y: scroll; overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+.tg-dial-track::-webkit-scrollbar { display: none; }
+.tg-dial-item {
+  height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  scroll-snap-align: center;
+  font-family: var(--font-display);
+  font-size: 32px; line-height: 1;
+  color: var(--text);
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
+.tg-pitch-choices {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  margin-top: 12px;
+}
+/* wrapper gets tg-pl but choices handle their own entrance */
+.tg-pitch-choices.tg-pl { animation: none; opacity: 1; }
+
+/* GSAP animates choices in — no CSS animation needed here */
+.tg-pitch-choice {
+  background: var(--anchor); color: var(--still); border: none;
+  border-radius: 18px 4px 18px 18px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px; font-weight: 500; line-height: 1.4;
+  text-align: left; cursor: pointer;
+  max-width: 88%; display: inline-block;
+  transition: background 180ms ease, color 180ms ease;
+}
+.tg-pitch-choice:active { transform: scale(0.97); }
+.tg-pitch-choice.selected { background: var(--shift); color: var(--anchor); font-weight: 700; }
 
 @media (max-width: 480px) {
   .tg-intro-scene { padding: 6px 8px; }
