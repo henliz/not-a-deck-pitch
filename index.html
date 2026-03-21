@@ -1222,12 +1222,18 @@
       if (!qPlane || !screenRefPlane) return;
       questionMat.opacity = 0;
 
+      // Compute zoom amount up front so measurement matches final camera position
+      const camZoomIn = window.innerWidth < 480 ? 0.7 : 0.4;
+
       // Measure face-on dimensions with phone temporarily snapped to head-on
-      // (phone may be tilted at this point — measuring from trapezoid corners would give wrong proportions)
+      // AND camera temporarily at its final zoom position, so tangleFaceOnW/H
+      // matches the actual rendered size and game content scales correctly.
       const _savedRotY = phoneMesh.rotation.y;
       const _savedRotX = phoneMesh.rotation.x;
+      const _savedCamZ = camera.position.z;
       phoneMesh.rotation.y = -Math.PI / 2;
       phoneMesh.rotation.x = 0;
+      camera.position.z    = _savedCamZ - camZoomIn;
       phoneMesh.updateMatrixWorld(true);
       phoneGroup.updateMatrixWorld(true);
 
@@ -1242,9 +1248,10 @@
       tangleFaceOnW = Math.max(...corners.map(c => c.x)) - left;
       tangleFaceOnH = Math.max(...corners.map(c => c.y)) - top;
 
-      // Restore actual rotation before continuing
+      // Restore rotation and camera before the lerp takes over
       phoneMesh.rotation.y = _savedRotY;
       phoneMesh.rotation.x = _savedRotX;
+      camera.position.z    = _savedCamZ;
       phoneMesh.updateMatrixWorld(true);
 
       const scr = document.getElementById('tangle-screen');
@@ -1270,12 +1277,11 @@
         <div class="t-nav">
           <button class="t-close-btn" onclick="window.tClose()">&#215;</button>
           <div class="t-progress-track"><div id="t-progress-fill" class="t-progress-fill"></div></div>
+          <button class="t-gear-btn" id="t-pause-btn" onclick="window.tTogglePause()">
+            <svg width="12" height="14" viewBox="0 0 12 14" fill="white"><rect x="1" y="1" width="3.5" height="12" rx="1"/><rect x="7.5" y="1" width="3.5" height="12" rx="1"/></svg>
+          </button>
           <div style="position:relative;flex-shrink:0">
-            <button class="t-gear-btn" id="t-gear-btn" onclick="window.tToggleSpeedPanel()">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path fill="white" d="M5.7 1.1a.6.6 0 0 1 .6-.6h1.4a.6.6 0 0 1 .6.6v.7c.3.1.6.3.9.5l.6-.4a.6.6 0 0 1 .8.1l1 1a.6.6 0 0 1 .1.8l-.4.6c.2.3.4.6.5.9h.7a.6.6 0 0 1 .6.6v1.4a.6.6 0 0 1-.6.6h-.7c-.1.3-.3.6-.5.9l.4.6a.6.6 0 0 1-.1.8l-1 1a.6.6 0 0 1-.8.1l-.6-.4c-.3.2-.6.4-.9.5v.7a.6.6 0 0 1-.6.6H6.3a.6.6 0 0 1-.6-.6v-.7a4 4 0 0 1-.9-.5l-.6.4a.6.6 0 0 1-.8-.1l-1-1a.6.6 0 0 1-.1-.8l.4-.6a4 4 0 0 1-.5-.9H1.5a.6.6 0 0 1-.6-.6V6.3a.6.6 0 0 1 .6-.6h.7c.1-.3.3-.6.5-.9l-.4-.6a.6.6 0 0 1 .1-.8l1-1a.6.6 0 0 1 .8-.1l.6.4c.3-.2.6-.4.9-.5v-.7ZM7 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>
-              </svg>
-            </button>
+            <button class="t-gear-btn" id="t-gear-btn" onclick="window.tToggleSpeedPanel()" style="font-size:15px;line-height:1;">🐇</button>
             <div class="t-speed-panel" id="t-speed-panel">
               <button class="t-speed-option" data-speed="0.7" onclick="window.tSetSpeed(0.7)">⚡ Fast</button>
               <button class="t-speed-option t-speed-active" data-speed="1" onclick="window.tSetSpeed(1.0)">· Normal</button>
@@ -1287,7 +1293,7 @@
       </div>`;
 
       tangleCamZOrigin = camera.position.z;
-      tangleCamZ = camera.position.z - 0.4; // nudge camera in slightly
+      tangleCamZ = camera.position.z - camZoomIn;
       tangleOpen = true;
       scr.classList.add('active');
 

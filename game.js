@@ -148,7 +148,20 @@ window.tgAPI = {
     if (fill) fill.style.width = pct + '%';
   },
 
-  wait(ms) { return new Promise(r => setTimeout(r, ms * window.tgSpeedMult)); },
+  wait(ms) {
+    return new Promise(r => {
+      const target = ms * (window.tgSpeedMult || 1);
+      let elapsed = 0, last = performance.now();
+      function tick() {
+        const now = performance.now();
+        if (!window.tgPaused) elapsed += now - last;
+        last = now;
+        if (elapsed >= target) r();
+        else requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  },
 
   showEnd(message) {
     const slide = document.getElementById('tangle-slide');
@@ -194,6 +207,17 @@ window._tgChoiceClick = function (btn, idx) {
       resolve(idx);
     }
   }, 520);
+};
+
+/* ── Pause control ── */
+window.tgPaused = false;
+window.tTogglePause = function () {
+  window.tgPaused = !window.tgPaused;
+  const btn = document.getElementById('t-pause-btn');
+  if (!btn) return;
+  btn.innerHTML = window.tgPaused
+    ? `<svg width="12" height="14" viewBox="0 0 12 14" fill="white"><path d="M2 1.5 L11 7 L2 12.5 Z"/></svg>`
+    : `<svg width="12" height="14" viewBox="0 0 12 14" fill="white"><rect x="1" y="1" width="3.5" height="12" rx="1"/><rect x="7.5" y="1" width="3.5" height="12" rx="1"/></svg>`;
 };
 
 /* ── Speed control ── */
