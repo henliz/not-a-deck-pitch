@@ -1,5 +1,4 @@
 # TROVE — ANIMATION & STYLE DIRECTIVE
-### For Claude Code — read this entire document before touching a line
 
 ---
 
