@@ -6,7 +6,7 @@
   <title>Trove</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Nunito:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 
   <script type="importmap">
@@ -912,8 +912,9 @@
             phoneGroup.rotation.y = 0;
             phoneGroup.position.x = 0;
 
-            // Phone is already face-on from un-tilt during spin — just fade in question
+            // Phone is face-on after spin — tilt it for the xray notification card
             if (phoneMesh) { phoneMesh.rotation.y = -Math.PI/2; phoneMesh.rotation.x = 0; }
+            tangleTiltStart = performance.now(); tangleTiltDir = 1;
             let qFadeStart = null;
             function fadeQuestion(ts) {
               if (!qFadeStart) qFadeStart = ts;
@@ -1123,14 +1124,15 @@
 
     window.tClose = function() {
       tangleOpen = false;
-      tangleTiltStart = performance.now(); tangleTiltDir = -1;
+      tangleTiltStart = performance.now(); tangleTiltDir = 1;
       const scr   = document.getElementById('tangle-screen');
       const slide = document.getElementById('tangle-slide');
       if (slide) {
-        slide.style.transition = 'transform 320ms cubic-bezier(0.4,0,0.2,1)';
-        slide.style.transform  = 'translateY(100%)';
+        slide.style.transition = 'transform 280ms cubic-bezier(0.4,0,0.2,1), opacity 220ms ease';
+        slide.style.transform  = 'scale(0.91)';
+        slide.style.opacity    = '0';
       }
-      setTimeout(() => { scr.classList.remove('active'); scr.innerHTML = ''; if (questionMat) questionMat.opacity = 1; }, 320);
+      setTimeout(() => { scr.classList.remove('active'); scr.innerHTML = ''; if (questionMat) questionMat.opacity = 1; }, 280);
     };
 
     function showTScene(idx) {
@@ -1165,6 +1167,7 @@
       div.classList.add('slide-in');
       div.querySelectorAll('.t-reveal-item').forEach((el, i) => { el.style.animationDelay = (0.1 + i * 0.15) + 's'; });
       if (tangleSceneIdx === 0) setupHeroLogo();
+      if (scene.onShow) setTimeout(() => scene.onShow(), 80);
     }
 
     function showTToast(text) {
@@ -1211,8 +1214,15 @@
       if (!qPlane || !screenRefPlane) return;
       questionMat.opacity = 0;
 
-      // Measure face-on dimensions (phone is still flat here)
+      // Measure face-on dimensions with phone temporarily snapped to head-on
+      // (phone may be tilted at this point — measuring from trapezoid corners would give wrong proportions)
+      const _savedRotY = phoneMesh.rotation.y;
+      const _savedRotX = phoneMesh.rotation.x;
+      phoneMesh.rotation.y = -Math.PI / 2;
+      phoneMesh.rotation.x = 0;
+      phoneMesh.updateMatrixWorld(true);
       phoneGroup.updateMatrixWorld(true);
+
       const { width: pw, height: ph } = screenRefPlane.geometry.parameters;
       const corners = [[-pw/2, ph/2], [pw/2, ph/2], [-pw/2, -ph/2], [pw/2, -ph/2]]
         .map(([x, y]) => {
@@ -1223,6 +1233,11 @@
       const top  = Math.min(...corners.map(c => c.y));
       tangleFaceOnW = Math.max(...corners.map(c => c.x)) - left;
       tangleFaceOnH = Math.max(...corners.map(c => c.y)) - top;
+
+      // Restore actual rotation before continuing
+      phoneMesh.rotation.y = _savedRotY;
+      phoneMesh.rotation.x = _savedRotX;
+      phoneMesh.updateMatrixWorld(true);
 
       const scr = document.getElementById('tangle-screen');
       Object.assign(scr.style, {
@@ -1257,11 +1272,11 @@
       tangleOpen = true;
       scr.classList.add('active');
 
-      // Slide up via #tangle-slide child — #tangle-screen is free for 3D rotation
+      // Zoom + fade in simultaneously with phone rotating to head-on
       requestAnimationFrame(() => {
         const slide = document.getElementById('tangle-slide');
-        if (slide) slide.style.transform = 'translateY(0)';
-        setTimeout(() => { tangleTiltStart = performance.now(); tangleTiltDir = 1; }, 440);
+        if (slide) { slide.style.transform = 'scale(1)'; slide.style.opacity = '1'; }
+        tangleTiltStart = performance.now(); tangleTiltDir = -1;
       });
 
       tangleSceneIdx = 0; tangleLastChoice = 0;
