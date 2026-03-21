@@ -1153,8 +1153,6 @@
       } else {
         renderTScene(scr, tScenes[idx], pct);
       }
-      if (idx === 5)  setTimeout(() => showTToast('Behavioural insight collected'), 900);
-      if (idx === 12) setTimeout(() => showTToast('Profile archetype unlocked'), 700);
     }
 
     function renderTScene(scr, scene, pct) {
@@ -1260,13 +1258,10 @@
           </div>
         </div>
         <div class="t-nav">
-          <button class="t-close-btn" onclick="window.tClose()">×</button>
           <div class="t-progress-track"><div id="t-progress-fill" class="t-progress-fill"></div></div>
           <div class="t-avatars"><div class="t-avatar"></div><div class="t-avatar" style="opacity:.4"></div></div>
-          <button class="t-help-btn">?</button>
         </div>
         <div id="t-content" class="t-content"></div>
-        <div class="t-toast"></div>
       </div>`;
 
       tangleOpen = true;
@@ -1329,5 +1324,6 @@
       renderer.setSize(innerWidth, innerHeight);
     });
   </script>
+  <script type="module" src="./game.js"></script>
 </body>
 </html>

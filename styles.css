@@ -213,3 +213,315 @@ canvas#webgl {
   pointer-events: none; z-index: 10; white-space: nowrap;
 }
 .t-toast.visible { transform: translateX(0); }
+
+
+/* ══════════════════════════════════════════════════════════════
+   TANGLE GAME UI
+══════════════════════════════════════════════════════════════ */
+
+/* ── Splash scene (scene 0) ── */
+
+.tg-splash-scene {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 48px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+/* ── Intro card scene ── */
+
+.tg-intro-scene {
+  position: absolute; inset: 0;
+  overflow-y: auto;
+  padding: 10px 20px;
+  display: flex; flex-direction: column;
+  background: #ffffff;
+  scrollbar-width: none;
+}
+.tg-intro-scene::-webkit-scrollbar { display: none; }
+
+.tg-intro-card {
+  flex: none;
+  width: 100%;
+  background: #F5F0E8;
+  display: flex; flex-direction: column;
+  /* torn paper edges — ~10 bumps per side in normalised coords */
+  clip-path: polygon(
+    0.5% 1.8%, 4% 0.3%, 9% 1.5%, 15% 0.4%, 21% 1.7%, 27% 0.5%, 33% 1.3%,
+    39% 0.6%, 45% 1.8%, 51% 0.3%, 57% 1.6%, 63% 0.4%, 69% 1.5%, 75% 0.3%,
+    81% 1.7%, 87% 0.4%, 93% 1.5%, 98% 0.4%, 99.5% 1.5%,
+    99.2% 6%, 99.7% 12%, 99% 18%, 99.6% 24%, 99.1% 30%, 99.7% 36%,
+    99.2% 42%, 99.8% 48%, 99.1% 54%, 99.7% 60%, 99.2% 66%, 99.8% 72%,
+    99.1% 78%, 99.6% 84%, 99.2% 90%, 99.7% 96%, 99% 99%,
+    95% 98.4%, 91% 99.7%, 87% 98.3%, 83% 99.6%, 79% 98.4%, 75% 99.5%,
+    71% 98.2%, 67% 99.7%, 63% 98.3%, 59% 99.5%, 55% 98.2%, 51% 99.6%,
+    47% 98.3%, 43% 99.5%, 39% 98.4%, 35% 99.6%, 31% 98.3%, 27% 99.5%,
+    23% 98.4%, 19% 99.6%, 15% 98.3%, 11% 99.5%, 7% 98.4%, 3% 99.6%, 0.5% 98.5%,
+    0.3% 93%, 0.9% 87%, 0.2% 81%, 0.8% 75%, 0.2% 69%, 0.8% 63%,
+    0.2% 57%, 0.8% 51%, 0.2% 45%, 0.8% 39%, 0.2% 33%, 0.8% 27%,
+    0.2% 21%, 0.8% 15%, 0.2% 9%, 0.8% 3%
+  );
+}
+
+.tg-close-btn {
+  position: absolute; top: 12px; left: 12px; z-index: 10;
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: rgba(0,0,0,0.35); color: white;
+  font-size: 18px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 150ms ease;
+}
+.tg-close-btn:active { background: rgba(0,0,0,0.55); }
+
+.tg-close-btn--game {
+  top: 10px; left: 10px;
+  background: rgba(26,26,46,0.18);
+  color: #1a1a2e;
+}
+.tg-close-btn--game:active { background: rgba(26,26,46,0.35); }
+
+.tg-intro-logo-header {
+  padding: 8px 14px 6px;
+  background: #F5F0E8;
+  flex-shrink: 0;
+}
+
+.tg-intro-illustration {
+  position: relative;
+  background: #3d4a2e;
+  flex-shrink: 0;
+  height: 80px;
+}
+
+.tg-intro-illustration svg {
+  width: 100%; height: 100%; display: block;
+}
+
+.tg-intro-tag {
+  position: absolute; top: 12px; right: 12px;
+  background: #1a1a2e; color: white;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  padding: 5px 11px; border-radius: 50px;
+  font-family: 'Inter', sans-serif;
+}
+
+.tg-intro-body {
+  padding: 12px 14px 20px;
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+
+.tg-collectibles {
+  display: flex; gap: 9px;
+  justify-content: center;
+}
+
+.tg-collectible {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.tg-collectible--play { background: #1a1a2e; padding-left: 2px; }
+.tg-collectible--locked {
+  background: transparent;
+  border: 2px solid rgba(26,26,46,0.35);
+}
+
+.tg-intro-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px; font-weight: 400; font-style: normal;
+  color: #1a1a2e; line-height: 1.2;
+  white-space: nowrap;
+}
+
+.tg-intro-tagline {
+  font-family: 'DM Serif Display', serif;
+  font-size: 12px; font-style: italic;
+  color: #7a7a6a; line-height: 1.5;
+}
+
+.tg-intro-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; color: #3a3a2a; line-height: 1.6;
+}
+
+.tg-intro-subtext {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px; color: #7a7a6a;
+  font-style: italic; line-height: 1.5;
+}
+
+.tg-intro-continue {
+  margin-top: 4px;
+  background: #1a1a2e; color: white; border: none;
+  border-radius: 50px; padding: 8px 16px;
+  font-size: 11px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform 80ms ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+}
+.tg-intro-continue:active { transform: scale(0.98); }
+
+
+/* ── Game scroll scene ── */
+
+.tg-game-scene {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: #F5F0E8;
+  overflow: hidden;
+}
+
+.tg-scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  padding: 18px 16px 10px;
+  display: flex; flex-direction: column;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tg-scroll::-webkit-scrollbar { display: none; }
+
+@keyframes tgFadeUp {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tg-narration {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px; color: #1a1a2e;
+  line-height: 1.55; margin-bottom: 22px;
+  opacity: 0;
+  animation: tgFadeUp 0.5s ease forwards;
+}
+
+.tg-inline-img {
+  width: 100%; height: 140px;
+  border-radius: 12px; margin-bottom: 22px;
+  display: flex; align-items: flex-end;
+  padding: 10px 12px;
+  font-size: 10px; letter-spacing: 0.04em;
+  font-family: 'Inter', sans-serif;
+  color: rgba(255,255,255,0.45);
+  opacity: 0;
+  animation: tgFadeUp 0.5s ease forwards;
+}
+
+.tg-bubble-wrap {
+  margin-bottom: 18px;
+  display: flex; flex-direction: column; align-items: flex-start;
+  opacity: 0;
+  animation: tgFadeUp 0.4s ease forwards;
+}
+
+.tg-bubble-meta {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 6px; padding-left: 2px;
+}
+
+.tg-bubble-avatar {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #1a1a2e; color: white;
+  font-size: 10px; font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.tg-bubble-name {
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: #8a8a7a; font-family: 'Inter', sans-serif;
+}
+
+.tg-bubble {
+  background: #ffffff;
+  border-radius: 4px 18px 18px 18px;
+  padding: 10px 14px;
+  font-size: 15px; color: #1a1a1a; line-height: 1.5;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  max-width: 92%;
+}
+
+.tg-typing {
+  background: #ffffff;
+  border-radius: 4px 18px 18px 18px;
+  padding: 13px 16px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  display: flex; gap: 5px; align-items: center;
+}
+
+.tg-typing span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #9a9a8a;
+  animation: tgTypingDot 1.2s ease-in-out infinite;
+}
+.tg-typing span:nth-child(2) { animation-delay: 0.2s; }
+.tg-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes tgTypingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%            { transform: translateY(-4px); opacity: 1; }
+}
+
+.tg-player-wrap {
+  display: flex; justify-content: flex-end;
+  margin-bottom: 18px;
+  opacity: 0;
+  animation: tgFadeUp 0.35s ease forwards;
+}
+
+.tg-player-bubble {
+  background: #1a1a2e; color: white;
+  border-radius: 18px 4px 18px 18px;
+  padding: 10px 14px;
+  font-size: 14px; line-height: 1.5;
+  font-family: 'Inter', sans-serif;
+  max-width: 82%;
+}
+
+.tg-choices {
+  flex-shrink: 0;
+  padding: 8px 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+  background: #F5F0E8;
+  border-top: 1px solid rgba(26,26,46,0.08);
+  overflow: hidden;
+  max-height: 500px;
+  transition: opacity 280ms ease,
+              max-height 380ms cubic-bezier(0.4,0,0.2,1),
+              padding 280ms ease,
+              border-color 280ms ease;
+}
+
+.tg-choice {
+  background: #1a1a2e; color: white; border: none;
+  border-radius: 50px; padding: 0 18px; min-height: 52px;
+  font-size: 14px; font-weight: 500;
+  font-family: 'Inter', sans-serif; text-align: left;
+  cursor: pointer; width: 100%;
+  display: flex; align-items: center;
+  transition: transform 80ms ease, background 200ms ease, color 200ms ease;
+}
+.tg-choice:active { transform: scale(0.97); }
+.tg-choice.selected { background: #d4f54a; color: #1a2a00; }
+.tg-choice.selected::after { content: '✓'; margin-left: auto; font-weight: 700; }
+
+.tg-collect-toast {
+  position: absolute; top: 10px; right: 10px;
+  background: #d4f54a; color: #1a2a00; border-radius: 50px;
+  padding: 7px 13px; font-size: 11px; font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  transform: translateX(140%);
+  transition: transform 300ms cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none; z-index: 20; white-space: nowrap;
+}
+.tg-collect-toast.visible { transform: translateX(0); }
