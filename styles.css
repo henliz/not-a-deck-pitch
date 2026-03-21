@@ -48,6 +48,15 @@ canvas#webgl {
     rgba(12,10,4,0.24) 100%);
 }
 
+/* ── credit ── */
+#credit {
+  position: fixed; bottom: 18px; right: 24px;
+  font-family: 'Inter', sans-serif; font-size: 11px;
+  color: #555550; letter-spacing: 0.04em;
+  pointer-events: none; z-index: 9; margin: 0;
+  user-select: none;
+}
+
 /* ── tangle overlay ── */
 #tangle-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
 
