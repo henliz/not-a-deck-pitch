@@ -64,7 +64,6 @@ const tScenes = [
               <line x1="194" y1="118" x2="204" y2="118" stroke="#c0c09a" stroke-width="1.5"/>
               <line x1="191" y1="122" x2="207" y2="122" stroke="#c0c09a" stroke-width="1.5"/>
             </svg>
-            <div class="tg-intro-tag">An Investor Story</div>
           </div>
 
           <div class="tg-intro-body">
@@ -95,7 +94,6 @@ const tScenes = [
     render: () => `
       <div class="tg-game-scene">
         <div class="tg-scroll" id="tg-scroll"></div>
-        <div class="tg-choices" id="tg-choices" style="opacity:0;pointer-events:none"></div>
         <div class="tg-collect-toast" id="tg-toast"></div>
       </div>`,
     onShow: () => window.tgInitGame?.() },

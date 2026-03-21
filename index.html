@@ -117,6 +117,13 @@
     const troveWordmark = new Image();
     troveWordmark.src = './TroveLogo.png';
 
+    /* ── Avatar images for notification cards ── */
+    const avatarImgs = Array.from({ length: 13 }, (_, i) => {
+      const img = new Image();
+      img.src = `./avatars/g${i}.png`;
+      return img;
+    });
+
     /* ── notification canvas system ── */
     const SYS_FONT     = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif';
     const notifEntries = []; // { text, spawnTime }
@@ -128,7 +135,7 @@
     const NC_CARD_H = 148, NC_CARD_G = 14, NC_MARGIN = 18;
     const NC_BOTTOM = 980; // y of the bottom edge of the lowest card slot
 
-    function drawNotifCard(ctx, x, y, w, h, text) {
+    function drawNotifCard(ctx, x, y, w, h, text, senderName, avatarImg) {
       // Rounded rect
       const r = 30;
       ctx.beginPath();
@@ -175,21 +182,16 @@
 
       // Avatar
       const aR  = 28, aCX = x + 18 + aR, aCY = y + h / 2;
-      const ag  = ctx.createRadialGradient(aCX - 6, aCY - 6, 2, aCX, aCY, aR);
-      ag.addColorStop(0, '#a2f04a');
-      ag.addColorStop(1, '#68c226');
+      ctx.save();
       ctx.beginPath();
       ctx.arc(aCX, aCY, aR, 0, Math.PI * 2);
-      ctx.fillStyle = ag;
+      ctx.fillStyle = 'rgba(50,55,70,0.9)';
       ctx.fill();
-
-      ctx.shadowColor   = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur    = 8;
-      ctx.fillStyle     = '#ffffff';
-      ctx.font          = `700 22px ${SYS_FONT}`;
-      ctx.textAlign     = 'center';
-      ctx.textBaseline  = 'middle';
-      ctx.fillText('T', aCX, aCY);
+      ctx.clip();
+      if (avatarImg && avatarImg.complete && avatarImg.naturalWidth > 0) {
+        ctx.drawImage(avatarImg, aCX - aR, aCY - aR, aR * 2, aR * 2);
+      }
+      ctx.restore();
 
       const cX = aCX + aR + 14;
       ctx.shadowBlur    = 10;
@@ -200,7 +202,7 @@
       ctx.font         = `600 16px ${SYS_FONT}`;
       ctx.textAlign    = 'left';
       ctx.textBaseline = 'alphabetic';
-      ctx.fillText('TROVE', cX, y + 42);
+      ctx.fillText((senderName || 'TROVE').toUpperCase(), cX, y + 42);
 
       // Timestamp
       ctx.fillStyle = 'rgba(255,255,255,0.45)';
@@ -261,7 +263,7 @@
           notifCtx.scale(scale, scale);
           notifCtx.translate(-cx, -cy);
         }
-        drawNotifCard(notifCtx, NC_MARGIN, drawY, NC_W - NC_MARGIN * 2, NC_CARD_H, entry.text);
+        drawNotifCard(notifCtx, NC_MARGIN, drawY, NC_W - NC_MARGIN * 2, NC_CARD_H, entry.text, entry.name, avatarImgs[entry.avatarIdx]);
         notifCtx.restore();
       }
 
@@ -481,16 +483,16 @@
 
     /* ── notification texts + spawn ── */
     const notifTexts = [
-      'hired the wrong person.',
-      'ghosted on date 3.',
-      'trusted the wrong founder.',
-      'promoted the wrong manager.',
-      'invested in the wrong startup.',
+      { text: 'hired the wrong person.',      name: 'Jamie R.',  avatarIdx: 0  },
+      { text: 'ghosted on date 3.',           name: 'Alex M.',   avatarIdx: 1  },
+      { text: 'trusted the wrong founder.',   name: 'Sam T.',    avatarIdx: 2  },
+      { text: 'promoted the wrong manager.',  name: 'Casey B.',  avatarIdx: 3  },
+      { text: 'invested in the wrong startup.', name: 'Morgan K.', avatarIdx: 4 },
     ];
 
-    function spawnNotif(text, burst = false) {
+    function spawnNotif(entry, burst = false) {
       burst ? HAPTIC.burst() : HAPTIC.notif();
-      notifEntries.unshift({ text, spawnTime: performance.now(), dur: burst ? 90 : 340 });
+      notifEntries.unshift({ text: entry.text, name: entry.name, avatarIdx: entry.avatarIdx, spawnTime: performance.now(), dur: burst ? 90 : 340 });
       joltTime = performance.now();
       const orig = keyLight.intensity;
       keyLight.intensity = burst ? 9.5 : 7.0;
@@ -615,7 +617,7 @@
     }
 
     /* ── iOS Priority Notification card ── */
-    const CARD_W = 480, CARD_H = 230, CARD_X = 16, CARD_FINAL_Y = 340;
+    const CARD_W = 480, CARD_H = 320, CARD_X = 16, CARD_FINAL_Y = 340;
 
     function drawPriorityCard(progress) {
       if (!qctx || !qTex || !fontsReady) return;
@@ -715,10 +717,10 @@
       qctx.textBaseline = 'alphabetic';
       msgLines.forEach((line, i) => qctx.fillText(line, tX, bodyY + 28 + i * 34));
 
-      // ── Button — small pill, bottom-right of card ──
-      const btnW = 196, btnH = 50, btnR = 25;
-      const btnX = CARD_X + CARD_W - 18 - btnW;
-      const btnY = cardY + CARD_H - 16 - btnH;
+      // ── Button — full-width pill, bottom of card ──
+      const btnW = 300, btnH = 80, btnR = 40;
+      const btnX = CARD_X + (CARD_W - btnW) / 2;
+      const btnY = cardY + CARD_H - 20 - btnH;
       roundRect(qctx, btnX, btnY, btnW, btnH, btnR);
       qctx.fillStyle = '#d4f54a';
       qctx.fill();
@@ -728,7 +730,7 @@
       qctx.fillStyle = btnGlow;
       qctx.fill();
       qctx.fillStyle    = '#1a2a00';
-      qctx.font         = `700 18px "Nunito", sans-serif`;
+      qctx.font         = `700 30px "Nunito", sans-serif`;
       qctx.textAlign    = 'center';
       qctx.textBaseline = 'middle';
       qctx.fillText("Let\u2019s find out \u2192", btnX + btnW / 2, btnY + btnH / 2);
@@ -817,18 +819,18 @@
 
     /* ── timeline ── */
     const burstTexts = [
-      'ignored the red flags.',
-      'missed the deadline.',
-      'lost the deal.',
-      'the investor said no.',
-      'wrong call.',
-      'they ghosted. again.',
-      'you missed it.',
-      'the offer fell through.',
-      'wrong person. again.',
-      'too late.',
-      'it\'s gone.',
-      'you weren\'t ready.',
+      { text: 'ignored the red flags.',    name: 'Jordan S.',  avatarIdx: 5  },
+      { text: 'missed the deadline.',      name: 'Taylor P.',  avatarIdx: 6  },
+      { text: 'lost the deal.',            name: 'Riley N.',   avatarIdx: 7  },
+      { text: 'the investor said no.',     name: 'Drew V.',    avatarIdx: 8  },
+      { text: 'wrong call.',               name: 'Quinn A.',   avatarIdx: 9  },
+      { text: 'they ghosted. again.',      name: 'Avery L.',   avatarIdx: 10 },
+      { text: 'you missed it.',            name: 'Blake H.',   avatarIdx: 11 },
+      { text: 'the offer fell through.',   name: 'Finley G.',  avatarIdx: 12 },
+      { text: 'wrong person. again.',      name: 'Jamie R.',   avatarIdx: 0  },
+      { text: 'too late.',                 name: 'Sam T.',     avatarIdx: 2  },
+      { text: 'it\'s gone.',               name: 'Morgan K.',  avatarIdx: 4  },
+      { text: 'you weren\'t ready.',       name: 'Alex M.',    avatarIdx: 1  },
     ];
 
     const timeline = [
@@ -967,6 +969,11 @@
               phoneMesh.rotation.x = -0.15 * frac;
               if (p >= 1) tangleTiltDir = 0;
             }
+
+            // Gentle tangle zoom
+            if (tangleCamZ !== null) {
+              camera.position.z += (tangleCamZ - camera.position.z) * 0.055;
+            }
           }
         }
       }
@@ -1058,6 +1065,8 @@
     ══════════════════════════════════════════════════════════════ */
     let tangleSceneIdx = 0, tangleLastChoice = 0, tangleOpen = false;
     let tangleTiltStart = null, tangleTiltDir = 0;
+    let tangleCamZ = null; // when set, animate camera toward this z
+    let tangleCamZOrigin = null; // saved camera z before zoom, restored on close
     let tangleFaceOnW = 0, tangleFaceOnH = 0;
 
     function setupHeroLogo() {
@@ -1124,6 +1133,7 @@
 
     window.tClose = function() {
       tangleOpen = false;
+      tangleCamZ = tangleCamZOrigin; // lerp back to original z on close
       tangleTiltStart = performance.now(); tangleTiltDir = 1;
       const scr   = document.getElementById('tangle-screen');
       const slide = document.getElementById('tangle-slide');
@@ -1132,7 +1142,7 @@
         slide.style.transform  = 'scale(0.91)';
         slide.style.opacity    = '0';
       }
-      setTimeout(() => { scr.classList.remove('active'); scr.innerHTML = ''; if (questionMat) questionMat.opacity = 1; }, 280);
+      setTimeout(() => { scr.classList.remove('active'); scr.innerHTML = ''; if (tangleCamZOrigin !== null) camera.position.z = tangleCamZOrigin; tangleCamZ = null; tangleCamZOrigin = null; if (questionMat) questionMat.opacity = 1; }, 280);
     };
 
     function showTScene(idx) {
@@ -1258,12 +1268,26 @@
           </div>
         </div>
         <div class="t-nav">
+          <button class="t-close-btn" onclick="window.tClose()">&#215;</button>
           <div class="t-progress-track"><div id="t-progress-fill" class="t-progress-fill"></div></div>
-          <div class="t-avatars"><div class="t-avatar"></div><div class="t-avatar" style="opacity:.4"></div></div>
+          <div style="position:relative;flex-shrink:0">
+            <button class="t-gear-btn" id="t-gear-btn" onclick="window.tToggleSpeedPanel()">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill="white" d="M5.7 1.1a.6.6 0 0 1 .6-.6h1.4a.6.6 0 0 1 .6.6v.7c.3.1.6.3.9.5l.6-.4a.6.6 0 0 1 .8.1l1 1a.6.6 0 0 1 .1.8l-.4.6c.2.3.4.6.5.9h.7a.6.6 0 0 1 .6.6v1.4a.6.6 0 0 1-.6.6h-.7c-.1.3-.3.6-.5.9l.4.6a.6.6 0 0 1-.1.8l-1 1a.6.6 0 0 1-.8.1l-.6-.4c-.3.2-.6.4-.9.5v.7a.6.6 0 0 1-.6.6H6.3a.6.6 0 0 1-.6-.6v-.7a4 4 0 0 1-.9-.5l-.6.4a.6.6 0 0 1-.8-.1l-1-1a.6.6 0 0 1-.1-.8l.4-.6a4 4 0 0 1-.5-.9H1.5a.6.6 0 0 1-.6-.6V6.3a.6.6 0 0 1 .6-.6h.7c.1-.3.3-.6.5-.9l-.4-.6a.6.6 0 0 1 .1-.8l1-1a.6.6 0 0 1 .8-.1l.6.4c.3-.2.6-.4.9-.5v-.7ZM7 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>
+              </svg>
+            </button>
+            <div class="t-speed-panel" id="t-speed-panel">
+              <button class="t-speed-option" data-speed="0.7" onclick="window.tSetSpeed(0.7)">⚡ Fast</button>
+              <button class="t-speed-option t-speed-active" data-speed="1" onclick="window.tSetSpeed(1.0)">· Normal</button>
+              <button class="t-speed-option" data-speed="1.5" onclick="window.tSetSpeed(1.5)">🐢 Slow</button>
+            </div>
+          </div>
         </div>
         <div id="t-content" class="t-content"></div>
       </div>`;
 
+      tangleCamZOrigin = camera.position.z;
+      tangleCamZ = camera.position.z - 0.4; // nudge camera in slightly
       tangleOpen = true;
       scr.classList.add('active');
 

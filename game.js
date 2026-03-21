@@ -1,23 +1,71 @@
 import { HAPTIC } from './haptics.js';
 
+window.tgSpeedMult = 1.0;
+
 /* ══════════════════════════════════════════════════════════════
    GAME ENGINE
 ══════════════════════════════════════════════════════════════ */
 
-function replyText(choiceStr) {
-  const dash = choiceStr.indexOf(' \u2014 ');
-  return dash >= 0 ? choiceStr.slice(0, dash) : choiceStr;
+function replyText(str) {
+  const dash = str.indexOf(' \u2014 ');
+  return dash >= 0 ? str.slice(0, dash) : str;
 }
 
+/* Particle disintegration — Mr. Stark I don't feel so good */
+function disintegrate(el) {
+  const rect = el.getBoundingClientRect();
+  const N = 26;
+  for (let i = 0; i < N; i++) {
+    const p   = document.createElement('div');
+    const sz  = 1.5 + Math.random() * 3;
+    const sx  = rect.left + Math.random() * rect.width;
+    const sy  = rect.top  + Math.random() * rect.height;
+    const ang = Math.random() * Math.PI * 2;
+    const mag = 18 + Math.random() * 48;
+    const dur = 380 + Math.random() * 320;
+    p.style.cssText =
+      `position:fixed;width:${sz}px;height:${sz}px;border-radius:50%;` +
+      `background:#1a1a2e;left:${sx}px;top:${sy}px;` +
+      `pointer-events:none;z-index:9999;opacity:1;` +
+      `transition:transform ${dur}ms ease-out,opacity ${dur * 0.75}ms ease-in;`;
+    document.body.appendChild(p);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      p.style.transform = `translate(${Math.cos(ang)*mag}px,${Math.sin(ang)*mag - 10}px) scale(0.1)`;
+      p.style.opacity   = '0';
+    }));
+    setTimeout(() => p.remove(), dur + 80);
+  }
+  // freeze height so collapse animates (slides content up) rather than snapping
+  el.style.overflow     = 'hidden';
+  el.style.height       = el.offsetHeight + 'px';
+  el.style.transition   = 'opacity 220ms ease, transform 220ms ease, height 340ms 60ms cubic-bezier(0.4,0,0.2,1), margin-bottom 340ms 60ms cubic-bezier(0.4,0,0.2,1)';
+  requestAnimationFrame(() => {
+    el.style.opacity      = '0';
+    el.style.transform    = 'scale(0.96)';
+    el.style.height       = '0';
+    el.style.marginBottom = '0';
+  });
+  setTimeout(() => el.remove(), 460);
+}
+
+/* ── tgAPI ── */
 window.tgAPI = {
 
   addNarration(text) {
     const scroll = document.getElementById('tg-scroll');
     if (!scroll) return;
-    const p = document.createElement('p');
-    p.className = 'tg-narration';
-    p.textContent = text;
-    scroll.appendChild(p);
+    const block = document.createElement('p');
+    block.className = 'tg-narration';
+    const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const bigBlock = sentences.length >= 3;
+    sentences.forEach((sentence, i) => {
+      const line = document.createElement('span');
+      line.className = 'tg-narration-line';
+      line.textContent = sentence;
+      line.style.animationDelay = `${i * 900 * (bigBlock ? 1.25 : 1) * window.tgSpeedMult}ms`;
+      block.appendChild(line);
+    });
+    scroll.appendChild(block);
     requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
   },
 
@@ -36,19 +84,19 @@ window.tgAPI = {
     return new Promise(resolve => {
       const scroll = document.getElementById('tg-scroll');
       if (!scroll) return resolve();
-
+      const lastEl = scroll.lastElementChild;
+      const showMeta = !lastEl || !lastEl.classList.contains('tg-bubble-wrap');
       const wrap = document.createElement('div');
       wrap.className = 'tg-bubble-wrap';
       wrap.innerHTML = `
-        <div class="tg-bubble-meta">
+        ${showMeta ? `<div class="tg-bubble-meta">
           <div class="tg-bubble-avatar">C</div>
           <span class="tg-bubble-name">Cass</span>
-        </div>
+        </div>` : ''}
         <div class="tg-typing"><span></span><span></span><span></span></div>
       `;
       scroll.appendChild(wrap);
       scroll.scrollTop = scroll.scrollHeight;
-
       setTimeout(() => {
         const typing = wrap.querySelector('.tg-typing');
         if (typing) {
@@ -59,35 +107,31 @@ window.tgAPI = {
           scroll.scrollTop = scroll.scrollHeight;
         }
         resolve();
-      }, typingMs);
+      }, typingMs * window.tgSpeedMult);
     });
   },
 
+  /* Renders choices inline in the scroll area — no separate panel */
   showChoicesAsync(choices) {
-    const el = document.getElementById('tg-choices');
-    if (!el) return Promise.resolve(0);
+    const scroll = document.getElementById('tg-scroll');
+    if (!scroll) return Promise.resolve(0);
 
     return new Promise(resolve => {
       window._tgChoiceResolve = resolve;
-      el.innerHTML = choices
-        .map((c, i) => `<button class="tg-choice" onclick="window._tgChoiceClick(this,${i})">${c}</button>`)
-        .join('');
-      el.style.transition    = 'opacity 300ms ease';
-      el.style.opacity       = '1';
-      el.style.pointerEvents = 'auto';
-      el.style.maxHeight     = '500px';
-      el.style.paddingTop    = '';
-      el.style.paddingBottom = '';
-      el.style.borderColor   = '';
-      requestAnimationFrame(() => {
-        const scroll = document.getElementById('tg-scroll');
-        if (scroll) scroll.scrollTop = scroll.scrollHeight;
+      window._tgChoiceNarrations = choices.map(c => {
+        const dash = c.indexOf(' \u2014 ');
+        return dash >= 0 ? c.slice(dash + 3) : null;
       });
-    });
-  },
 
-  wait(ms) {
-    return new Promise(r => setTimeout(r, ms));
+      const group = document.createElement('div');
+      group.className = 'tg-choice-group';
+      group.id = 'tg-choice-group-active';
+      group.innerHTML = choices
+        .map((c, i) => `<button class="tg-choice" onclick="window._tgChoiceClick(this,${i})">${replyText(c)}</button>`)
+        .join('');
+      scroll.appendChild(group);
+      requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
+    });
   },
 
   collect(emoji, name) {
@@ -104,48 +148,67 @@ window.tgAPI = {
     if (fill) fill.style.width = pct + '%';
   },
 
+  wait(ms) { return new Promise(r => setTimeout(r, ms * window.tgSpeedMult)); },
+
+  showEnd(message) {
+    const slide = document.getElementById('tangle-slide');
+    if (!slide) return;
+    const el = document.createElement('div');
+    el.className = 'tg-end-card';
+    el.innerHTML = `
+      <div class="tg-end-inner">
+        <div class="tg-end-ornament">✦</div>
+        <p class="tg-end-text">${message}</p>
+        <button class="tg-end-btn" onclick="window.tClose()">close</button>
+      </div>
+    `;
+    slide.appendChild(el);
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible')));
+  },
+
 };
 
-/* ── Choice tap: collapse box → player bubble → resolve ── */
+/* ── Choice tap: selected stays green with checkmark, others disintegrate ── */
 window._tgChoiceClick = function (btn, idx) {
   if (btn.classList.contains('selected')) return;
   HAPTIC.tap();
   btn.classList.add('selected');
 
-  const el = document.getElementById('tg-choices');
-  if (el) {
-    el.querySelectorAll('.tg-choice').forEach(b => { b.disabled = true; });
-    // Collapse the whole choices panel
-    el.style.opacity       = '0';
-    el.style.maxHeight     = '0';
-    el.style.paddingTop    = '0';
-    el.style.paddingBottom = '0';
-    el.style.borderColor   = 'transparent';
-    el.style.pointerEvents = 'none';
+  const group = document.getElementById('tg-choice-group-active');
+  if (group) {
+    group.removeAttribute('id');
+    group.querySelectorAll('.tg-choice').forEach(b => {
+      b.disabled = true;
+      if (b !== btn) disintegrate(b);
+    });
   }
 
-  // After box has collapsed, show player reply bubble
+  // Resolve after disintegration + slide settles
   setTimeout(() => {
-    const scroll = document.getElementById('tg-scroll');
-    if (scroll) {
-      const wrap = document.createElement('div');
-      wrap.className = 'tg-player-wrap';
-      const bubble = document.createElement('div');
-      bubble.className = 'tg-player-bubble';
-      bubble.textContent = replyText(btn.textContent);
-      wrap.appendChild(bubble);
-      scroll.appendChild(wrap);
-      setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 50);
+    const narration = window._tgChoiceNarrations && window._tgChoiceNarrations[idx];
+    window._tgChoiceNarrations = null;
+    if (narration) window.tgAPI.addNarration(narration);
+    if (window._tgChoiceResolve) {
+      const resolve = window._tgChoiceResolve;
+      window._tgChoiceResolve = null;
+      resolve(idx);
     }
+  }, 520);
+};
 
-    setTimeout(() => {
-      if (window._tgChoiceResolve) {
-        const resolve = window._tgChoiceResolve;
-        window._tgChoiceResolve = null;
-        resolve(idx);
-      }
-    }, 500);
-  }, 380);
+/* ── Speed control ── */
+window.tToggleSpeedPanel = function () {
+  const panel = document.getElementById('t-speed-panel');
+  if (panel) panel.classList.toggle('open');
+};
+
+window.tSetSpeed = function (mult) {
+  window.tgSpeedMult = mult;
+  document.querySelectorAll('.t-speed-option').forEach(b => {
+    b.classList.toggle('t-speed-active', parseFloat(b.dataset.speed) === mult);
+  });
+  const panel = document.getElementById('t-speed-panel');
+  if (panel) panel.classList.remove('open');
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -153,6 +216,7 @@ window._tgChoiceClick = function (btn, idx) {
 ══════════════════════════════════════════════════════════════ */
 window.tgInitGame = async function () {
   const api = window.tgAPI;
+  api.setProgress(0);
 
   /* ── Beat 1: The message ── */
 
@@ -194,12 +258,13 @@ window.tgInitGame = async function () {
   api.addNarration('You put your phone back up.');
   await api.wait(2800);
 
-  await api.showChoicesAsync([
+  const c1 = await api.showChoicesAsync([
     '"come over" \u2014 you knew when you saw the name.',
     '"it\'s late" \u2014 you say this. you both know it\'s not a real objection.',
     '"what did you find" \u2014 you\'re not agreeing to anything. you just want to know.',
     '"...how far away are you" \u2014 they\'re already on their way. you can tell.',
   ]);
+  api.setProgress(25);
   await api.wait(1800);
 
   /* ── Beat 2: The knock ── */
@@ -246,11 +311,11 @@ window.tgInitGame = async function () {
     '"Is this what you\'ve been texting me about for three weeks?" \u2014 you\'ve been paying more attention than you let on.',
     '"Pour first." \u2014 priorities.',
   ]);
-
   if (c2 === 3) {
     await api.wait(800);
     api.collect('\u{1F943}', 'The Scotch');
   }
+  api.setProgress(50);
   await api.wait(1800);
 
   /* ── Beat 3: The pitch ── */
@@ -285,11 +350,11 @@ window.tgInitGame = async function () {
     "You want to know who noticed. \u2014 skip the problem. get to the company.",
     "You want to know why Cass has been sitting on this for three weeks. \u2014 the pitch is interesting. Cass is more interesting.",
   ]);
-
   if (c3 === 3) {
     await api.wait(800);
     api.collect('\u{1F56F}\uFE0F', 'The Candle');
   }
+  api.setProgress(75);
   await api.wait(1800);
 
   /* ── Beat 4: The close ── */
@@ -308,4 +373,7 @@ window.tgInitGame = async function () {
   await api.wait(3000);
   const scroll = document.getElementById('tg-scroll');
   if (scroll) scroll.scrollTop = scroll.scrollHeight;
+  await api.wait(900);
+  api.setProgress(100);
+  api.showEnd("that's all for now, folks.\n\ncheck back later to finish the thrilling adventure of you & Cass.");
 };
