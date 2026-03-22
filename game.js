@@ -407,12 +407,70 @@ window.tgInitGame = async function () {
   }
   await w(900);
 
-  disintegrate(spinEl);
-  await w(700);
-
-  await reveal(line("it doesn\u2019t matter who \u2014 we\u2019ve all been there.", 'tg-pl--med', 8), {
-    y: 22, stagger: 0.06, duration: 0.48, blur: true,
+  // Sand-blows-away disintegration — tiny grains drift right, text crumbles in place
+  await new Promise(resolve => {
+    const rect = spinEl.getBoundingClientRect();
+    const pal  = ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD','#aaaaaa'];
+    for (let i = 0; i < 80; i++) {
+      const delay = Math.random() * 900;
+      const p   = document.createElement('div');
+      const sz  = 1.5 + Math.random() * 3.5;
+      const col = pal[Math.floor(Math.random() * pal.length)];
+      // spawn from within the text bounding box
+      const sx  = rect.left + Math.random() * rect.width;
+      const sy  = rect.top  + Math.random() * rect.height;
+      // drift: mostly rightward + slight vertical scatter, like wind
+      const dx  = 40 + Math.random() * 110;
+      const dy  = (Math.random() - 0.4) * 40;
+      p.style.cssText = `position:fixed;width:${sz}px;height:${sz}px;border-radius:50%;`
+        + `background:${col};left:${sx}px;top:${sy}px;pointer-events:none;z-index:9999;opacity:0;`;
+      document.body.appendChild(p);
+      const dur = 600 + Math.random() * 500;
+      if (window.gsap) {
+        gsap.fromTo(p,
+          { opacity: 0.85, x: 0, y: 0 },
+          { opacity: 0, x: dx, y: dy, duration: dur / 1000,
+            ease: 'power1.out', delay: delay / 1000, onComplete: () => p.remove() });
+      } else {
+        setTimeout(() => {
+          p.style.opacity = '0.85';
+          p.style.transition = `transform ${dur}ms linear, opacity ${dur * 0.8}ms ease-in`;
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            p.style.transform = `translate(${dx}px,${dy}px)`;
+            p.style.opacity = '0';
+          }));
+          setTimeout(() => p.remove(), dur + 80);
+        }, delay);
+      }
+    }
+    // Text fades out over ~1s, keeping its space
+    if (window.gsap) {
+      gsap.to(spinEl, { opacity: 0, duration: 0.9, ease: 'power2.in', onComplete: resolve });
+    } else {
+      spinEl.style.transition = 'opacity 0.9s ease-in';
+      spinEl.style.opacity = '0';
+      setTimeout(resolve, 950);
+    }
   });
+
+  await w(300);
+
+  // New text fills the same space — mutate spinEl in place, no new element
+  if (window.gsap) gsap.killTweensOf(spinEl);
+  spinEl.className = 'tg-pl tg-pl--med';
+  spinEl.style.marginTop = '8px';
+  spinEl.style.opacity = '0';
+  spinEl.textContent = "it doesn\u2019t matter who \u2014 we\u2019ve all been there.";
+  if (window.gsap) {
+    await new Promise(r => gsap.fromTo(spinEl,
+      { opacity: 0, y: 10 },
+      { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out', onComplete: r }
+    ));
+  } else {
+    spinEl.style.transition = 'opacity 0.55s ease';
+    spinEl.style.opacity = '1';
+    await w(600);
+  }
   await w(1000);
 
   window.tgAPI.setProgress(45);
