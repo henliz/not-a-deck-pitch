@@ -1,6 +1,6 @@
 import { HAPTIC } from './haptics.js';
 
-window.tgSpeedMult = 1.0;
+window.tgSpeedMult = 2.5;  // default: Normal (1.0 = Fast/max, 2.5 = Normal, 5.0 = Slow)
 
 /* ══════════════════════════════════════════════════════════════
    GAME ENGINE
@@ -114,7 +114,7 @@ window.tToggleSpeedPanel = function () {
 
 window.tSetSpeed = function (mult) {
   window.tgSpeedMult = mult;
-  if (window.gsap) gsap.globalTimeline.timeScale(1 / mult);
+  // Only pacing (w() waits) changes — animations always stay snappy
   document.querySelectorAll('.t-speed-option').forEach(b => {
     b.classList.toggle('t-speed-active', parseFloat(b.dataset.speed) === mult);
   });
@@ -225,12 +225,92 @@ window.tgInitGame = async function () {
   }
 
 
-  function scrollPitch() {
+  /* ── Buttery smooth auto-scroll ─────────────────────────────────────────
+     One persistent rAF lerp loop. Target is always read fresh each frame
+     from pitch.scrollHeight, so content growing mid-scroll is chased
+     automatically — no restart / overwrite jank.                          */
+  /* ── wavePunch: stacked lines with a continuous sine-wave flowing through
+     every character across all rows — airport-sign-but-wavy, loops forever.
+     lines: string[]   A: amplitude px   freq: chars per radian   speed: rad/s */
+  function wavePunch(lines, { A = 9, freq = 0.28, speed = 1.9 } = {}) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tg-pl tg-pl--punch';
+    pitch.appendChild(wrap);
+    scrollPitch();
+
+    const allSpans = [];
+    lines.forEach(txt => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:block;white-space:nowrap;';
+      for (const ch of txt) {
+        const s = document.createElement('span');
+        s.textContent = ch === ' ' ? '\u00A0' : ch;
+        s.style.cssText = 'display:inline-block;will-change:transform;';
+        row.appendChild(s);
+        allSpans.push(s);
+      }
+      wrap.appendChild(row);
+    });
+
     if (hasGSAP) {
-      gsap.to(pitch, { scrollTop: pitch.scrollHeight, duration: 0.6, ease: 'power3.out', overwrite: true });
-    } else {
-      pitch.scrollTop = pitch.scrollHeight;
+      gsap.from(wrap, { opacity: 0, y: 20, duration: 0.55, ease: hasCE ? 'unfurl' : 'power3.out' });
+      const tick = () => {
+        const t = gsap.ticker.time;
+        allSpans.forEach((s, i) => {
+          s.style.transform = `translateY(${A * Math.sin(i * freq - t * speed)}px)`;
+        });
+      };
+      gsap.ticker.add(tick);
+      wrap._stopWave = () => gsap.ticker.remove(tick);
     }
+    return wrap;
+  }
+
+  /* ── crtTicker: single-line breaking-news scroll with CRT phosphor effect ─
+     text scrolls left infinitely; two copies give seamless loop.            */
+  function crtTicker(text) {
+    const wrap  = document.createElement('div');
+    wrap.className = 'tg-pl tg-crt-ticker';
+    const track = document.createElement('div');
+    track.className = 'tg-crt-track';
+    // Two copies for seamless loop
+    for (let i = 0; i < 2; i++) {
+      const span = document.createElement('span');
+      span.className = 'tg-crt-text';
+      span.textContent = text + ' \u2736 ';
+      track.appendChild(span);
+    }
+    wrap.appendChild(track);
+    pitch.appendChild(wrap);
+    scrollPitch();
+
+    if (hasGSAP) {
+      gsap.from(wrap, { opacity: 0, duration: 0.5, ease: 'power2.out' });
+      // Measure after paint so offsetWidth is accurate
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const oneW = track.children[0].offsetWidth;
+        if (!oneW) return;
+        gsap.fromTo(track,
+          { x: 0 },
+          { x: -oneW, duration: oneW / 60, ease: 'none', repeat: -1, repeatDelay: 0 }
+        );
+      }));
+    }
+    return wrap;
+  }
+
+  // Track whether user was at bottom BEFORE new content arrived (Slack/iMessage pattern)
+  let _atBottom = true;
+  pitch.addEventListener('scroll', () => {
+    _atBottom = pitch.scrollHeight - pitch.clientHeight - pitch.scrollTop < 32;
+  }, { passive: true });
+
+  function scrollPitch() {
+    if (_atBottom) pitch.scrollTop = pitch.scrollHeight - pitch.clientHeight;
+  }
+  function scrollPitchSnap() {
+    _atBottom = true;
+    pitch.scrollTop = pitch.scrollHeight - pitch.clientHeight;
   }
 
   const TMARK = '<img src="./TroveLogo.png" class="tg-trove-mark" alt="Trove">';
@@ -512,9 +592,9 @@ window.tgInitGame = async function () {
     const floatLbl = document.createElement('div');
     floatLbl.style.cssText =
       `position:absolute;z-index:210;left:50%;top:50%;` +
-      `transform:translate(-50%,-50%);text-align:center;max-width:85%;` +
-      `font-family:var(--font-display);font-size:clamp(20px,5.5vw,28px);` +
-      `font-weight:700;line-height:1.15;letter-spacing:-0.01em;` +
+      `transform:translate(-50%,-50%);text-align:center;max-width:88%;` +
+      `font-family:var(--font-display);font-size:clamp(36px,10cqw,62px);` +
+      `font-weight:700;line-height:1.1;letter-spacing:-0.02em;` +
       `pointer-events:none;opacity:0;color:${textColor};`;
     floatLbl.textContent = label;
     scene.appendChild(floatLbl);
@@ -538,29 +618,48 @@ window.tgInitGame = async function () {
     scrollPitch();
 
     if (hasGSAP) {
-      /* Scale relative to scene so rings stay inside the phone */
       const maxSc = Math.ceil(
         Math.hypot(scene.offsetWidth || 320, scene.offsetHeight || 600) / 2
       ) + 6;
 
       gsap.set(rings, { scale: 0 });
+
+      // 1. Rings cascade expand
+      await new Promise(r =>
+        gsap.to(rings, { scale: maxSc, duration: 0.52, ease: 'power2.inOut', stagger: 0.12, onComplete: r })
+      );
+
+      // 2. Label chars slam in from below
+      gsap.set(floatLbl, { opacity: 1 });
+      if (window.SplitText) {
+        const split = new SplitText(floatLbl, { type: 'chars' });
+        await new Promise(r => gsap.from(split.chars, {
+          opacity: 0,
+          y: 50,
+          rotation: () => gsap.utils.random(-20, 20),
+          scale: () => gsap.utils.random(0.2, 0.65),
+          duration: 0.52,
+          ease: hasCE ? 'slam' : 'back.out(3)',
+          stagger: { each: 0.06, from: 'center' },
+          clearProps: 'transform,opacity',
+          onComplete: r,
+        }));
+        split.revert();
+      } else {
+        await new Promise(r => gsap.from(floatLbl, {
+          scale: 0.7, y: 30, duration: 0.4, ease: 'back.out(3)', onComplete: r,
+        }));
+      }
+
+      // 3. Hold — actually read the label
+      await w(1400);
+
+      // 4. Label exits up, rings contract, watermark slides in
       await new Promise(r =>
         gsap.timeline({ onComplete: r })
-          /* Cascade expand: gold first, cream last */
-          .to(rings, { scale: maxSc, duration: 0.52, ease: 'power2.inOut',
-            stagger: 0.12 })
-          /* Label slams in when cream ring is at peak */
-          .fromTo(floatLbl,
-            { opacity: 0, scale: 0.72 },
-            { opacity: 1, scale: 1,   duration: 0.24, ease: 'back.out(3)' }, '-=0.1')
-          /* Hold — long enough to actually read the label */
-          .to({}, { duration: 0.65 })
-          /* Cascade contract: cream first, gold last */
-          .to([...rings].reverse(), { scale: 0, duration: 0.42,
-            ease: 'power2.inOut', stagger: 0.1 })
-          .to(floatLbl, { opacity: 0, duration: 0.22, ease: 'power2.in' }, '<+=0.05')
+          .to(floatLbl, { opacity: 0, y: -24, duration: 0.28, ease: 'power2.in' })
+          .to([...rings].reverse(), { scale: 0, duration: 0.42, ease: 'power2.inOut', stagger: 0.1 }, '<+=0.08')
           .call(() => { rings.forEach(r => r.remove()); floatLbl.remove(); })
-          /* Watermark slides in under the chapter divider */
           .fromTo(bgLbl,
             { opacity: 0, x: '-18%' },
             { opacity: 0.06, x: '0%', duration: 0.6, ease: 'power2.out' }, '-=0.2')
@@ -1039,60 +1138,61 @@ window.tgInitGame = async function () {
     return wrap;
   }
 
-  // Type F — reveal list, word-by-word per item
+  // Type F — reveal list: marker snaps in, then text slides in, then next item
   function rlist(items) {
     const d = document.createElement('div');
     d.className = 'tg-pl tg-rlist';
     items.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'tg-ritem';
-      row.dataset.m = item.m || '→';
-      // Wrap text in a flex child so it can properly word-wrap
+      const marker = document.createElement('span');
+      marker.className = 'tg-ritem-marker';
+      marker.textContent = item.m || '→';
+      marker.style.opacity = '0';
       const textSpan = document.createElement('span');
       textSpan.className = 'tg-ritem-text';
       textSpan.innerHTML = item.t;
+      textSpan.style.opacity = '0';
+      row.appendChild(marker);
       row.appendChild(textSpan);
-      row.style.animationDelay = '0s'; // GSAP drives, not CSS
       d.appendChild(row);
     });
     pitch.appendChild(d);
     scrollPitch();
     return d;
   }
+
   async function rlistReveal(items) {
     const d = rlist(items);
-    if (!hasGSAP) return d;
-    const rows = d.querySelectorAll('.tg-ritem');
-    for (const row of rows) {
-      row.style.opacity = '1'; row.style.transform = 'none';
-      const textEl = row.querySelector('.tg-ritem-text');
-      if (hasScrTx) {
-        // ScrambleText: gentle letter-shuffle resolving into real text
-        const finalText = textEl.textContent;
-        textEl.textContent = '';
-        await new Promise(r => gsap.to(textEl, {
-          duration: 1.5,
-          scrambleText: {
-            text: finalText,
-            chars: 'abcdefghijklmnopqrstuvwxyz',
-            revealDelay: 0.45, speed: 0.32,
-          },
-          ease: 'none', onComplete: r,
-        }));
-      } else if (window.SplitText) {
-        // Fallback: word-by-word slide-in; revert after so wrapping restores
+    if (!hasGSAP) {
+      // no GSAP — just make everything visible immediately
+      d.querySelectorAll('.tg-ritem-marker, .tg-ritem-text').forEach(el => el.style.opacity = '');
+      return d;
+    }
+    for (const row of d.querySelectorAll('.tg-ritem')) {
+      const marker = row.querySelector('.tg-ritem-marker');
+      const textEl  = row.querySelector('.tg-ritem-text');
+      // marker snaps in first — fromTo so start state is explicit, not inferred from DOM
+      await new Promise(r => gsap.fromTo(marker,
+        { opacity: 0, x: -14, scale: 0.6 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.2, ease: hasCE ? 'snap' : 'back.out(3)', clearProps: 'x,scale', onComplete: r },
+      ));
+      // text slides in word by word
+      if (window.SplitText) {
         const split = new SplitText(textEl, { type: 'words' });
-        await new Promise(r => gsap.from(split.words, {
-          opacity: 0, x: -10, filter: 'blur(3px)',
-          duration: 0.36, ease: hasCE ? 'unfurl' : 'power2.out',
-          stagger: 0.045, clearProps: 'filter,x,opacity', onComplete: r,
-        }));
-        split.revert(); // restore normal text so wrapping works
+        await new Promise(r => gsap.fromTo(split.words,
+          { opacity: 0, x: -8 },
+          { opacity: 1, x: 0, duration: 0.26, ease: hasCE ? 'unfurl' : 'power2.out', stagger: 0.04, clearProps: 'x,opacity', onComplete: r },
+        ));
+        split.revert();
       } else {
-        await new Promise(r => gsap.from(textEl, { opacity: 0, x: -8, duration: 0.35, onComplete: r }));
+        await new Promise(r => gsap.fromTo(textEl,
+          { opacity: 0, x: -8 },
+          { opacity: 1, x: 0, duration: 0.26, clearProps: 'x,opacity', onComplete: r },
+        ));
       }
       window.HAPTIC?.tap?.();
-      await w(180);
+      await w(140);
     }
     return d;
   }
@@ -1321,8 +1421,17 @@ window.tgInitGame = async function () {
       stagger: 0.06, from: 'center', duration: 0.62, ease: 'back.out(4)',
     });
     await w(400);
-    const questionEl = line('What if the data existed? Not what they said about themselves — what they actually did when it mattered.', 'tg-pl--prompt');
-    await reveal(questionEl, { y: 18, stagger: 0.05, duration: 0.44, blur: true, ease: hasCE ? 'unfurl' : 'power3.out' });
+    await reveal(line('What if the data existed? Not what they said about themselves —', 'tg-pl--med'), {
+      y: 18, stagger: 0.05, duration: 0.44, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+    });
+    await w(200);
+    const questionEl = line('<span class="tg-hl">what they actually did when it mattered.</span>', 'tg-pl--big');
+    await reveal(questionEl, {
+      type: 'chars', y: 0,
+      scale: () => gsap.utils.random(0.1, 0.5),
+      rotation: () => gsap.utils.random(-14, 14),
+      stagger: 0.045, from: 'center', duration: 0.58, ease: hasCE ? 'slam' : 'back.out(3)',
+    });
     questionEl.style.position = 'relative'; questionEl.style.overflow = 'visible';
     questionEl.appendChild(decal('id.png', 'tg-decal--bob', { right: '-20px', top: '0', w: 48, delay: 0.3 }));
     await w(300);
@@ -1374,7 +1483,15 @@ window.tgInitGame = async function () {
       deadWord.appendChild(decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% + 4px)', top: '-6px', w: 52, fromY: -30, delay: 0.2 }));
     }
     await w(500);
-    await dimLines('40–80% of applicants now use AI to write about themselves. $8.8 trillion lost annually to employee disengagement — the cost of not actually knowing the people you hire.');
+    await reveal(line('40–80% of applicants now use AI to write about themselves.', 'tg-blockquote'), {
+      y: 8, stagger: 0.022, duration: 0.34, ease: hasCE ? 'unfurl' : 'power3.out',
+    });
+    await w(220);
+    await reveal(line('$8.8 trillion lost annually to employee disengagement.', 'tg-blockquote'), {
+      y: 8, stagger: 0.022, duration: 0.34, ease: hasCE ? 'unfurl' : 'power3.out',
+    });
+    await w(440);
+    crtTicker('the cost of not actually knowing the people you hire');
     await w(350);
     const idx = await branchChoices([
       "Okay. So what's the new signal?",
@@ -1715,18 +1832,12 @@ window.tgInitGame = async function () {
     statsEl.style.position = 'relative'; statsEl.style.overflow = 'visible';
     statsEl.appendChild(decal('babystar.png', 'tg-decal--bob', { right: '-18px', top: '-18px', w: 40, delay: 0.2 }));
     await w(500);
-    // The human moment — therapist quote
-    await pqReveal(
-      '"Show it to my therapist. This is literally going to be the topic of our next session." — player, 4:44am',
-      'phone.png', { right: '-20px', top: '-4px', w: 44, delay: 0.5 }
-    );
-    await w(200);
     await reveal(line('When the campaign ended —', 'tg-pl--dim'), {
       y: 10, stagger: 0.04, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(500);
     flash();
-    const discordEl = line('60 strangers built a Discord.', 'tg-pl--big');
+    const discordEl = line('60 strangers built a Discord.', 'tg-pl--oneliner');
     await reveal(discordEl, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
@@ -2400,7 +2511,7 @@ window.tgInitGame = async function () {
     .map((c, i) => `<button class="tg-pitch-choice" onclick="window._pitchChoose(${i})">${c}</button>`)
     .join('');
   pitch.appendChild(choiceWrap);
-  scrollPitch();
+  scrollPitchSnap();
 
   if (hasGSAP) {
     // edgeReveal — buttons alternate from left/right edges
@@ -2538,7 +2649,7 @@ window.tgInitGame = async function () {
   await w(380);
 
   flash();
-  const visionPopEl = line('', 'tg-pl--big');
+  const visionPopEl = line('', 'tg-pl--wordpop');
   await wordPop(visionPopEl, 'What they actually do.', ['#DBD59C', null, '#88ABE3', null, '#DBD59C']);
   await w(500);
 

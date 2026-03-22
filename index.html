@@ -10,6 +10,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Trove</title>
+  <link rel="icon" href="./assets/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet">
@@ -52,7 +53,10 @@
     const scene = new THREE.Scene(); // no background colour, CSS handles it
 
     const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
-    camera.position.set(0, 0, 7);
+    // Breakpoint-aware camera z: idle (tilted phone) → face-on (post-spin)
+    const CAM_IDLE = innerWidth < 480 ? 6.6 : innerWidth < 768 ? 6.8 : 6.9;
+    const CAM_FACE = innerWidth < 480 ? 4.7 : innerWidth < 768 ? 4.8 : 4.9;
+    camera.position.set(0, 0, CAM_IDLE);
 
     scene.add(new THREE.HemisphereLight(0xf5ede0, 0xd0c8b8, 0.18));
 
@@ -288,8 +292,8 @@
 
       phoneScreenMeta = { maxX: box0.max.x, midY: mid0.y, midZ: mid0.z, sizeY: size0.y, sizeZ: size0.z };
 
-      // Scale: fit largest XY dimension to 3.5 world units
-      const sf = 3.5 / Math.max(size0.x, size0.y);
+      // Scale: fit largest XY dimension to 3.7 world units
+      const sf = 3.7 / Math.max(size0.x, size0.y);
       phoneMesh.scale.setScalar(sf);
 
       // Pose: screen faces +X in GLB → tilted for drama at start
@@ -925,7 +929,7 @@
           // Camera zooms in over slightly longer window
           const zoomP = Math.min(1, spinAge / 2100);
           const zoomE = zoomP < 0.5 ? 2*zoomP*zoomP : 1 - Math.pow(-2*zoomP+2,2)/2;
-          camera.position.z = 7 + (5.0 - 7) * zoomE;
+          camera.position.z = CAM_IDLE + (CAM_FACE - CAM_IDLE) * zoomE;
 
           if (spinP >= 1 && !spinDone) {
             spinDone = true;
@@ -1242,7 +1246,7 @@
       questionMat.opacity = 0;
 
       // Compute zoom amount up front so measurement matches final camera position
-      const camZoomIn = window.innerWidth < 480 ? 0.7 : 0.4;
+      const camZoomIn = window.innerWidth < 480 ? 0.72 : window.innerWidth < 768 ? 0.55 : 0.44;
 
       // Measure face-on dimensions with phone temporarily snapped to head-on
       // AND camera temporarily at its final zoom position, so tangleFaceOnW/H
@@ -1300,9 +1304,9 @@
           <div style="position:relative;flex-shrink:0">
             <button class="t-gear-btn" id="t-gear-btn" onclick="window.tToggleSpeedPanel()" style="font-size:15px;line-height:1;">🐇</button>
             <div class="t-speed-panel" id="t-speed-panel">
-              <button class="t-speed-option" data-speed="0.7" onclick="window.tSetSpeed(0.7)">⚡ Fast</button>
-              <button class="t-speed-option t-speed-active" data-speed="1" onclick="window.tSetSpeed(1.0)">· Normal</button>
-              <button class="t-speed-option" data-speed="1.5" onclick="window.tSetSpeed(1.5)">🐢 Slow</button>
+              <button class="t-speed-option" data-speed="1" onclick="window.tSetSpeed(1.0)">⚡ Fast</button>
+              <button class="t-speed-option t-speed-active" data-speed="2.5" onclick="window.tSetSpeed(2.5)">· Normal</button>
+              <button class="t-speed-option" data-speed="5" onclick="window.tSetSpeed(5.0)">🐢 Slow</button>
             </div>
           </div>
         </div>
