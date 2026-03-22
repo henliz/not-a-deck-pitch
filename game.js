@@ -6,11 +6,6 @@ window.tgSpeedMult = 1.0;
    GAME ENGINE
 ══════════════════════════════════════════════════════════════ */
 
-function replyText(str) {
-  const dash = str.indexOf(' \u2014 ');
-  return dash >= 0 ? str.slice(0, dash) : str;
-}
-
 /* Particle disintegration — palette colours + GSAP */
 function disintegrate(el) {
   const rect    = el.getBoundingClientRect();
@@ -64,98 +59,6 @@ function disintegrate(el) {
 /* ── tgAPI ── */
 window.tgAPI = {
 
-  addNarration(text) {
-    const scroll = document.getElementById('tg-scroll');
-    if (!scroll) return;
-    const block = document.createElement('p');
-    block.className = 'tg-narration';
-    const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
-    const bigBlock = sentences.length >= 3;
-    sentences.forEach((sentence, i) => {
-      const line = document.createElement('span');
-      line.className = 'tg-narration-line';
-      line.textContent = sentence;
-      line.style.animationDelay = `${i * 900 * (bigBlock ? 1.25 : 1) * window.tgSpeedMult}ms`;
-      block.appendChild(line);
-    });
-    scroll.appendChild(block);
-    requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
-  },
-
-  addImage(description, bgColor = '#2a3020') {
-    const scroll = document.getElementById('tg-scroll');
-    if (!scroll) return;
-    const div = document.createElement('div');
-    div.className = 'tg-inline-img';
-    div.style.background = bgColor;
-    div.textContent = description;
-    scroll.appendChild(div);
-    requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
-  },
-
-  addBubble(text, typingMs = 1400) {
-    return new Promise(resolve => {
-      const scroll = document.getElementById('tg-scroll');
-      if (!scroll) return resolve();
-      const lastEl = scroll.lastElementChild;
-      const showMeta = !lastEl || !lastEl.classList.contains('tg-bubble-wrap');
-      const wrap = document.createElement('div');
-      wrap.className = 'tg-bubble-wrap';
-      wrap.innerHTML = `
-        ${showMeta ? `<div class="tg-bubble-meta">
-          <div class="tg-bubble-avatar">C</div>
-          <span class="tg-bubble-name">Cass</span>
-        </div>` : ''}
-        <div class="tg-typing"><span></span><span></span><span></span></div>
-      `;
-      scroll.appendChild(wrap);
-      scroll.scrollTop = scroll.scrollHeight;
-      setTimeout(() => {
-        const typing = wrap.querySelector('.tg-typing');
-        if (typing) {
-          const bubble = document.createElement('div');
-          bubble.className = 'tg-bubble';
-          bubble.textContent = text;
-          typing.replaceWith(bubble);
-          scroll.scrollTop = scroll.scrollHeight;
-        }
-        resolve();
-      }, typingMs * window.tgSpeedMult);
-    });
-  },
-
-  /* Renders choices inline in the scroll area — no separate panel */
-  showChoicesAsync(choices) {
-    const scroll = document.getElementById('tg-scroll');
-    if (!scroll) return Promise.resolve(0);
-
-    return new Promise(resolve => {
-      window._tgChoiceResolve = resolve;
-      window._tgChoiceNarrations = choices.map(c => {
-        const dash = c.indexOf(' \u2014 ');
-        return dash >= 0 ? c.slice(dash + 3) : null;
-      });
-
-      const group = document.createElement('div');
-      group.className = 'tg-choice-group';
-      group.id = 'tg-choice-group-active';
-      group.innerHTML = choices
-        .map((c, i) => `<button class="tg-choice" onclick="window._tgChoiceClick(this,${i})">${replyText(c)}</button>`)
-        .join('');
-      scroll.appendChild(group);
-      requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
-    });
-  },
-
-  collect(emoji, name) {
-    HAPTIC.tap();
-    const toast = document.getElementById('tg-toast');
-    if (!toast) return;
-    toast.textContent = `${emoji}  You collected: ${name}`;
-    toast.classList.add('visible');
-    setTimeout(() => toast.classList.remove('visible'), 2800);
-  },
-
   setProgress(pct) {
     const fill = document.querySelector('#t-progress-fill');
     if (fill) fill.style.width = pct + '%';
@@ -192,34 +95,6 @@ window.tgAPI = {
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible')));
   },
 
-};
-
-/* ── Choice tap: selected stays green with checkmark, others disintegrate ── */
-window._tgChoiceClick = function (btn, idx) {
-  if (btn.classList.contains('selected')) return;
-  HAPTIC.tap();
-  btn.classList.add('selected');
-
-  const group = document.getElementById('tg-choice-group-active');
-  if (group) {
-    group.removeAttribute('id');
-    group.querySelectorAll('.tg-choice').forEach(b => {
-      b.disabled = true;
-      if (b !== btn) disintegrate(b);
-    });
-  }
-
-  // Resolve after disintegration + slide settles
-  setTimeout(() => {
-    const narration = window._tgChoiceNarrations && window._tgChoiceNarrations[idx];
-    window._tgChoiceNarrations = null;
-    if (narration) window.tgAPI.addNarration(narration);
-    if (window._tgChoiceResolve) {
-      const resolve = window._tgChoiceResolve;
-      window._tgChoiceResolve = null;
-      resolve(idx);
-    }
-  }, 520);
 };
 
 /* ── Pause control ── */
@@ -350,105 +225,157 @@ window.tgInitGame = async function () {
     );
   }
 
-  // ── Drum dial builder (keep exactly as-is) ─────────────────────
-  const ITEM_H = 46;
-  const VISIBLE = 5;
-  const DIAL_H  = ITEM_H * VISIBLE;
-  const DIAL_PAD = (DIAL_H - ITEM_H) / 2;
+  const scene = pitch.closest('.tg-pitch-scene');
 
-  function buildDial(words, settleIdx) {
-    const wrap  = document.createElement('div');
-    wrap.className = 'tg-dial-wrap'; // no tg-pl — GSAP handles entrance, avoids transform conflict
+  /* coinTransition(walletEl, targetTextEl)
+     Cinematic: slow build from wallet → covers whole screen → breathes →
+     graceful arc to land inline beside the word "someone." in targetTextEl.
+     The coin then stays permanently as an inline DOM element.             */
+  function coinTransition(walletEl, targetTextEl) {
+    return new Promise(resolve => {
+      if (!hasGSAP || !scene) { resolve(); return; }
 
-    const tick = document.createElement('div');
-    tick.className = 'tg-dial-line';
+      const SZ        = 68;
+      const LAND_W    = 72;   // final displayed width in CSS
+      const landScale = LAND_W / SZ;
 
-    const fade  = document.createElement('div');
-    fade.className = 'tg-dial-fade';
+      // Snapshot positions that DON'T change (wallet, scene) right now
+      const sceneRect = scene.getBoundingClientRect();
+      const wRect     = walletEl.getBoundingClientRect();
 
-    const track = document.createElement('div');
-    track.className = 'tg-dial-track';
-    track.style.cssText = `padding-top:${DIAL_PAD}px;padding-bottom:${DIAL_PAD}px;`;
+      const sx = wRect.left - sceneRect.left + wRect.width  / 2 - SZ / 2;
+      const sy = wRect.top  - sceneRect.top  + wRect.height / 2 - SZ / 2;
+      const cx = sceneRect.width  / 2 - SZ / 2;
+      const cy = sceneRect.height / 2 - SZ / 2;
+      const coverScale = Math.max(sceneRect.width, sceneRect.height) / SZ * 1.35;
 
-    const items = words.map(word => {
-      const el = document.createElement('div');
-      el.className = 'tg-dial-item';
-      el.textContent = word;
-      track.appendChild(el);
-      return el;
-    });
+      const coin = document.createElement('img');
+      coin.src = './assets/coin.png';
+      coin.style.cssText = `position:absolute;left:0;top:0;width:${SZ}px;height:auto;pointer-events:none;z-index:50;`;
+      scene.appendChild(coin);
+      gsap.set(coin, { transformPerspective: 800 });
 
-    wrap.append(tick, fade, track);
-
-    function syncActive() {
-      const center = track.scrollTop;
-      items.forEach((el, i) => {
-        const dist = Math.abs(i * ITEM_H - center) / ITEM_H;
-        el.style.opacity   = Math.max(0.15, 1 - dist * 0.42);
-        el.style.transform = `scale(${Math.max(0.62, 1 - dist * 0.15)})`;
-        el.classList.toggle('active', dist < 0.5);
+      const tl = gsap.timeline({
+        onComplete: () => {
+          coin.remove();
+          // Coin lands inline inside targetTextEl, right after "someone."
+          const landed = document.createElement('img');
+          landed.src = './assets/coin.png';
+          landed.className = 'tg-inline-coin tg-decal--bob';
+          landed.style.animationDelay = '-0.8s';
+          targetTextEl.appendChild(landed);
+          // Scroll so the landing is visible, then animate in
+          scrollPitch();
+          gsap.from(landed, {
+            scale: 0.15, rotation: -180, opacity: 0,
+            duration: 0.75, ease: 'elastic.out(1, 0.42)',
+          });
+          resolve();
+        },
       });
-    }
-    track.addEventListener('scroll', syncActive, { passive: true });
-    syncActive();
 
-    const done = new Promise(resolve => {
-      let count = 0;
-      const total = 34;
-      function step() {
-        const p = count / total;
-        const delay = p < 0.42 ? 52 : p < 0.74 ? 105 : 195;
-        if (count < total) {
-          track.scrollTop = (count % words.length) * ITEM_H;
-          syncActive();
-          count++;
-          setTimeout(step, delay * window.tgSpeedMult);
-        } else {
-          const from  = track.scrollTop;
-          const to    = settleIdx * ITEM_H;
-          const start = performance.now();
-          const dur   = 420;
-          (function settle(now) {
-            const t = Math.min(1, (now - start) / dur);
-            const e = 1 - Math.pow(1 - t, 3);
-            track.scrollTop = from + (to - from) * e;
-            syncActive();
-            if (t < 1) requestAnimationFrame(settle);
-            else resolve();
-          })(performance.now());
-        }
-      }
-      setTimeout(step, 80 * window.tgSpeedMult);
+      tl
+        .set(coin, { x: sx, y: sy, scale: 0.28, rotationY: 0, opacity: 1 })
+
+        // ── APPROACH: barely stirs, then surges ──
+        .to(coin, {
+          x: cx, y: cy,
+          scale: coverScale,
+          rotationY: 720,
+          duration: 1.85,
+          ease: 'power1.in',
+        })
+
+        // ── PEAK: breathe at full coverage ──
+        .to(coin, { scale: coverScale * 1.07, duration: 0.32, ease: 'sine.inOut' })
+        .call(() => {
+          scene.classList.add('tg-flash');
+          setTimeout(() => scene.classList.remove('tg-flash'), 95);
+        })
+
+        // ── RECEDE: lazy target — re-reads targetTextEl's CURRENT rect when
+        //    this tween fires, so scroll drift during approach doesn't matter ──
+        .to(coin, {
+          x: () => {
+            const r  = targetTextEl.getBoundingClientRect();
+            const sr = scene.getBoundingClientRect();
+            return r.right - sr.left + 6 - SZ / 2;
+          },
+          y: () => {
+            const r  = targetTextEl.getBoundingClientRect();
+            const sr = scene.getBoundingClientRect();
+            return r.top - sr.top + r.height / 2 - SZ / 2;
+          },
+          scale: landScale,
+          rotationY: 1440,
+          duration: 1.55,
+          ease: 'power3.out',
+        })
+
+        // ── SETTLE: hand off to DOM sticker ──
+        .to(coin, { scale: 0, opacity: 0, duration: 0.1, ease: 'power3.in' });
     });
-
-    return { el: wrap, done };
   }
 
   window.tgAPI.setProgress(0);
 
-  // ── Beat 1: You're an investor ────────────────────────────────
-  // Impact slam — chars scatter from random y/x/rotation, land together
-  {
-    const el = line("You're an investor.", 'tg-pl--big');
-    if (hasGSAP) {
-      const split = new SplitText(el, { type: 'chars' });
-      await new Promise(r => gsap.from(split.chars, {
-        opacity: 0,
-        y: () => gsap.utils.random(60, 120),
-        x: () => gsap.utils.random(-18, 18),
-        rotation: () => gsap.utils.random(-22, 22),
-        scale: () => gsap.utils.random(0.05, 0.35),
-        duration: 0.85, ease: hasCE ? 'slam' : 'back.out(3)',
-        stagger: { each: 0.055, from: 'center', ease: 'power3.in' },
-        clearProps: 'transform,x,y,rotation,scale',
-        onComplete: r,
-      }));
-    }
+  // ── Beat 1: text first, then investor + wallet appear below ───
+  const investorEl = line('You\'re an<br><span class="tg-investor-word">investor.</span>', 'tg-pl--big');
+  if (hasGSAP) {
+    const split = new SplitText(investorEl, { type: 'chars' });
+    await new Promise(r => gsap.from(split.chars, {
+      opacity: 0,
+      y: () => gsap.utils.random(60, 120),
+      x: () => gsap.utils.random(-18, 18),
+      rotation: () => gsap.utils.random(-22, 22),
+      scale: () => gsap.utils.random(0.05, 0.35),
+      duration: 0.85, ease: hasCE ? 'slam' : 'back.out(3)',
+      stagger: { each: 0.055, from: 'center', ease: 'power3.in' },
+      clearProps: 'transform,x,y,rotation,scale',
+      onComplete: r,
+    }));
   }
-  await w(1100);
 
-  // ── Beat 2: Wrong call — one tight line ───────────────────────
-  await reveal(line('You made the wrong call on someone.', 'tg-pl--med', 28), {
+  // Investor + wallet pair: wallet floats above top-left of investor, both in scroll
+  const pairEl = document.createElement('div');
+  pairEl.className = 'tg-pl tg-decal-pair';
+  const walletImg   = document.createElement('img');
+  walletImg.src     = './assets/waller.png';
+  walletImg.className = 'tg-decal-wallet';
+  walletImg.style.opacity = '0';
+  const investorImg = document.createElement('img');
+  investorImg.src   = './assets/investor.png';
+  investorImg.className = 'tg-decal-investor';
+  investorImg.style.opacity = '0';
+  pairEl.append(walletImg, investorImg);
+  pitch.appendChild(pairEl);
+  scrollPitch();
+
+  if (hasGSAP) {
+    // Investor drops from above with elastic bounce
+    gsap.fromTo(investorImg,
+      { opacity: 0, y: -50, rotation: 13, scale: 0.65 },
+      { opacity: 1, y: 0, rotation: -3, scale: 1,
+        duration: 0.88, ease: 'elastic.out(1, 0.52)', delay: 0.08 }
+    );
+    setTimeout(() => investorImg.classList.add('tg-decal--bob'), 1000);
+
+    // Wallet slides in from the left a beat later, settles above investor's top-left
+    gsap.fromTo(walletImg,
+      { opacity: 0, x: -44, rotation: -22, scale: 0.7 },
+      { opacity: 1, x: 0, rotation: 5, scale: 1,
+        duration: 0.68, ease: 'back.out(2.4)', delay: 0.42 }
+    );
+    setTimeout(() => {
+      walletImg.classList.add('tg-decal--bob');
+      walletImg.style.animationDelay = '-0.9s';
+    }, 1150);
+  }
+  await w(1300);
+
+  // ── Beat 2: Wrong call — capture element so coin can land beside "someone." ──
+  const someoneEl = line('You made the wrong call on someone.', 'tg-pl--med', 28);
+  await reveal(someoneEl, {
     y: 24, stagger: 0.07, staggerEase: 'power2.out', duration: 0.52, blur: true,
     ease: hasCE ? 'unfurl' : 'power3.out',
   });
@@ -456,20 +383,35 @@ window.tgInitGame = async function () {
 
   window.tgAPI.setProgress(20);
 
-  // ── Beat 3: A [dial] ─────────────────────────────────────────
-  await reveal(line('A', 'tg-pl--dim', 28), { y: 18, duration: 0.32, blur: false });
-  await w(260);
+  // ── Coin: launches from wallet, lands inline beside "someone." ──
+  if (hasGSAP) {
+    gsap.to(walletImg, { opacity: 0.35, scale: 0.9, duration: 0.3, ease: 'power2.in' });
+  }
+  await w(80);
+  await coinTransition(walletImg, someoneEl);
+  await w(220);
 
-  const dial2 = buildDial(['hire','co-founder','partner','date','friend'], 2);
-  dial2.el.style.marginTop = '18px';
-  pitch.appendChild(dial2.el);
-  if (hasGSAP) gsap.from(dial2.el, { opacity: 0, y: 28, filter: 'blur(6px)', duration: 0.55, ease: 'power3.out', clearProps: 'filter' });
-  pitch.scrollTop = pitch.scrollHeight;
-  await dial2.done;
-  await w(500);
+  // ── Beat 3: slot-spin through candidates → disintegrate ─────────────────
+  await reveal(line('maybe they were a\u2026', 'tg-pl--dim', 28), { y: 18, duration: 0.45, blur: true });
+  await w(300);
 
-  await reveal(line('who looked right on paper.', 'tg-pl--med'), {
-    y: 22, stagger: 0.07, staggerEase: 'power2.inOut', duration: 0.48, blur: true,
+  const spinWords  = ['hire','co-founder','partner','date','friend'];
+  const spinSeq    = [0,1,2,3,4,0,1,2,3,4,0,1,2]; // index 2 = 'partner'
+  const spinDelays = [70,75,82,88,98,115,135,160,195,230,280,350];
+
+  const spinEl = line(spinWords[0], 'tg-pl--big', 4);
+  for (let i = 0; i < spinSeq.length; i++) {
+    spinEl.textContent = spinWords[spinSeq[i]];
+    HAPTIC.tap();
+    if (i < spinDelays.length) await w(spinDelays[i]);
+  }
+  await w(900);
+
+  disintegrate(spinEl);
+  await w(700);
+
+  await reveal(line("it doesn\u2019t matter who \u2014 we\u2019ve all been there.", 'tg-pl--med', 8), {
+    y: 22, stagger: 0.06, duration: 0.48, blur: true,
   });
   await w(1000);
 
@@ -596,6 +538,31 @@ window.tgInitGame = async function () {
         clearProps: 'transform,x,y,rotation,scale', onComplete: r,
       })
     );
+  }
+
+  // Decals: starhehe just above "vision", lightbulb floating above him having the idea
+  xrayEl.style.position = 'relative';
+  xrayEl.style.overflow = 'visible';
+  {
+    const decalGroup = document.createElement('div');
+    decalGroup.className = 'tg-xray-decal-group';
+    decalGroup.style.opacity = '0';
+    const bulbImg = document.createElement('img');
+    bulbImg.src = './assets/lightbulb.png';
+    bulbImg.className = 'tg-xray-bulb';
+    const starImg = document.createElement('img');
+    starImg.src = './assets/starhehe.png';
+    starImg.className = 'tg-xray-star';
+    decalGroup.append(bulbImg, starImg);
+    xrayEl.appendChild(decalGroup);
+    if (hasGSAP) {
+      gsap.fromTo(decalGroup,
+        { opacity: 0, y: 18, scale: 0.5, rotation: -10 },
+        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.7, ease: 'elastic.out(1, 0.48)' }
+      );
+    } else {
+      decalGroup.style.opacity = '1';
+    }
   }
 
   await w(400);

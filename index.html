@@ -20,6 +20,7 @@
 </head>
 <body>
 
+  <div id="scene-bg"></div>
   <canvas id="webgl"></canvas>
   <button id="trove-btn" aria-label="Hold to begin" style="position:fixed;z-index:2;background:transparent;border:none;outline:none;-webkit-appearance:none;touch-action:manipulation;cursor:pointer;border-radius:50%;pointer-events:none;"></button>
   <div id="vignette"></div>
@@ -439,11 +440,12 @@
         ]);
         geo.setAttribute('position', new THREE.BufferAttribute(v, 3));
 
-        // Color mix: 28% lime green, 18% light cream, rest dark charcoal
+        // Color mix: palette — gold, blue, light, dark
         const rnd = Math.random();
-        const col = rnd < 0.28 ? 0x8fe63c
-                  : rnd < 0.46 ? 0xd8d8c0
-                  : 0x2a2a38;
+        const col = rnd < 0.25 ? 0xDBD59C
+                  : rnd < 0.50 ? 0x88ABE3
+                  : rnd < 0.68 ? 0xC3D9FF
+                  : 0x222222;
 
         const mat = new THREE.MeshBasicMaterial({
           color:       col,
@@ -503,7 +505,7 @@
       notifEntries.length = 0;
       if (notifCtx) { notifCtx.clearRect(0, 0, NC_W, NC_H); notifTex.needsUpdate = true; }
 
-      const cols = [0x0c0c18, 0x1a1a2e, 0xffffff, 0xa8dadc, 0x8fe63c, 0xd4f54a];
+      const cols = [0x222222, 0xF9F9F2, 0xDBD59C, 0x88ABE3, 0xC3D9FF, 0xFFFBCD];
       const sm   = phoneScreenMeta;
 
       for (let i = 0; i < 90; i++) {
