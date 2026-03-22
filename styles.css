@@ -363,50 +363,27 @@ canvas#webgl {
 .tg-pl--prompt { font-family: var(--font-body); font-size: clamp(10px, 3.8cqw, 14px); font-weight: 400; line-height: 1.55; color: rgba(34,34,34,0.52); margin-bottom: 10px; }
 .tg-blockquote  { border-left: 2px solid var(--trace); padding-left: 10px; font-size: clamp(11px, 4.2cqw, 16px); line-height: 1.65; color: rgba(34,34,34,0.65); margin-bottom: 10px; }
 
-/* ── CRT breaking-news ticker ── */
-.tg-crt-ticker {
-  position: relative; overflow: hidden;
-  background: #070d07;
-  border-top: 1.5px solid rgba(90,255,138,0.28);
-  border-bottom: 1.5px solid rgba(90,255,138,0.28);
-  padding: 18px 0; margin: 20px 0 14px;
+/* ── Sine-wave ticker ── */
+.tg-sine-ticker {
+  position: relative;
+  overflow: hidden;
+  margin: 20px -18px 14px; /* full-bleed past pitch padding */
+  padding: 36px 0 52px; /* extra bottom room for sine dip */
+  /* soft fade at left/right edges */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%);
 }
-/* scanlines overlay */
-.tg-crt-ticker::before {
-  content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg, transparent, transparent 3px,
-    rgba(0,0,0,0.22) 3px, rgba(0,0,0,0.22) 4px
-  );
-}
-/* vignette edges */
-.tg-crt-ticker::after {
-  content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background: linear-gradient(90deg, #070d07 0%, transparent 6%, transparent 94%, #070d07 100%);
-}
-@keyframes crtFlicker {
-  0%,89%,91%,93%,100% { opacity: 1; }
-  90%                 { opacity: 0.82; }
-  92%                 { opacity: 0.94; }
-}
-.tg-crt-track {
+.tg-sine-track {
   display: flex; white-space: nowrap; will-change: transform;
-  animation: crtFlicker 5s ease-in-out infinite;
 }
-.tg-crt-text {
+.tg-sine-char {
+  display: inline-block;
+  will-change: transform;
   font-family: var(--font-display);
-  font-size: clamp(20px, 6.5cqw, 34px);
-  font-weight: 700; line-height: 1; flex-shrink: 0;
-  white-space: nowrap;
-  color: #5aff8a;
-  text-shadow:
-    0 0 5px rgba(90,255,138,1),
-    0 0 14px rgba(90,255,138,0.65),
-    0 0 32px rgba(90,255,138,0.3);
-  /* chromatic aberration */
-  filter: drop-shadow(1.5px 0 0 rgba(255,30,30,0.5)) drop-shadow(-1.5px 0 0 rgba(30,80,255,0.5));
-  letter-spacing: 0.03em;
-  padding-right: 3.5em;
+  font-size: clamp(32px, 11cqw, 52px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 /* ── Inline highlight sweep — gold and blue variants ── */
@@ -917,4 +894,123 @@ canvas#webgl {
   text-transform: uppercase;
   line-height: 1.4;
   display: block;
+}
+
+/* ── Recap overlay screens ─────────────────────────── */
+.tg-recap-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: var(--still);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px 24px;
+  cursor: pointer;
+  container-type: inline-size;
+  overflow: hidden;
+}
+.tg-recap-eyebrow {
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--trace);
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+.tg-recap-big {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 14cqw, 60px);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.tg-recap-arch-name {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 18cqw, 72px);
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.tg-recap-body {
+  font-family: var(--font-body);
+  font-size: clamp(14px, 4.5cqw, 18px);
+  color: var(--text);
+  opacity: 0.7;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.tg-recap-hl {
+  color: var(--trace);
+  font-style: italic;
+}
+.tg-recap-fine {
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 20px;
+  min-height: 12px;
+}
+.tg-recap-hint {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  animation: tg-hint-pulse 2s ease-in-out infinite;
+}
+@keyframes tg-hint-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.85; }
+}
+
+/* ── Contact card ──────────────────────────────────── */
+.tg-contact-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 16px;
+  margin: 12px 0 8px;
+  background: var(--still);
+}
+
+/* ── Play again ────────────────────────────────────── */
+.tg-play-again {
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 18px;
+  margin: 12px 0 32px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tg-play-again:hover {
+  color: var(--text);
+  border-color: rgba(34,34,34,0.5);
+}
+
+/* ── Ornament ───────────────────────────────────────── */
+.tg-pl--ornament {
+  font-family: var(--font-display);
+  font-size: clamp(48px, 18cqw, 72px);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--shift);
+  opacity: 0.15;
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
 }

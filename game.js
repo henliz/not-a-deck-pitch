@@ -8,6 +8,7 @@ window.tgSpeedMult = 2.5;  // default: Normal (1.0 = Fast/max, 2.5 = Normal, 5.0
 
 /* Particle disintegration — palette colours + GSAP */
 function disintegrate(el) {
+  HAPTIC.shatter();
   const rect    = el.getBoundingClientRect();
   const palette = ['#DBD59C','#88ABE3','#C3D9FF','#F9F9F2','#FFFBCD'];
   for (let i = 0; i < 32; i++) {
@@ -129,6 +130,11 @@ window.tgInitGame = async function () {
   const pitch = document.getElementById('tg-pitch');
   if (!pitch) return;
 
+  // Clear any previous run
+  pitch.innerHTML = '';
+  if (window.gsap) gsap.set(pitch, { opacity: 1, clearProps: 'opacity' });
+  document.querySelectorAll('.tg-recap-overlay').forEach(el => el.remove());
+
   const hasGSAP  = !!(window.gsap && window.SplitText);
   const hasScrTx = !!(window.ScrambleTextPlugin);
   const hasCE    = !!(window.CustomEase);
@@ -172,6 +178,7 @@ window.tgInitGame = async function () {
      setName matches a BURST_SETS key. count = number of imgs. */
   function assetBurst(originEl, setName = 'celebrate', count = 10) {
     if (!hasGSAP || !originEl) return;
+    HAPTIC.burst();
     const set  = BURST_SETS[setName] || BURST_SETS.celebrate;
     const rect = originEl.getBoundingClientRect();
     const ox   = rect.left + rect.width  / 2;
@@ -266,34 +273,56 @@ window.tgInitGame = async function () {
     return wrap;
   }
 
-  /* ── crtTicker: single-line breaking-news scroll with CRT phosphor effect ─
-     text scrolls left infinitely; two copies give seamless loop.            */
+  /* ── crtTicker: big sine-wave text drift in brand colours ─────────────── */
   function crtTicker(text) {
     const wrap  = document.createElement('div');
-    wrap.className = 'tg-pl tg-crt-ticker';
+    wrap.className = 'tg-pl tg-sine-ticker';
     const track = document.createElement('div');
-    track.className = 'tg-crt-track';
-    // Two copies for seamless loop
-    for (let i = 0; i < 2; i++) {
-      const span = document.createElement('span');
-      span.className = 'tg-crt-text';
-      span.textContent = text + ' \u2736 ';
-      track.appendChild(span);
+    track.className = 'tg-sine-track';
+
+    // Per-character spans for sine wave; color changes per WORD not per letter
+    const full   = text + '   \u2736   ';
+    const colors = ['#DBD59C', '#88ABE3', 'rgba(34,34,34,0.72)'];
+    let wordColor = colors[0], ci = 0;
+    for (let copy = 0; copy < 2; copy++) {
+      ci = 0; // reset word index each copy so colors stay consistent
+      for (const ch of full) {
+        if (ch === ' ') { wordColor = colors[++ci % colors.length]; }
+        const s = document.createElement('span');
+        s.className = 'tg-sine-char';
+        s.textContent = ch === ' ' ? '\u00A0' : ch;
+        s.style.color = ch === ' ' ? 'transparent' : wordColor;
+        track.appendChild(s);
+      }
     }
+
     wrap.appendChild(track);
     pitch.appendChild(wrap);
     scrollPitch();
 
     if (hasGSAP) {
-      gsap.from(wrap, { opacity: 0, duration: 0.5, ease: 'power2.out' });
-      // Measure after paint so offsetWidth is accurate
+      gsap.from(wrap, { opacity: 0, duration: 0.7, ease: 'power2.out' });
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        const oneW = track.children[0].offsetWidth;
-        if (!oneW) return;
-        gsap.fromTo(track,
-          { x: 0 },
-          { x: -oneW, duration: oneW / 60, ease: 'none', repeat: -1, repeatDelay: 0 }
-        );
+        const halfW = track.offsetWidth / 2;
+        if (!halfW) return;
+        // Slow horizontal drift
+        gsap.fromTo(track, { x: 0 },
+          { x: -halfW, duration: halfW / 28, ease: 'none', repeat: -1, repeatDelay: 0 });
+        // True curve-following: Y driven by each char's actual screen X,
+        // so the whole ribbon travels through a sine curve in space.
+        const spans  = [...track.querySelectorAll('.tg-sine-char')];
+        const offsets = spans.map(s => s.offsetLeft); // static local positions
+        const A = 18, freq = 0.016, drift = 0.4; // period ≈ 390px, slow temporal drift
+        const sineTick = () => {
+          const trackX = gsap.getProperty(track, 'x') || 0;
+          const t = gsap.ticker.time;
+          spans.forEach((s, i) => {
+            const worldX = offsets[i] + trackX;
+            s.style.transform = `translateY(${A * Math.sin(worldX * freq + t * drift)}px)`;
+          });
+        };
+        gsap.ticker.add(sineTick);
+        wrap._stopTicker = () => gsap.ticker.remove(sineTick);
       }));
     }
     return wrap;
@@ -328,7 +357,7 @@ window.tgInitGame = async function () {
 
   /* Flash + scene shake — animate scene, not pitch (avoids clipping shift) */
   function flash(double = false) {
-    if (window.HAPTIC) HAPTIC.impact('medium');
+    HAPTIC.burst();
     const scene = pitch.closest('.tg-pitch-scene');
     if (!scene) return;
     scene.classList.add('tg-flash');
@@ -482,6 +511,12 @@ window.tgInitGame = async function () {
   const scores = { cartographer: 0, contrarian: 0, architect: 0, operator: 0, storyteller: 0 };
   let moveCount = 0;
   let choiceCount = 0; // user branch choices only — drives progress bar
+  const branchPath = [];
+  let firstChoice = null;
+  let usedFounderPath = false;
+  let pushedBackOnData = false;
+  let wentDeepOnMoat = false;
+  let wentStraightToAsk = false;
   function score(wts) {
     const keys = ['cartographer','contrarian','architect','operator','storyteller'];
     const mult = moveCount === 0 ? 1.5 : 1;
@@ -567,7 +602,7 @@ window.tgInitGame = async function () {
      Full-screen colour circle expands → chapter label slams in at peak →
      circle contracts. Returns the DOM chapter label element.              */
   async function ringWipeChapter(label) {
-    if (window.HAPTIC) HAPTIC.impact('heavy');
+    HAPTIC.card();
 
     /* All 4 palette colours cascade in sequence — gold→blue→soft→cream,
        rotated each chapter so the dominant (last/top) colour cycles.     */
@@ -805,7 +840,7 @@ window.tgInitGame = async function () {
     const ms = Math.max(18, Math.round(60000 / cpm / 5));
     for (const ch of text) {
       el.insertBefore(document.createTextNode(ch), cursor);
-      window.HAPTIC?.begin?.();
+      HAPTIC.begin();
       await w(ms + (Math.random() * ms * 0.4 | 0));
     }
     await w(420);
@@ -857,7 +892,7 @@ window.tgInitGame = async function () {
       } else {
         await w(80);
       }
-      window.HAPTIC?.tap?.();
+      HAPTIC.tap();
       await w(55);
     }
     return el;
@@ -881,6 +916,7 @@ window.tgInitGame = async function () {
       wrap.appendChild(card);
       scrollPitch();
 
+      HAPTIC.card();
       if (hasGSAP) {
         await new Promise(r =>
           gsap.to(card, {
@@ -963,7 +999,7 @@ window.tgInitGame = async function () {
     scrollPitch();
 
     if (hasGSAP) {
-      if (window.HAPTIC) HAPTIC.impact('medium');
+      HAPTIC.card();
       const numEl = card.querySelector('.tg-stat-n');
       const lblEl = card.querySelector('.tg-stat-l');
       const imgEl = card.querySelector('img');
@@ -1083,6 +1119,7 @@ window.tgInitGame = async function () {
   // Type C — pull quote: shimmer border + ScrambleText reveal
   async function pqReveal(text, assetSrc = null, assetOpts = {}, assetCls = 'tg-decal--bob') {
     await w(300);
+    HAPTIC.begin();
     const shimmer = document.createElement('div');
     shimmer.className = 'tg-pl tg-pq-shimmer';
     shimmer.style.opacity = '0';
@@ -1172,26 +1209,30 @@ window.tgInitGame = async function () {
     for (const row of d.querySelectorAll('.tg-ritem')) {
       const marker = row.querySelector('.tg-ritem-marker');
       const textEl  = row.querySelector('.tg-ritem-text');
-      // marker snaps in first — fromTo so start state is explicit, not inferred from DOM
+      // marker drifts in softly
       await new Promise(r => gsap.fromTo(marker,
-        { opacity: 0, x: -14, scale: 0.6 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.2, ease: hasCE ? 'snap' : 'back.out(3)', clearProps: 'x,scale', onComplete: r },
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', clearProps: 'y', onComplete: r },
       ));
-      // text slides in word by word
+      // text fades in word by word
       if (window.SplitText) {
         const split = new SplitText(textEl, { type: 'words' });
-        await new Promise(r => gsap.fromTo(split.words,
-          { opacity: 0, x: -8 },
-          { opacity: 1, x: 0, duration: 0.26, ease: hasCE ? 'unfurl' : 'power2.out', stagger: 0.04, clearProps: 'x,opacity', onComplete: r },
-        ));
+        await new Promise(r => {
+          gsap.timeline({ onComplete: r })
+            .fromTo(split.words,
+              { opacity: 0, y: 8 },
+              { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', stagger: 0.05, clearProps: 'y,opacity' }
+            );
+        });
         split.revert();
+        textEl.style.opacity = ''; // clear rlist()'s opacity:0 — split.revert() restores content but not parent inline styles
       } else {
         await new Promise(r => gsap.fromTo(textEl,
-          { opacity: 0, x: -8 },
-          { opacity: 1, x: 0, duration: 0.26, clearProps: 'x,opacity', onComplete: r },
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', clearProps: 'y,opacity', onComplete: r },
         ));
       }
-      window.HAPTIC?.tap?.();
+      HAPTIC.tap();
       await w(140);
     }
     return d;
@@ -1218,19 +1259,24 @@ window.tgInitGame = async function () {
       wrap.innerHTML = choices.map((c, i) =>
         `<button class="tg-pitch-choice" onclick="window._bc(${i})">${c}</button>`
       ).join('');
+      // Pre-invisible: no flash before GSAP, and no accidental early tap on touchscreen
+      [...wrap.querySelectorAll('.tg-pitch-choice')].forEach(b => b.style.opacity = '0');
       pitch.appendChild(wrap);
       scrollPitch();
+      HAPTIC.begin();
       if (hasGSAP) {
-        gsap.from([...wrap.querySelectorAll('.tg-pitch-choice')], {
-          opacity: 0,
-          x: (i) => i % 2 === 0 ? 48 : -28,
-          scale: 0.88, filter: 'blur(4px)',
-          duration: 0.52, ease: hasCE ? 'yank' : 'back.out(2)',
-          stagger: { each: 0.09, ease: 'power2.inOut' },
-          clearProps: 'filter,x,scale',
-        });
+        gsap.fromTo([...wrap.querySelectorAll('.tg-pitch-choice')],
+          { opacity: 0, x: (i) => i % 2 === 0 ? 48 : -28, scale: 0.88, filter: 'blur(4px)' },
+          { opacity: 1, x: 0, scale: 1, filter: 'none',
+            duration: 0.52, ease: hasCE ? 'yank' : 'back.out(2)',
+            stagger: { each: 0.09, ease: 'power2.inOut' },
+            clearProps: 'all' },
+        );
+      } else {
+        [...wrap.querySelectorAll('.tg-pitch-choice')].forEach(b => b.style.opacity = '');
       }
       window._bc = idx => {
+        HAPTIC.tap();
         window._bc = () => {};
         [...wrap.querySelectorAll('.tg-pitch-choice')].forEach((b, i) => {
           b.disabled = true;
@@ -1399,10 +1445,12 @@ window.tgInitGame = async function () {
       const btn = document.createElement('button');
       btn.className = 'tg-pl tg-cont';
       btn.textContent = label;
-      btn.onclick = () => { btn.disabled = true; disintegrate(btn); setTimeout(resolve, 350); };
+      btn.onclick = () => { HAPTIC.tap(); btn.disabled = true; disintegrate(btn); setTimeout(resolve, 350); };
+      btn.style.opacity = '0'; // pre-invisible: no flash, no accidental tap on touchscreen
       pitch.appendChild(btn);
       scrollPitch();
-      if (hasGSAP) gsap.from(btn, { opacity: 0, y: 14, duration: 0.42, ease: 'power3.out' });
+      if (hasGSAP) gsap.fromTo(btn, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.42, ease: 'power3.out', clearProps: 'all' });
+      else btn.style.opacity = '';
     });
   }
 
@@ -1440,6 +1488,7 @@ window.tgInitGame = async function () {
       "I've seen a hundred behavioral tools. What makes this one different.",
       "I want to know who's building it before I read anything else.",
     ]);
+    firstChoice = idx;
     score([[1,2,0,0,1],[0,0,2,2,0],[0,1,0,3,0]][idx]);
     if (idx === 0) await sA1_curious();
     else if (idx === 1) await sB1_seen();
@@ -1448,6 +1497,7 @@ window.tgInitGame = async function () {
 
   // ── BRANCH A ──────────────────────────────────────────
   async function sA1_curious() {
+    branchPath.push('A1');
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The Signal Problem');
     await w(200);
@@ -1503,6 +1553,7 @@ window.tgInitGame = async function () {
   }
 
   async function sA2_soWhat() {
+    branchPath.push('A2a');
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The New Signal');
     await w(200);
@@ -1557,6 +1608,7 @@ window.tgInitGame = async function () {
   }
 
   async function sA2_beenTried() {
+    branchPath.push('A2b'); pushedBackOnData = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Why This Survives');
     await w(200);
@@ -1599,6 +1651,7 @@ window.tgInitGame = async function () {
 
   // ── BRANCH B ──────────────────────────────────────────
   async function sB1_seen() {
+    branchPath.push('B1');
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Not a Tool. A Layer.');
     await w(200);
@@ -1652,6 +1705,7 @@ window.tgInitGame = async function () {
   }
 
   async function sB2_b2b() {
+    branchPath.push('B2b');
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The B2B Model');
     await w(200);
@@ -1676,6 +1730,7 @@ window.tgInitGame = async function () {
   }
 
   async function sB2_dataset() {
+    branchPath.push('B2d');
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Who Owns the Data');
     await w(200);
@@ -1709,6 +1764,7 @@ window.tgInitGame = async function () {
 
   // ── BRANCH C ──────────────────────────────────────────
   async function sC1_founder() {
+    branchPath.push('C1'); usedFounderPath = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Helen Huang');
     await w(200);
@@ -1758,6 +1814,7 @@ window.tgInitGame = async function () {
   }
 
   async function sC2_conviction() {
+    branchPath.push('C2');
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The Insight');
     await w(200);
@@ -1797,6 +1854,7 @@ window.tgInitGame = async function () {
 
   // ── SHARED DEEP NODES ─────────────────────────────────
   async function sShared_traction() {
+    branchPath.push('traction');
     await w(900); line('', 'tg-pl', 16);
     chapter("Valentine's Day. $0 Spend.");
     await w(200);
@@ -1898,10 +1956,11 @@ window.tgInitGame = async function () {
     ]);
     score([[1,0,3,0,0],[1,0,1,1,0]][idx]);
     if (idx === 0) await sShared_moat();
-    else await sAsk();
+    else { wentStraightToAsk = true; await sAsk(); }
   }
 
   async function sShared_moat() {
+    branchPath.push('moat'); wentDeepOnMoat = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The Flywheel');
     await w(200);
@@ -1995,32 +2054,275 @@ window.tgInitGame = async function () {
     await sRevealArchetype();
   }
 
+  // ── RECAP SCREEN PRIMITIVE ────────────────────────────
+  function recapScreen(buildFn) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'tg-recap-overlay';
+      scene.appendChild(overlay);
+      buildFn(overlay);
+
+      const hint = document.createElement('div');
+      hint.className = 'tg-recap-hint';
+      hint.textContent = 'tap to continue';
+      overlay.appendChild(hint);
+
+      HAPTIC.begin();
+      if (hasGSAP) {
+        gsap.from(overlay, { y: '100%', duration: 0.55, ease: hasCE ? 'slam' : 'back.out(1.5)', clearProps: 'transform' });
+      }
+
+      const advance = () => {
+        HAPTIC.tap();
+        overlay.removeEventListener('click', advance);
+        if (hasGSAP) {
+          gsap.to(overlay, {
+            y: '-100%', duration: 0.42, ease: hasCE ? 'unfurl' : 'power3.in',
+            onComplete: () => { overlay.remove(); resolve(); },
+          });
+        } else {
+          overlay.remove();
+          resolve();
+        }
+      };
+      setTimeout(() => overlay.addEventListener('click', advance), 800);
+    });
+  }
+
+  // ── RECAP DATA BUILDER ────────────────────────────────
+  function buildRecapData(id) {
+    const arch = ARCHETYPES[id];
+    const firstChoiceLabels = ['signal skeptic', 'pattern matcher', 'team reader'];
+    const traitLines = {
+      cartographer: ['you mapped the unknown before committing', 'you ask "does this data exist?" — not "does this matter?"'],
+      contrarian:   ['you challenged the premise first', 'you needed to know what failed before you could trust what works'],
+      architect:    ['you went straight for structural defensibility', 'you think in systems, not features'],
+      operator:     ['you needed to know who built it', 'for you, the team is the thesis'],
+      storyteller:  ['you followed the narrative thread', 'you understand that the product is the proof'],
+    };
+    return {
+      id, arch,
+      pathLength: branchPath.length,
+      firstChoiceLabel: firstChoice !== null ? firstChoiceLabels[firstChoice] : 'curious',
+      traits: traitLines[id] || [],
+      wentDeepOnMoat, wentStraightToAsk, usedFounderPath, pushedBackOnData,
+    };
+  }
+
+  // ── EMAIL CAPTURE (standalone) ────────────────────────
+  async function emailCapture() {
+    return new Promise(resolveEmail => {
+      const emailDiv = document.createElement('div');
+      emailDiv.className = 'tg-pl';
+      emailDiv.innerHTML = `
+        <div class="tg-email-hero" id="tg-email-hero" style="opacity:0">curious?</div>
+        <div class="tg-email-parade" id="tg-email-parade"></div>
+        <div class="tg-email-sub" id="tg-email-sub" style="opacity:0">stay up to date with upcoming drops</div>
+        <div class="tg-email-list-lbl" id="tg-email-lbl" style="opacity:0">first-look list — one note when it's real</div>
+        <div class="tg-email-form" id="tg-email-form" style="opacity:0">
+          <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@somewhere.com" autocomplete="email">
+          <button class="tg-email-send" id="tg-email-send">→</button>
+        </div>
+        <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
+        <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
+      `;
+
+      const paradeEl = emailDiv.querySelector('#tg-email-parade');
+      [
+        { src: 'starhehe.png',    anim: 'spin'   },
+        { src: 'frog.png',        anim: 'bounce' },
+        { src: 'derpy.png',       anim: 'dance'  },
+        { src: 'turtle.png',      anim: 'bob'    },
+        { src: 'caterpillar.png', anim: 'wiggle' },
+        { src: 'babystar.png',    anim: 'spin2'  },
+      ].forEach(a => {
+        const img = document.createElement('img');
+        img.src = `./assets/${a.src}`;
+        img.dataset.anim = a.anim;
+        img.style.opacity = '0';
+        paradeEl.appendChild(img);
+      });
+
+      pitch.appendChild(emailDiv);
+      scrollPitch();
+
+      const submit = () => {
+        const val = emailDiv.querySelector('#tg-email-in')?.value?.trim();
+        if (!val || !val.includes('@')) {
+          HAPTIC.shatter();
+          const inp = emailDiv.querySelector('#tg-email-in');
+          if (inp) { inp.style.outline = '1px solid var(--shift)'; setTimeout(() => { inp.style.outline = ''; }, 1200); }
+          return;
+        }
+        HAPTIC.notif();
+        try {
+          const leads = JSON.parse(localStorage.getItem('tg-leads') || '[]');
+          leads.push({ email: val, archetype: getArchetype(), ts: Date.now() });
+          localStorage.setItem('tg-leads', JSON.stringify(leads));
+        } catch (e) {}
+        if (hasGSAP) {
+          gsap.to([emailDiv.querySelector('#tg-email-form'), emailDiv.querySelector('#tg-email-skip'), emailDiv.querySelector('#tg-email-fine')],
+            { opacity: 0, y: -6, duration: 0.25, stagger: 0.06 });
+          setTimeout(() => {
+            emailDiv.innerHTML = `<div style="font-family:var(--font-label);font-size:12px;color:var(--trace);letter-spacing:0.08em;padding:6px 0;opacity:0" id="tg-email-ok">you're on the list ✓</div>`;
+            gsap.to(emailDiv.querySelector('#tg-email-ok'), { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' });
+            setTimeout(resolveEmail, 800);
+          }, 350);
+        } else {
+          emailDiv.innerHTML = `<div class="tg-email-fine" style="opacity:0.8;font-size:13px;margin:6px 0">you're on the list ✓</div>`;
+          setTimeout(resolveEmail, 700);
+        }
+      };
+
+      if (hasGSAP) {
+        const heroEl    = emailDiv.querySelector('#tg-email-hero');
+        const subEl     = emailDiv.querySelector('#tg-email-sub');
+        const lblEl     = emailDiv.querySelector('#tg-email-lbl');
+        const formEl    = emailDiv.querySelector('#tg-email-form');
+        const skipEl    = emailDiv.querySelector('#tg-email-skip');
+        const fineEl    = emailDiv.querySelector('#tg-email-fine');
+        const paradeImgs = paradeEl.querySelectorAll('img');
+
+        const split = new SplitText(heroEl, { type: 'chars' });
+        gsap.set(heroEl, { opacity: 1 });
+        gsap.from(split.chars, {
+          opacity: 0, y: 36, scale: 0.5,
+          rotation: i => (Math.sin(i * 1.4) * 18),
+          duration: 0.55, ease: hasCE ? 'slam' : 'back.out(2.5)',
+          stagger: { each: 0.07, ease: 'power2.out' },
+          clearProps: 'transform,rotation',
+        });
+
+        paradeImgs.forEach((img, i) => {
+          gsap.fromTo(img,
+            { opacity: 0, y: 28, scale: 0.2, rotation: (i % 2 === 0 ? -30 : 30) },
+            { opacity: 1, y: 0,  scale: 1,   rotation: 0,
+              duration: 0.55, ease: 'elastic.out(1, 0.45)',
+              delay: 0.4 + i * 0.08,
+              onComplete: () => {
+                const anim = img.dataset.anim;
+                const d = 0.3 + Math.random() * 0.4;
+                if (anim === 'spin')   gsap.to(img, { rotation: 360,  duration: 2.2, ease: 'none',        repeat: -1, delay: d });
+                if (anim === 'spin2')  gsap.to(img, { rotation: -360, duration: 1.8, ease: 'none',        repeat: -1, delay: d });
+                if (anim === 'bounce') gsap.to(img, { y: -10, duration: 0.42, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'dance')  gsap.to(img, { x: 5, rotation: -12, duration: 0.22, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'bob')    gsap.to(img, { y: -6, rotation: 6,  duration: 1.1, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'wiggle') gsap.to(img, { rotation: 14, scaleX: -1, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+              },
+            }
+          );
+        });
+
+        gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4,  ease: 'power3.out', delay: 0.95 });
+        gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3,  ease: 'power2.out', delay: 1.15 });
+        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.3 });
+        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.48 });
+        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.58,
+          onComplete: () => { emailDiv.querySelector('#tg-email-in')?.focus(); },
+        });
+      } else {
+        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine']
+          .forEach(id => { const el = emailDiv.querySelector('#' + id); if (el) el.style.opacity = '1'; });
+        paradeEl.querySelectorAll('img').forEach(img => { img.style.opacity = '1'; });
+        emailDiv.querySelector('#tg-email-in')?.focus();
+      }
+
+      setTimeout(() => {
+        emailDiv.querySelector('#tg-email-in')?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+        emailDiv.querySelector('#tg-email-send')?.addEventListener('click', submit);
+        emailDiv.querySelector('#tg-email-skip')?.addEventListener('click', () => { HAPTIC.tap(); resolveEmail(); });
+      }, 80);
+    });
+  }
+
   // ── ARCHETYPE REVEAL ──────────────────────────────────
   async function sRevealArchetype() {
-    await w(900); line('', 'tg-pl', 16);
     window.tgAPI.setProgress(100);
-    await ringWipeChapter('you just told us something');
+
+    const id   = getArchetype();
+    const data = buildRecapData(id);
+    const arch = data.arch;
+
+    // ── Screen 1: path summary ────────────────────────────
+    await recapScreen(el => {
+      const badges = [];
+      if (data.pushedBackOnData)   badges.push('skeptic');
+      if (data.usedFounderPath)    badges.push('team-first');
+      if (data.wentDeepOnMoat)     badges.push('systems thinker');
+      if (data.wentStraightToAsk)  badges.push('decisive');
+      el.innerHTML = `
+        <div class="tg-recap-eyebrow">your session · wrapped</div>
+        <div class="tg-recap-big">${data.pathLength} moves.</div>
+        <div class="tg-recap-body">You came in as a <span class="tg-recap-hl">${data.firstChoiceLabel}</span>.</div>
+        <div class="tg-recap-body">${
+          data.wentDeepOnMoat     ? 'You stayed for the flywheel.' :
+          data.wentStraightToAsk  ? 'You cut to the ask.' :
+          data.usedFounderPath    ? 'You needed to know the founder first.' :
+                                    'You followed the signal.'
+        }</div>
+        ${badges.length ? `<div class="tg-recap-fine">${badges.join(' · ')}</div>` : '<div class="tg-recap-fine"></div>'}
+      `;
+    });
+
+    // ── Screen 2: trait signal ────────────────────────────
+    await recapScreen(el => {
+      el.style.background = 'var(--shift)';
+      el.innerHTML = `
+        <div class="tg-recap-eyebrow" style="color:var(--anchor)">pattern detected</div>
+        <div class="tg-recap-big" style="color:var(--anchor)">${data.traits[0] || 'you paid attention'}.</div>
+        <div class="tg-recap-body" style="color:var(--anchor);opacity:0.72">${data.traits[1] || ''}</div>
+      `;
+    });
+
+    // ── Screen 3: archetype name ──────────────────────────
+    await recapScreen(el => {
+      el.style.background = 'var(--anchor)';
+      el.innerHTML = `
+        <div class="tg-recap-eyebrow" style="color:var(--trace)">your investor archetype</div>
+        <div class="tg-recap-arch-name" id="tg-recap-arch-name" style="color:var(--shift)">${arch.name}</div>
+        <div class="tg-recap-body" style="color:rgba(255,255,255,0.68)">${arch.sub}</div>
+      `;
+      if (hasGSAP) {
+        const nameEl = el.querySelector('#tg-recap-arch-name');
+        if (nameEl) {
+          const split = new SplitText(nameEl, { type: 'chars' });
+          gsap.from(split.chars, {
+            opacity: 0, y: 44, scale: 0.25,
+            rotation: i => Math.sin(i * 1.4) * 22,
+            duration: 0.68, ease: hasCE ? 'slam' : 'back.out(2.5)',
+            stagger: { each: 0.07, ease: 'power2.out' },
+            delay: 0.18,
+          });
+        }
+      }
+      HAPTIC.notif();
+    });
+
+    // ── Screen 4: archetype description ──────────────────
+    await recapScreen(el => {
+      el.style.background = 'var(--trace)';
+      el.innerHTML = `
+        <div class="tg-recap-eyebrow" style="color:var(--anchor)">${arch.name}</div>
+        <div class="tg-recap-big" style="color:var(--anchor);font-size:clamp(18px,6.5cqw,28px);line-height:1.25">${arch.desc}</div>
+        <div class="tg-recap-body" style="color:var(--anchor);opacity:0.72;margin-top:18px">${arch.together}</div>
+      `;
+    });
+
     await w(300);
-    // Type B — setup
-    await reveal(line('Not about <span class="tg-hl-b">Trove.</span>', 'tg-pl--med'), {
-      y: 16, stagger: 0.05, duration: 0.44, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
-    await w(500); // hold — let them wonder
-    // Type A — landing line
-    flash();
-    await reveal(line('About how you think.', 'tg-pl--big'), {
-      type: 'chars', y: 0,
-      scale: () => gsap.utils.random(0.1, 0.5),
-      rotation: () => gsap.utils.random(-15, 15),
-      stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(2.5)',
-    });
-    await w(600);
-    await dimLines('The order you explored. The questions you needed answered first. What made you lean forward and what made you push back.', 180);
-    await w(300);
-    await reveal(line('That\'s a Trove profile. You built one just now — <span class="tg-hl">without filling out a single form.</span>', 'tg-pl--med tg-pl--italic'), {
-      y: 14, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
-    await w(600);
+
+    // ── Blue flash back to pitch ──────────────────────────
+    if (hasGSAP && scene) {
+      HAPTIC.notif();
+      const cover = document.createElement('div');
+      cover.style.cssText = 'position:absolute;inset:0;background:#88ABE3;z-index:100;pointer-events:none;opacity:0;';
+      scene.appendChild(cover);
+      await new Promise(r =>
+        gsap.timeline({ onComplete: r })
+          .to(cover, { opacity: 1, duration: 0.22, ease: 'power2.in' })
+          .to(cover, { opacity: 0, duration: 0.42, ease: 'power2.out', delay: 0.18 })
+          .call(() => cover.remove())
+      );
+    }
 
     // ── TroveOh → TroveLogo animation ──
     await new Promise(resolve => {
@@ -2037,7 +2339,6 @@ window.tgInitGame = async function () {
       pitch.appendChild(wrap);
       scrollPitch();
 
-      // Wait for images to load before measuring
       let loaded = 0;
       const onLoad = () => { if (++loaded < 2) return; go(); };
       wordImg.onload = onLoad; ohImg.onload = onLoad;
@@ -2045,9 +2346,9 @@ window.tgInitGame = async function () {
       if (ohImg.complete)   onLoad();
 
       function go() {
-        const W    = wordImg.offsetWidth  || 88;
-        const ohW  = ohImg.offsetWidth    || 24;
-        const gap  = 14;
+        const W           = wordImg.offsetWidth  || 88;
+        const ohW         = ohImg.offsetWidth    || 24;
+        const gap         = 14;
         const startX      = W + gap;
         const endX        = Math.round(W * 0.48 - ohW / 2);
         const totalDur    = 2100;
@@ -2069,161 +2370,18 @@ window.tgInitGame = async function () {
           ohImg.style.opacity   = String(1 - cp);
           wordImg.style.opacity = String(cp);
           if (p < 1) requestAnimationFrame(frame);
-          else { ohImg.remove(); resolve(); }
+          else { ohImg.remove(); HAPTIC.burst(); resolve(); }
         }
         requestAnimationFrame(frame);
       }
     });
-    await w(500); // hold on the wordmark
+    await w(500);
 
-    // ── Email capture — gate before archetype reveal ───────────────────────
-    await new Promise(resolveEmail => {
-      const emailDiv = document.createElement('div');
-      emailDiv.className = 'tg-pl';
-      emailDiv.innerHTML = `
-        <div class="tg-email-hero" id="tg-email-hero" style="opacity:0">curious?</div>
-        <div class="tg-email-parade" id="tg-email-parade"></div>
-        <div class="tg-email-sub" id="tg-email-sub" style="opacity:0">stay up to date with upcoming drops</div>
-        <div class="tg-email-list-lbl" id="tg-email-lbl" style="opacity:0">first-look list — one note when it's real</div>
-        <div class="tg-email-form" id="tg-email-form" style="opacity:0">
-          <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@somewhere.com" autocomplete="email">
-          <button class="tg-email-send" id="tg-email-send">→</button>
-        </div>
-        <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
-        <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
-      `;
-
-      // Build avatar parade
-      const paradeEl = document.getElementById('tg-email-parade');
-      [
-        { src: 'starhehe.png',    anim: 'spin'   },
-        { src: 'frog.png',        anim: 'bounce' },
-        { src: 'derpy.png',       anim: 'dance'  },
-        { src: 'turtle.png',      anim: 'bob'    },
-        { src: 'caterpillar.png', anim: 'wiggle' },
-        { src: 'babystar.png',    anim: 'spin2'  },
-      ].forEach(a => {
-        const img = document.createElement('img');
-        img.src = `./assets/${a.src}`;
-        img.dataset.anim = a.anim;
-        img.style.opacity = '0';
-        paradeEl.appendChild(img);
-      });
-
-      pitch.appendChild(emailDiv);
-      scrollPitch();
-
-      const submit = () => {
-        const val = document.getElementById('tg-email-in')?.value?.trim();
-        if (!val || !val.includes('@')) {
-          const inp = document.getElementById('tg-email-in');
-          if (inp) { inp.style.outline = '1px solid var(--shift)'; setTimeout(() => { inp.style.outline = ''; }, 1200); }
-          return;
-        }
-        try {
-          const leads = JSON.parse(localStorage.getItem('tg-leads') || '[]');
-          leads.push({ email: val, archetype: getArchetype(), ts: Date.now() });
-          localStorage.setItem('tg-leads', JSON.stringify(leads));
-        } catch (e) {}
-        if (hasGSAP) {
-          gsap.to(['#tg-email-form','#tg-email-skip','#tg-email-fine'], { opacity: 0, y: -6, duration: 0.25, stagger: 0.06 });
-          setTimeout(() => {
-            emailDiv.innerHTML = `<div style="font-family:var(--font-label);font-size:12px;color:var(--trace);letter-spacing:0.08em;padding:6px 0;opacity:0" id="tg-email-ok">you're on the list ✓</div>`;
-            gsap.to('#tg-email-ok', { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' });
-            setTimeout(resolveEmail, 800);
-          }, 350);
-        } else {
-          emailDiv.innerHTML = `<div class="tg-email-fine" style="opacity:0.8;font-size:13px;margin:6px 0">you're on the list ✓</div>`;
-          setTimeout(resolveEmail, 700);
-        }
-      };
-
-      if (hasGSAP) {
-        const heroEl   = document.getElementById('tg-email-hero');
-        const subEl    = document.getElementById('tg-email-sub');
-        const lblEl    = document.getElementById('tg-email-lbl');
-        const formEl   = document.getElementById('tg-email-form');
-        const skipEl   = document.getElementById('tg-email-skip');
-        const fineEl   = document.getElementById('tg-email-fine');
-        const paradeImgs = paradeEl.querySelectorAll('img');
-
-        // 1. Slam "curious?" char by char
-        const split = new SplitText(heroEl, { type: 'chars' });
-        gsap.set(heroEl, { opacity: 1 });
-        gsap.from(split.chars, {
-          opacity: 0, y: 36, scale: 0.5,
-          rotation: i => (Math.sin(i * 1.4) * 18),
-          duration: 0.55, ease: hasCE ? 'slam' : 'back.out(2.5)',
-          stagger: { each: 0.07, ease: 'power2.out' },
-          clearProps: 'transform,rotation',
-        });
-
-        // 2. Avatars bounce in one by one, then loop
-        paradeImgs.forEach((img, i) => {
-          gsap.fromTo(img,
-            { opacity: 0, y: 28, scale: 0.2, rotation: (i % 2 === 0 ? -30 : 30) },
-            { opacity: 1, y: 0,  scale: 1,   rotation: 0,
-              duration: 0.55, ease: 'elastic.out(1, 0.45)',
-              delay: 0.4 + i * 0.08,
-              onComplete: () => {
-                // Each avatar gets its own looping personality
-                const anim = img.dataset.anim;
-                const d = 0.3 + Math.random() * 0.4; // slight random offset per character
-                if (anim === 'spin')   gsap.to(img, { rotation: 360,  duration: 2.2, ease: 'none',        repeat: -1, delay: d });
-                if (anim === 'spin2')  gsap.to(img, { rotation: -360, duration: 1.8, ease: 'none',        repeat: -1, delay: d });
-                if (anim === 'bounce') gsap.to(img, { y: -10, duration: 0.42, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'dance')  gsap.to(img, { x: 5, rotation: -12, duration: 0.22, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'bob')    gsap.to(img, { y: -6, rotation: 6,  duration: 1.1, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'wiggle') gsap.to(img, { rotation: 14, scaleX: -1, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-              },
-            }
-          );
-        });
-
-        // 3. Sub-text and label fade up
-        gsap.fromTo(subEl, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.95 });
-        gsap.fromTo(lblEl, { opacity: 0 },         { opacity: 1,       duration: 0.3, ease: 'power2.out', delay: 1.15 });
-
-        // 4. Form + supporting copy slide up
-        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.3 });
-        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.48 });
-        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.58,
-          onComplete: () => { document.getElementById('tg-email-in')?.focus(); },
-        });
-      } else {
-        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine']
-          .forEach(id => { const el = document.getElementById(id); if (el) el.style.opacity = '1'; });
-        paradeEl.querySelectorAll('img').forEach(img => { img.style.opacity = '1'; });
-        document.getElementById('tg-email-in')?.focus();
-      }
-
-      setTimeout(() => {
-        const inp = document.getElementById('tg-email-in');
-        inp?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-        document.getElementById('tg-email-send')?.addEventListener('click', submit);
-        document.getElementById('tg-email-skip')?.addEventListener('click', resolveEmail);
-      }, 80);
-    });
+    // ── Email capture ─────────────────────────────────────
+    await emailCapture();
     await w(400);
 
-    // ── Screen takeover: blue flash before archetype ──
-    if (hasGSAP && scene) {
-      if (window.HAPTIC) HAPTIC.notification('success');
-      const cover = document.createElement('div');
-      cover.style.cssText =
-        'position:absolute;inset:0;background:#88ABE3;z-index:100;pointer-events:none;opacity:0;';
-      scene.appendChild(cover);
-      await new Promise(r =>
-        gsap.timeline({ onComplete: r })
-          .to(cover, { opacity: 1, duration: 0.22, ease: 'power2.in' })
-          .to(cover, { opacity: 0, duration: 0.42, ease: 'power2.out', delay: 0.18 })
-          .call(() => cover.remove())
-      );
-    }
-
-    const id   = getArchetype();
-    const arch = ARCHETYPES[id];
-
+    // ── Profile card ──────────────────────────────────────
     const archetypeAssets = {
       cartographer: { src: 'camera.png',    opts: { right: '-28px', top: '-12px', w: 56 } },
       contrarian:   { src: 'boomerand.png', opts: { right: '-24px', top: '-8px',  w: 52, fromRot: -45, toRot: 8 } },
@@ -2243,31 +2401,26 @@ window.tgInitGame = async function () {
     `;
     pitch.appendChild(profileCard);
     scrollPitch();
+    HAPTIC.card();
     if (hasGSAP) {
       await new Promise(r => gsap.from(profileCard, { opacity: 0, y: 26, scale: 0.96, duration: 0.55, ease: 'back.out(2)', clearProps: 'all', onComplete: r }));
     }
 
-    // Big asset burst from profile card
     assetBurst(profileCard, 'celebrate', 18);
-
     await w(350);
 
-    // Archetype asset pops in on the profile card
     profileCard.style.position = 'relative'; profileCard.style.overflow = 'visible';
     const { src, opts } = archetypeAssets[id];
     profileCard.appendChild(decal(src, 'tg-decal--bob', { ...opts, delay: 0 }));
-    // Orbiting ring around the profile card after asset lands
     setTimeout(() => orbitingTextRing(profileCard,
       `\u2736 ${arch.name.toUpperCase()} \u2736 TROVE INVESTOR \u2736 `), 700);
 
     await w(300);
 
-    // Fix 3: wordPop on archetype name
     const nameEl = document.getElementById('tg-arch-name');
     if (nameEl) {
       const originalName = nameEl.textContent;
       await wordPop(nameEl, originalName, ['#DBD59C', '#88ABE3', '#DBD59C', '#88ABE3', '#DBD59C']);
-      // Underline decoration after pop settles
       nameEl.style.textDecoration = 'underline';
       nameEl.style.textDecorationColor = 'var(--trace)';
       nameEl.style.textDecorationThickness = '2px';
@@ -2275,11 +2428,12 @@ window.tgInitGame = async function () {
     }
     await w(700);
 
-    // Share button lives on the profile card — canvas generated silently on tap
+    // Share button
     const shareBtn = document.createElement('button');
     shareBtn.className = 'tg-share-btn-main';
     shareBtn.textContent = 'share this →';
     shareBtn.onclick = async () => {
+      HAPTIC.tap();
       shareBtn.textContent = 'generating…';
       shareBtn.disabled = true;
       try {
@@ -2287,11 +2441,7 @@ window.tgInitGame = async function () {
         const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
         const file = new File([blob], `trove-${id}.png`, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: arch.name,
-            text: `${arch.name} — ${arch.sub}\n\ntrove.garden`,
-            files: [file],
-          });
+          await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}\n\ntrove.garden`, files: [file] });
         } else if (navigator.share) {
           await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}`, url: 'https://trove.garden' });
         } else {
@@ -2310,12 +2460,31 @@ window.tgInitGame = async function () {
     profileCard.appendChild(shareBtn);
     if (hasGSAP) gsap.from(shareBtn, { opacity: 0, y: 10, duration: 0.4, ease: 'power3.out', delay: 0.15 });
 
+    // ── Contact card ──────────────────────────────────────
     const contact = document.createElement('div');
-    contact.className = 'tg-pl tg-contact';
-    contact.innerHTML = `<div>Helen Huang · Founder, Trove</div><div><a href="mailto:helen@trove.garden">helen@trove.garden</a></div>`;
+    contact.className = 'tg-pl tg-contact-card';
+    contact.innerHTML = `
+      <div class="tg-p-tag">want to talk?</div>
+      <div style="font-family:var(--font-display);font-size:clamp(18px,6cqw,24px);font-weight:700;margin:6px 0 4px">Helen Huang · Founder, Trove</div>
+      <a href="mailto:helen@trove.garden" style="font-family:var(--font-label);font-size:13px;color:var(--trace);letter-spacing:0.04em;text-decoration:none">helen@trove.garden</a>
+    `;
     pitch.appendChild(contact);
     scrollPitch();
     if (hasGSAP) gsap.from(contact, { opacity: 0, y: 18, duration: 0.48, ease: 'back.out(2)' });
+
+    // ── Play again ────────────────────────────────────────
+    await w(400);
+    const playAgain = document.createElement('button');
+    playAgain.className = 'tg-pl tg-play-again';
+    playAgain.textContent = 'play again →';
+    playAgain.onclick = () => {
+      HAPTIC.tap();
+      if (hasGSAP) gsap.to(pitch, { opacity: 0, duration: 0.35, onComplete: () => window.tgInitGame?.() });
+      else window.tgInitGame?.();
+    };
+    pitch.appendChild(playAgain);
+    scrollPitch();
+    if (hasGSAP) gsap.from(playAgain, { opacity: 0, y: 14, duration: 0.38, ease: 'power3.out', delay: 0.2 });
     setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 150);
   }
 
@@ -2407,7 +2576,7 @@ window.tgInitGame = async function () {
   const spinEl = line(spinWords[0], 'tg-pl--big', 4);
   for (let i = 0; i < spinSeq.length; i++) {
     spinEl.textContent = spinWords[spinSeq[i]];
-    window.HAPTIC?.tap?.();
+    HAPTIC.tap();
     if (i < spinDelays.length) await w(spinDelays[i]);
   }
   // Scale pulse on settle — like it landed
@@ -2416,7 +2585,7 @@ window.tgInitGame = async function () {
       { scale: 1.18 },
       { scale: 1, duration: 0.55, ease: 'elastic.out(1, 0.52)' }
     );
-    window.HAPTIC?.burst?.();
+    HAPTIC.burst();
   }
   await w(900);
 

@@ -1086,7 +1086,7 @@
     /* ══════════════════════════════════════════════════════════════
        TANGLE ENGINE — slides up inside phone screen on CTA tap
     ══════════════════════════════════════════════════════════════ */
-    let tangleSceneIdx = 0, tangleLastChoice = 0, tangleOpen = false;
+    let tangleSceneIdx = 0, tangleLastChoice = 0, tangleOpen = false, tangleClockInterval = null;
     let tangleTiltStart = null, tangleTiltDir = 0;
     let tangleCamZ = null; // when set, animate camera toward this z
     let tangleCamZOrigin = null; // saved camera z before zoom, restored on close
@@ -1156,6 +1156,7 @@
 
     window.tClose = function() {
       tangleOpen = false;
+      clearInterval(tangleClockInterval); tangleClockInterval = null;
       tangleCamZ = tangleCamZOrigin; // lerp back to original z on close
       tangleTiltStart = performance.now(); tangleTiltDir = 1;
       const scr   = document.getElementById('tangle-screen');
@@ -1316,6 +1317,14 @@
       tangleCamZOrigin = camera.position.z;
       tangleCamZ = camera.position.z - camZoomIn;
       tangleOpen = true;
+
+      // Keep status-bar clock live, same as lockscreen
+      tangleClockInterval = setInterval(() => {
+        const el = document.getElementById('t-status-time');
+        if (!el) { clearInterval(tangleClockInterval); return; }
+        const n = new Date();
+        el.textContent = (n.getHours() % 12 || 12) + ':' + String(n.getMinutes()).padStart(2, '0');
+      }, 10000);
       scr.classList.add('active');
 
       // Zoom + fade in simultaneously with phone rotating to head-on
