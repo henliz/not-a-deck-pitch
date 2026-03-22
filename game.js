@@ -160,6 +160,71 @@ window.tgInitGame = async function () {
   let ringColorIdx = 0;
   let statColorIdx = 0;
 
+  const BURST_SETS = {
+    celebrate: ['babystar.png','starhehe.png','flower.png','icecream.png','coin.png'],
+    data:      ['id.png','camera.png','watch.png','apple.png','lightbulb.png'],
+    viral:     ['banana.png','boomerand.png','bubbleblower.png','phone.png','headphones.png'],
+    moat:      ['house.png','frog.png','bread.png','turtle.png','socks.png'],
+    founder:   ['mic.png','gaming.png','caterpillar.png','flower.png','babystar.png'],
+  };
+
+  /* Spawn image assets exploding outward from originEl.
+     setName matches a BURST_SETS key. count = number of imgs. */
+  function assetBurst(originEl, setName = 'celebrate', count = 10) {
+    if (!hasGSAP || !originEl) return;
+    const set  = BURST_SETS[setName] || BURST_SETS.celebrate;
+    const rect = originEl.getBoundingClientRect();
+    const ox   = rect.left + rect.width  / 2;
+    const oy   = rect.top  + rect.height / 2;
+    for (let i = 0; i < count; i++) {
+      const img = document.createElement('img');
+      img.src   = `./assets/${set[i % set.length]}`;
+      const sz  = 28 + Math.random() * 24;
+      img.style.cssText =
+        `position:fixed;width:${sz}px;height:${sz}px;object-fit:contain;` +
+        `left:${ox}px;top:${oy}px;transform:translate(-50%,-50%);` +
+        `pointer-events:none;z-index:9999;`;
+      document.body.appendChild(img);
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 60 + Math.random() * 120;
+      const tx    = Math.cos(angle) * dist;
+      const ty    = Math.sin(angle) * dist;
+      const rot   = (Math.random() - 0.5) * 720;
+      const dur   = 0.8 + Math.random() * 0.4;
+      gsap.timeline()
+        .fromTo(img,
+          { x: 0, y: 0, scale: 0, rotation: 0, opacity: 1 },
+          { x: tx, y: ty, scale: 1, rotation: rot, opacity: 1,
+            duration: dur, ease: 'elastic.out(1, 0.5)' })
+        .to(img, { opacity: 0, scale: 0.5, duration: 0.28, ease: 'power2.in',
+          onComplete: () => img.remove() });
+    }
+  }
+
+  /* Flash a single asset across the scene — left→right sweep, peaks at 0.35 opacity. */
+  function fullScreenAssetSweep(src) {
+    if (!hasGSAP || !scene) return;
+    const scW = scene.offsetWidth  || 320;
+    const scH = scene.offsetHeight || 600;
+    const img = document.createElement('img');
+    img.src = `./assets/${src}`;
+    img.style.cssText =
+      `position:absolute;left:0;top:50%;width:${scW}px;height:auto;` +
+      `transform:translateY(-50%) translateX(-110%);` +
+      `pointer-events:none;z-index:150;opacity:0;`;
+    scene.appendChild(img);
+    gsap.timeline({ onComplete: () => img.remove() })
+      .to(img, {
+        x: scW * 2.1,
+        rotation: (Math.random() - 0.5) * 10,
+        opacity: 0.35,
+        duration: 0.55,
+        ease: 'power2.inOut',
+      })
+      .to(img, { opacity: 0, duration: 0.18, ease: 'power2.in' }, '-=0.14');
+  }
+
+
   function scrollPitch() {
     if (hasGSAP) {
       gsap.to(pitch, { scrollTop: pitch.scrollHeight, duration: 0.6, ease: 'power3.out', overwrite: true });
@@ -531,7 +596,7 @@ window.tgInitGame = async function () {
 
     const txt = document.createElementNS(ns, 'text');
     txt.style.cssText =
-      `font-family:'DM Mono',monospace;font-size:10px;` +
+      `font-family:var(--font-body);font-size:10px;` +
       `fill:rgba(136,171,227,0.65);letter-spacing:1.5px;`;
     const tp = document.createElementNS(ns, 'textPath');
     tp.setAttribute('href', `#${pid}`);
@@ -556,6 +621,222 @@ window.tgInitGame = async function () {
       setTimeout(() => svg.remove(), 5000);
     }
     return svg;
+  }
+
+  /* ── curveText: SVG arc label above/below an image element ─────────────
+     opts: { radius=52, arc=160, above=true, color, fontSize, delay }      */
+  function curveText(anchorEl, text, opts = {}) {
+    const R    = opts.radius   || 52;
+    const arc  = opts.arc      || 160;  // degrees of arc to span
+    const above= opts.above !== false;
+    const col  = opts.color    || 'rgba(136,171,227,0.75)';
+    const fs   = opts.fontSize || 9;
+    const delay= opts.delay    || 0;
+
+    const D   = R * 2 + 24;
+    const ns  = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width',   D);
+    svg.setAttribute('height',  D);
+    svg.setAttribute('viewBox', `0 0 ${D} ${D}`);
+    svg.style.cssText =
+      `position:absolute;pointer-events:none;z-index:31;opacity:0;overflow:visible;` +
+      (above
+        ? `bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:-${R * 0.35}px;`
+        : `top:100%;left:50%;transform:translateX(-50%);margin-top:-${R * 0.35}px;`);
+
+    const pid  = `ct-${Math.random().toString(36).slice(2, 7)}`;
+    const defs = document.createElementNS(ns, 'defs');
+
+    // Build arc path
+    const cx = D / 2, cy = D / 2;
+    const startDeg = above ? (270 - arc / 2) : (90 - arc / 2);
+    const endDeg   = above ? (270 + arc / 2) : (90 + arc / 2);
+    const toRad = d => d * Math.PI / 180;
+    const sx = cx + R * Math.cos(toRad(startDeg));
+    const sy = cy + R * Math.sin(toRad(startDeg));
+    const ex = cx + R * Math.cos(toRad(endDeg));
+    const ey = cy + R * Math.sin(toRad(endDeg));
+    const largeArc = arc > 180 ? 1 : 0;
+    const sweep    = 1;
+
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('id', pid);
+    path.setAttribute('d', `M ${sx} ${sy} A ${R} ${R} 0 ${largeArc} ${sweep} ${ex} ${ey}`);
+    path.setAttribute('fill', 'none');
+    defs.appendChild(path);
+    svg.appendChild(defs);
+
+    const txt = document.createElementNS(ns, 'text');
+    txt.style.cssText =
+      `font-family:var(--font-body);font-size:${fs}px;` +
+      `fill:${col};letter-spacing:1.8px;text-anchor:middle;`;
+    const tp = document.createElementNS(ns, 'textPath');
+    tp.setAttribute('href', `#${pid}`);
+    tp.setAttribute('startOffset', '50%');
+    tp.textContent = text;
+    txt.appendChild(tp);
+    svg.appendChild(txt);
+
+    anchorEl.style.position = 'relative';
+    anchorEl.style.overflow = 'visible';
+    anchorEl.appendChild(svg);
+
+    if (hasGSAP) {
+      gsap.fromTo(svg, { opacity: 0, scale: 0.8 },
+        { opacity: 1, scale: 1, duration: 0.5, delay, ease: 'back.out(2)',
+          transformOrigin: '50% 50%' });
+      gsap.to(svg, { opacity: 0, duration: 0.4, delay: delay + 4.5,
+        onComplete: () => svg.remove() });
+    } else {
+      setTimeout(() => { svg.style.opacity = '1'; }, delay * 1000);
+      setTimeout(() => svg.remove(), (delay + 5) * 1000);
+    }
+    return svg;
+  }
+
+  /* ── typewriterLine: character-by-character reveal with blinking cursor ─
+     Returns the element. resolves when full text is visible.              */
+  async function typewriterLine(text, cls = 'tg-pl--med', cpm = 38) {
+    const el     = line('', cls);
+    el.style.minHeight = '1.4em';
+    const cursor = document.createElement('span');
+    cursor.className = 'tg-cursor';
+    el.appendChild(cursor);
+    const ms = Math.max(18, Math.round(60000 / cpm / 5));
+    for (const ch of text) {
+      el.insertBefore(document.createTextNode(ch), cursor);
+      window.HAPTIC?.begin?.();
+      await w(ms + (Math.random() * ms * 0.4 | 0));
+    }
+    await w(420);
+    if (hasGSAP) {
+      gsap.to(cursor, { opacity: 0, duration: 0.22, onComplete: () => cursor.remove() });
+    } else {
+      cursor.remove();
+    }
+    scrollPitch();
+    return el;
+  }
+
+  /* ── wordPop: words slam in one-by-one, optionally coloured ─────────────
+     colorSequence: array of CSS color strings (cycles), null = default text
+     Returns the container element.                                         */
+  async function wordPop(el, text, colorSequence = null) {
+    const words = text.split(' ');
+    el.textContent = '';
+    el.style.display = 'flex';
+    el.style.flexWrap = 'wrap';
+    el.style.gap = '0.25em';
+    el.style.alignItems = 'baseline';
+
+    for (let i = 0; i < words.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = words[i];
+      if (colorSequence) {
+        const col = colorSequence[i % colorSequence.length];
+        if (col) {
+          span.className = 'tg-word-pill';
+          span.style.background = col + '22';
+          span.style.color = col;
+        }
+      }
+      el.appendChild(span);
+
+      if (hasGSAP) {
+        await new Promise(r =>
+          gsap.from(span, {
+            opacity: 0,
+            y: -18,
+            scale: 1.4,
+            duration: 0.28,
+            ease: hasCE ? 'snap' : 'back.out(3)',
+            clearProps: 'all',
+            onComplete: r,
+          })
+        );
+      } else {
+        await w(80);
+      }
+      window.HAPTIC?.tap?.();
+      await w(55);
+    }
+    return el;
+  }
+
+  /* ── testimonialReel: staggered quote cards ─────────────────────────────
+     quotes: [{ text, attr }]                                              */
+  async function testimonialReel(quotes) {
+    const wrap = document.createElement('div');
+    wrap.className = 'tg-pl';
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.gap = '0';
+    pitch.appendChild(wrap);
+    scrollPitch();
+
+    for (const q of quotes) {
+      const card = document.createElement('div');
+      card.className = 'tg-testimonial';
+      card.innerHTML = `${q.text}<span class="tg-testimonial-attr">${q.attr}</span>`;
+      wrap.appendChild(card);
+      scrollPitch();
+
+      if (hasGSAP) {
+        await new Promise(r =>
+          gsap.to(card, {
+            opacity: 1, y: 0, duration: 0.42,
+            ease: hasCE ? 'unfurl' : 'power3.out',
+            onComplete: r,
+          })
+        );
+      } else {
+        card.style.opacity = '1';
+        await w(500);
+      }
+      await w(320);
+    }
+    return wrap;
+  }
+
+  /* ── statsFormation: 3-cell inline formation block (for sAsk) ───────────
+     cells: [{ n, l }]                                                     */
+  async function statsFormation(cells) {
+    const grid = document.createElement('div');
+    grid.className = 'tg-pl tg-stats-formation';
+    grid.style.opacity = '0';
+    cells.forEach(c => {
+      grid.innerHTML += `<div class="tg-sf-cell"><span class="tg-sf-n">${c.n}</span><span class="tg-sf-l">${c.l}</span></div>`;
+    });
+    pitch.appendChild(grid);
+    scrollPitch();
+
+    if (hasGSAP) {
+      await new Promise(r =>
+        gsap.fromTo(grid,
+          { opacity: 0, y: 18 },
+          { opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.5)', clearProps: 'transform', onComplete: r }
+        )
+      );
+    } else {
+      grid.style.opacity = '1';
+    }
+    return grid;
+  }
+
+  /* ── dimLines: split a long paragraph at sentence boundaries and reveal
+     each chunk separately with breathing room between them.               */
+  async function dimLines(text, gap = 200) {
+    const chunks = text
+      .split('. ')
+      .map((s, i, arr) => i < arr.length - 1 ? s.trimEnd() + '.' : s.trimEnd())
+      .filter(Boolean);
+    for (const chunk of chunks) {
+      await reveal(line(chunk, 'tg-pl--dim'), {
+        y: 8, stagger: 0.022, duration: 0.34, ease: hasCE ? 'unfurl' : 'power3.out',
+      });
+      if (gap > 0) await w(gap);
+    }
   }
 
   /* ── Single Wrapped-style stat card ──────────────────────────────────────
@@ -639,17 +920,9 @@ window.tgInitGame = async function () {
         );
       }
 
-      // Mini confetti burst from card center after it lands
-      if (window.confetti) {
-        const rect = card.getBoundingClientRect();
-        const ox = (rect.left + rect.width  * 0.5) / window.innerWidth;
-        const oy = (rect.top  + rect.height * 0.5) / window.innerHeight;
-        setTimeout(() => confetti({
-          particleCount: 22, spread: 60, origin: { x: ox, y: oy },
-          colors: [pal.bg, pal.fg, '#FFFBCD', '#88ABE3'],
-          scalar: 0.65, ticks: 70,
-        }), 380);
-      }
+      // Asset burst from card center after it lands
+      setTimeout(() => assetBurst(card, 'data'), 380);
+      if (stat.sweep) setTimeout(() => fullScreenAssetSweep(stat.sweep), 520);
     } else {
       card.querySelector('.tg-stat-n').style.cssText = `opacity:1;transform:none;color:${pal.fg}`;
       card.querySelector('.tg-stat-l').style.cssText = `opacity:0.84;color:${pal.fg}`;
@@ -657,36 +930,55 @@ window.tgInitGame = async function () {
     return card;
   }
 
-  /* ── Ambient background floaters ─────────────────────────────────────── */
+  /* ── Ambient crowd floaters ──────────────────────────────────────────────
+     Character/avatar assets spread over the full scroll height — a crowd
+     watching the pitch. One every ~180px, random left/right, visible but
+     not obtrusive. Drop ./assets/g/g0.png…g12.png in to upgrade to avatars. */
   function spawnAmbientFloaters() {
-    const srcs = ['flower.png','babystar.png','apple.png','starhehe.png'];
-    srcs.forEach((src, i) => {
-      const img  = document.createElement('img');
-      img.src    = `./assets/${src}`;
-      const pct  = 6 + i * 22 + Math.random() * 10;
-      const sz   = 16 + Math.random() * 10;
+    // Use real avatar assets (g0–g12); fall back to sticker assets if needed
+    const gSrcs = Array.from({ length: 13 }, (_, i) => `./avatars/g${i}.png`);
+    const fallback = [
+      './assets/derpy.png','./assets/frog.png','./assets/caterpillar.png',
+      './assets/flower.png','./assets/flowerpot.png','./assets/starhehe.png',
+      './assets/babystar.png','./assets/coin.png','./assets/bread.png',
+      './assets/turtle.png','./assets/waller.png','./assets/apple.png',
+    ];
+
+    // Probe first avatar; if it 404s, swap to fallback
+    let srcs = gSrcs;
+    const probe = new Image();
+    probe.onerror = () => { srcs = fallback; };
+    probe.src = gSrcs[0];
+
+    // Estimate scroll height; place one floater every ~200px
+    const estH  = Math.max(pitch.scrollHeight, 2400);
+    const count = Math.round(estH / 200);
+
+    for (let i = 0; i < count; i++) {
+      const src = srcs[i % srcs.length];
+      const img = document.createElement('img');
+      img.src   = src;
+      const sz  = 34 + Math.random() * 22;           // 34–56px
+      const pct = 5  + Math.random() * 82;            // 5–87% left
+      const top = 80 + i * 200 + (Math.random() - 0.5) * 70;
       img.style.cssText =
-        `position:absolute;left:${pct}%;top:${55 + i * 90}px;` +
+        `position:absolute;left:${pct}%;top:${top}px;` +
         `width:${sz}px;height:auto;opacity:0;pointer-events:none;` +
-        `z-index:1;will-change:transform;`;
+        `z-index:1;will-change:transform;border-radius:50%;`;
       pitch.appendChild(img);
       if (hasGSAP) {
-        gsap.to(img, { opacity: 0.10 + Math.random() * 0.09,
-          duration: 1.4, delay: i * 0.25, ease: 'power2.out' });
+        const targetOp = 0.22 + Math.random() * 0.13;  // 22–35%
+        gsap.to(img, { opacity: targetOp,
+          duration: 1.8, delay: i * 0.07, ease: 'power2.out' });
         gsap.to(img, {
-          y: -(32 + Math.random() * 48),
-          rotation: (Math.random() - 0.5) * 18,
+          y: -(26 + Math.random() * 38),
+          rotation: (Math.random() - 0.5) * 12,
           duration: 2.6 + Math.random() * 2.8,
           ease: 'sine.inOut', yoyo: true, repeat: -1,
-          delay: Math.random() * 2.5,
+          delay: Math.random() * 3.5,
         });
       }
-      setTimeout(() => {
-        if (hasGSAP) gsap.to(img, { opacity: 0, duration: 1.5,
-          onComplete: () => img.remove() });
-        else img.remove();
-      }, 28000);
-    });
+    }
   }
 
   // Type C — pull quote: shimmer border + ScrambleText reveal
@@ -825,19 +1117,8 @@ window.tgInitGame = async function () {
           gsap.to(sel, { scale: 1.06, duration: 0.12, ease: 'power2.out',
             onComplete: () => gsap.to(sel, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.38)' }) });
         }
-        // Confetti burst from button position
-        if (window.confetti) {
-          const br = sel.getBoundingClientRect();
-          confetti({
-            particleCount: 55, spread: 72,
-            origin: {
-              x: (br.left + br.width  / 2) / window.innerWidth,
-              y: (br.top  + br.height / 2) / window.innerHeight,
-            },
-            colors: ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD','#F9F9F2'],
-            scalar: 0.85,
-          });
-        }
+        // Asset burst from selected button
+        assetBurst(sel, 'celebrate');
         // Brief ScrambleText on selected button text
         if (hasGSAP && hasScrTx) {
           const orig = sel.textContent;
@@ -924,27 +1205,20 @@ window.tgInitGame = async function () {
       img.src = `./assets/${assetSrc}`;
     });
 
-    // Ensure fonts ready
-    try {
-      await Promise.all([
-        document.fonts.load('700 68px "Playfair Display"'),
-        document.fonts.load('400 16px "DM Mono"'),
-        document.fonts.load('500 22px "Syne"'),
-      ]);
-    } catch(e) {}
+    try { await document.fonts.load('700 68px "Playfair Display"'); } catch(e) {}
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
 
     // Tag — spaced letters
     ctx.fillStyle = '#88ABE3';
-    ctx.font = '400 13px "DM Mono"';
+    ctx.font = '400 13px system-ui';
     const tagStr = 'YOUR INVESTOR ARCHETYPE';
     let tx = W / 2 - ctx.measureText(tagStr).width / 2 - tagStr.length * 1.5;
     tagStr.split('').forEach(ch => { ctx.fillText(ch, tx, headerH + 26); tx += ctx.measureText(ch).width + 3; });
 
     // Name
     ctx.fillStyle = '#222222';
-    ctx.font = '700 68px "Playfair Display"';
+    ctx.font = '700 68px "Playfair Display", serif';
     ctx.fillText(arch.name, W / 2, headerH + 58);
 
     // Blue underline under name
@@ -957,7 +1231,7 @@ window.tgInitGame = async function () {
 
     // Sub
     ctx.fillStyle = 'rgba(34,34,34,0.42)';
-    ctx.font = '400 18px "DM Mono"';
+    ctx.font = '400 18px system-ui';
     ctx.fillText(arch.sub, W / 2, headerH + 158);
 
     // Divider + gold accent
@@ -968,13 +1242,13 @@ window.tgInitGame = async function () {
 
     // Description
     ctx.fillStyle = 'rgba(34,34,34,0.72)';
-    ctx.font = '500 22px "Syne"';
+    ctx.font = '500 22px system-ui';
     const descBottom = wrapTextCanvas(ctx, arch.desc, W / 2, headerH + 236, W - 160, 34);
 
     // Together line
     const togetherText = arch.together.replace(/<\/?strong>/g, '');
     ctx.fillStyle = 'rgba(34,34,34,0.45)';
-    ctx.font = '400 16px "DM Mono"';
+    ctx.font = '400 16px system-ui';
     wrapTextCanvas(ctx, togetherText, W / 2, Math.max(descBottom + 22, headerH + 580), W - 200, 26);
 
     // Corner brackets
@@ -989,7 +1263,7 @@ window.tgInitGame = async function () {
 
     // trove.garden
     ctx.fillStyle = '#DBD59C';
-    ctx.font = '400 16px "DM Mono"';
+    ctx.font = '400 16px system-ui';
     ctx.fillText('trove.garden', W / 2, H - 48);
 
     return cvs;
@@ -1075,9 +1349,7 @@ window.tgInitGame = async function () {
       deadWord.appendChild(decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% + 4px)', top: '-6px', w: 52, fromY: -30, delay: 0.2 }));
     }
     await w(500);
-    await reveal(line('40–80% of applicants now use AI to write about themselves. $8.8 trillion lost annually to employee disengagement — the cost of not actually knowing the people you hire.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.03, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('40–80% of applicants now use AI to write about themselves. $8.8 trillion lost annually to employee disengagement — the cost of not actually knowing the people you hire.');
     await w(350);
     const idx = await branchChoices([
       "Okay. So what's the new signal?",
@@ -1123,9 +1395,7 @@ window.tgInitGame = async function () {
     await w(350);
     // Type C — pull quote
     await pqReveal('The scenario is the instrument. The choice is the data.');
-    await reveal(line('Not "how would you handle conflict?" — a conflict. One you\'re actually inside. The way you move through it: what you push on, what you deflect, how long you hold ambiguity. Impossible to fake consistently across twelve different contexts.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.03, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('Not "how would you handle conflict?" — a conflict. One you\'re actually inside. The way you move through it: what you push on, what you deflect, how long you hold ambiguity. Impossible to fake consistently across twelve different contexts.');
     await w(350);
     const idx = await branchChoices([
       "Has anyone actually played this? What did the data look like?",
@@ -1144,9 +1414,7 @@ window.tgInitGame = async function () {
       y: 16, stagger: 0.05, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
-    await reveal(line('They still asked people to describe their behaviour. Personality tests — self-reported. 360 reviews — observer-reported. Assessment centres — performed. All gameable. All dead in an AI world.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.03, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('They still asked people to describe their behaviour. Personality tests — self-reported. 360 reviews — observer-reported. Assessment centres — performed. All gameable. All dead in an AI world.', 160);
     await w(400);
     // Type A — statement
     flash();
@@ -1194,16 +1462,25 @@ window.tgInitGame = async function () {
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
     infraEl.style.position = 'relative'; infraEl.style.overflow = 'visible';
-    infraEl.appendChild(decal('house.png', 'tg-decal--bob', { right: '-26px', top: '-14px', w: 54, fromY: -30, delay: 0.3 }));
+    const houseDecal = decal('house.png', 'tg-decal--bob', { right: '-26px', top: '-14px', w: 54, fromY: -30, delay: 0.3 });
+    infraEl.appendChild(houseDecal);
+    // Fix 4: curve text arc around house decal
+    setTimeout(() => curveText(houseDecal, '\u2736 BEHAVIORAL LAYER \u2736 INFRASTRUCTURE \u2736 MOAT \u2736',
+      { above: false, radius: 44, arc: 200, fontSize: 7.5, delay: 0 }), 500);
     await w(600);
-    await reveal(line('Consumers play interactive stories — scenarios that feel like games. Underneath, a behavioural science engine builds a profile they own. When they apply for a job, go on a date, or authorize a landlord to screen them, they share that profile. The platform pays to read it.', 'tg-pl--med'), {
-      y: 12, stagger: 0.032, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    for (const s of [
+      'Consumers play interactive stories — scenarios that feel like games.',
+      'Underneath, a behavioural science engine builds a profile they own.',
+      'When they apply for a job, go on a date, or authorize a landlord to screen them, they share that profile. The platform pays to read it.',
+    ]) {
+      await reveal(line(s, 'tg-pl--med'), {
+        y: 12, stagger: 0.032, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      });
+      await w(180);
+    }
     await w(350);
     await pqReveal('Think Duolingo on the consumer side. Think Plaid on the B2B side. Behavioral data is the asset class.');
-    await reveal(line('The moat is the dataset. Every play makes the models sharper. Sharper models make the profiles more accurate. More accurate profiles make the B2B product worth more. That loop doesn\'t have a ceiling.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('The moat is the dataset. Every play makes the models sharper. Sharper models make the profiles more accurate. More accurate profiles make the B2B product worth more. That loop doesn\'t have a ceiling.', 160);
     await w(350);
     const idx = await branchChoices([
       "Walk me through the B2B licensing model specifically.",
@@ -1229,9 +1506,7 @@ window.tgInitGame = async function () {
       { label: 'Enterprise', value: '"Sign in with Trove"', sub: 'Platforms pay for authorized behavioural signal. Like Plaid for personality.' },
     ]);
     await w(500);
-    await reveal(line('Hiring, dating, insurance, healthcare — every high-stakes people decision currently runs on self-report. Trove becomes the API layer that replaces it. The user authorizes the share. The platform pays. The data stays the user\'s.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('Hiring, dating, insurance, healthcare — every high-stakes people decision currently runs on self-report. Trove becomes the API layer that replaces it. The user authorizes the share. The platform pays. The data stays the user\'s.', 160);
     await w(350);
     const idx = await branchChoices([
       "What does early consumer traction look like?",
@@ -1262,9 +1537,7 @@ window.tgInitGame = async function () {
       y: 14, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
-    await reveal(line('That consent architecture is what makes the B2B product valuable. An enterprise buyer is getting a signal that the person chose to share with them. That\'s a different conversation than a background check or a scraped LinkedIn.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('That consent architecture is what makes the B2B product valuable. An enterprise buyer is getting a signal that the person chose to share with them. That\'s a different conversation than a background check or a scraped LinkedIn.');
     await w(350);
     await pqReveal('The user\'s willingness to share their Trove profile is itself a behavioural signal. It tells you something about them before you\'ve even looked at the data.');
     const idx = await branchChoices([
@@ -1281,12 +1554,29 @@ window.tgInitGame = async function () {
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Helen Huang');
     await w(200);
-    // Credentials with mic decal
-    const credEl = line('Second-time founder. Former PM at Microsoft and Zynga. Bootstrapped a profitable edtech startup to seven figures. Forbes 30 Under 30.', 'tg-pl--med');
-    await reveal(credEl, { y: 14, stagger: 0.033, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out' });
-    credEl.style.position = 'relative'; credEl.style.overflow = 'visible';
-    credEl.appendChild(decal('mic.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 48, delay: 0.4 }));
-    await w(400);
+    // ── Gap 5: Helen credentials as rlist ─────────────────────────────────
+    const credItems = [
+      { marker: '01', text: 'Second-time founder' },
+      { marker: '02', text: 'Former PM at Microsoft and Zynga' },
+      { marker: '03', text: 'Bootstrapped a profitable edtech startup to seven figures' },
+      { marker: '04', text: 'Forbes 30 Under 30' },
+    ];
+    const credList = document.createElement('div');
+    credList.className = 'tg-pl tg-rlist';
+    credItems.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'tg-ritem';
+      row.dataset.m = item.marker;
+      row.textContent = item.text;
+      row.style.animationDelay = `${i * 0.1}s`;
+      credList.appendChild(row);
+    });
+    pitch.appendChild(credList);
+    scrollPitch();
+    // Mic decal on the container
+    credList.style.position = 'relative'; credList.style.overflow = 'visible';
+    credList.appendChild(decal('mic.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 48, delay: 0.4 }));
+    await w(credItems.length * 100 + 300);
     // Type B — setup for the pivot
     await reveal(line('She didn\'t start Trove because it was a good market.', 'tg-pl--med tg-pl--italic'), {
       y: 14, stagger: 0.05, duration: 0.44, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -1310,9 +1600,7 @@ window.tgInitGame = async function () {
       'babystar.png', { right: '-20px', top: '-8px', w: 38, delay: 0.5 }
     );
     // The 30K context
-    await reveal(line('She also built a 30,000-person tech audience before she needed it. That\'s not a vanity metric. That\'s a launch list.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.03, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('She also built a 30,000-person tech audience before she needed it. That\'s not a vanity metric. That\'s a launch list.', 180);
     await w(600);
     const idx = await branchChoices([
       "What does she know that nobody else in this space has figured out?",
@@ -1376,12 +1664,13 @@ window.tgInitGame = async function () {
     await reveal(viralEl, {
       y: 14, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
+    fullScreenAssetSweep('banana.png');
     viralEl.style.position = 'relative'; viralEl.style.overflow = 'visible';
     viralEl.appendChild(decal('banana.png', 'tg-decal--bob', { right: '-26px', top: '-6px', w: 42, fromY: -28, delay: 0.15 }));
     await w(350);
     // Type E — stats with stagger
     const statsEl = await statsBlockReveal([
-      { n: '78%',   l: 'returned day 3 — zero push notifications', asset: 'boomerand.png' },
+      { n: '78%',   l: 'returned day 3 — zero push notifications', asset: 'boomerand.png', sweep: 'boomerand.png' },
       { n: '7 min', l: 'median session length',                    asset: 'watch.png'     },
       { n: '24K+',  l: 'behavioural data points, 2,100+ players',  asset: 'id.png'        },
       { n: '4',     l: 'unsolicited B2B inquiries — none pitched',  asset: 'waller.png'   },
@@ -1395,15 +1684,39 @@ window.tgInitGame = async function () {
       '"Show it to my therapist. This is literally going to be the topic of our next session." — player, 4:44am',
       'phone.png', { right: '-20px', top: '-4px', w: 44, delay: 0.5 }
     );
-    const discordEl = line('When the campaign ended, 60 complete strangers opted into a Discord to play the next one together. Nobody asked them to.', 'tg-pl--dim');
+    await w(200);
+    await reveal(line('When the campaign ended —', 'tg-pl--dim'), {
+      y: 10, stagger: 0.04, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+    });
+    await w(500);
+    flash();
+    const discordEl = line('60 strangers built a Discord.', 'tg-pl--big');
     await reveal(discordEl, {
-      y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+      type: 'chars', y: 0,
+      scale: () => gsap.utils.random(0.1, 0.5),
+      rotation: () => gsap.utils.random(-12, 12),
+      stagger: 0.045, from: 'center', duration: 0.6, ease: hasCE ? 'slam' : 'back.out(3)',
     });
     discordEl.style.position = 'relative'; discordEl.style.overflow = 'visible';
     discordEl.appendChild(decal('bubblublower.png', 'tg-decal--bob', { right: '-24px', top: '-8px', w: 44, fromY: -22, delay: 0.2 }));
+    await w(350);
+    await dimLines('Nobody asked them to. No push notifications. No referral loop. They just didn\'t want it to end.', 150);
     await w(400);
     // THE thesis line — needs the most air
     await pqReveal('That\'s not a retention metric. That\'s people who want to keep being seen.');
+
+    // ── Gap 2: testimonial reel ────────────────────────────────────────
+    await w(200);
+    await reveal(line('What players said after:', 'tg-pl--attr'), {
+      y: 8, duration: 0.35, ease: hasCE ? 'unfurl' : 'power3.out',
+    });
+    await w(180);
+    await testimonialReel([
+      { text: '"It\'s unsettling. I didn\'t expect to feel so understood."', attr: '— player, 11:52pm' },
+      { text: '"I sent this to my therapist. Literally the topic of our next session."', attr: '— player, 4:44am' },
+      { text: '"You didn\'t ask me anything. And you still got it right."', attr: '— player, Day 1' },
+    ]);
+    await w(300);
 
     // Fish swims the full pitch width — lives in scroll content, scrolls away naturally
     {
@@ -1468,16 +1781,16 @@ window.tgInitGame = async function () {
     rlistEl.appendChild(decal('socks.png', 'tg-decal--bob', { right: '-22px', top: '60px', w: 36, fromY: 20, fromRot: 15, toRot: -8, delay: 0.6 }));
     setTimeout(() => orbitingTextRing(frogImg, '\u2736 THE DATA IS THE MOAT \u2736 THE DATA IS THE MOAT \u2736'), 900);
     await w(400);
-    const noGPUsEl = line('You can\'t shortcut this with GPUs. A competitor starting today would need years of real human behavioural data across diverse emotional contexts. Trove\'s head start is the dataset — and it compounds with every tangle played.', 'tg-pl--dim');
+    const noGPUsEl = line('You can\'t shortcut this with GPUs.', 'tg-pl--dim');
     await reveal(noGPUsEl, {
-      y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 10, stagger: 0.028, duration: 0.34, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     noGPUsEl.style.position = 'relative'; noGPUsEl.style.overflow = 'visible';
     noGPUsEl.appendChild(decal('turtle.png', 'tg-decal--bob', { right: '-22px', top: '-4px', w: 46, fromY: -18, delay: 0.25 }));
+    await w(200);
+    await dimLines('A competitor starting today would need years of real human behavioural data across diverse emotional contexts. Trove\'s head start is the dataset — and it compounds with every tangle played.');
     await w(350);
-    await reveal(line('The comparable isn\'t another assessment tool. It\'s Plaid. $430M ARR from API access to data users already had. Trove is building the behavioural equivalent of that infrastructure layer.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('The comparable isn\'t another assessment tool. It\'s Plaid. $430M ARR from API access to data users already had. Trove is building the behavioural equivalent of that infrastructure layer.');
     await w(700);
     await contBtn("What's the ask? →");
     await sAsk();
@@ -1490,12 +1803,19 @@ window.tgInitGame = async function () {
     await w(200);
     score([1,0,1,1,0]);
     flash(true);
-    // Type A — huge statement
-    await reveal(line('$525K already in.', 'tg-pl--huge'), {
+    // $525K — shiny investor line, then "already in." below in trace blue
+    const amountEl = line('<span class="tg-investor-word">$525K</span>', 'tg-pl');
+    await reveal(amountEl, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
       rotation: () => gsap.utils.random(-15, 15),
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(2.5)',
+    });
+    await w(160);
+    const alreadyEl = line('already in.', 'tg-pl--big');
+    alreadyEl.style.cssText += 'color:var(--trace);margin-top:-4px;';
+    await reveal(alreadyEl, {
+      y: 16, stagger: 0.05, duration: 0.44, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(800);
     await reveal(line('Betaworks, True Ventures, Slack Fund.', 'tg-pl--dim'), {
@@ -1510,7 +1830,16 @@ window.tgInitGame = async function () {
       { label: 'Already closed', value: '$525K', sub: 'Formation capital, SAFEs' },
       { label: 'Raising now',    value: '$1.5M',  sub: '18–25 months runway · 7 people' },
     ]);
+    await w(400);
+
+    // ── Gap 4: formation stats block ──────────────────────────────────────
+    await statsFormation([
+      { n: '$525K', l: 'already in' },
+      { n: '100K',  l: 'target profiles' },
+      { n: '1–2',   l: 'paid B2B pilots' },
+    ]);
     await w(500);
+
     await reveal(line('We\'re looking for investors who think in platforms, not products. Who understand that the moat is the dataset and the app is just how you fill it.', 'tg-pl--med'), {
       y: 12, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
@@ -1539,9 +1868,7 @@ window.tgInitGame = async function () {
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(2.5)',
     });
     await w(600);
-    await reveal(line('The order you explored. The questions you needed answered first. What made you lean forward and what made you push back.', 'tg-pl--dim'), {
-      y: 10, stagger: 0.026, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
-    });
+    await dimLines('The order you explored. The questions you needed answered first. What made you lean forward and what made you push back.', 180);
     await w(300);
     await reveal(line('That\'s a Trove profile. You built one just now — without filling out a single form.', 'tg-pl--med tg-pl--italic'), {
       y: 14, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -1608,6 +1935,7 @@ window.tgInitGame = async function () {
       emailDiv.className = 'tg-pl';
       emailDiv.innerHTML = `
         <div class="tg-email-hero" id="tg-email-hero" style="opacity:0">curious?</div>
+        <div class="tg-email-parade" id="tg-email-parade"></div>
         <div class="tg-email-sub" id="tg-email-sub" style="opacity:0">stay up to date with upcoming drops</div>
         <div class="tg-email-list-lbl" id="tg-email-lbl" style="opacity:0">first-look list — one note when it's real</div>
         <div class="tg-email-form" id="tg-email-form" style="opacity:0">
@@ -1617,6 +1945,24 @@ window.tgInitGame = async function () {
         <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
         <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
       `;
+
+      // Build avatar parade
+      const paradeEl = document.getElementById('tg-email-parade');
+      [
+        { src: 'starhehe.png',    anim: 'spin'   },
+        { src: 'frog.png',        anim: 'bounce' },
+        { src: 'derpy.png',       anim: 'dance'  },
+        { src: 'turtle.png',      anim: 'bob'    },
+        { src: 'caterpillar.png', anim: 'wiggle' },
+        { src: 'babystar.png',    anim: 'spin2'  },
+      ].forEach(a => {
+        const img = document.createElement('img');
+        img.src = `./assets/${a.src}`;
+        img.dataset.anim = a.anim;
+        img.style.opacity = '0';
+        paradeEl.appendChild(img);
+      });
+
       pitch.appendChild(emailDiv);
       scrollPitch();
 
@@ -1646,12 +1992,13 @@ window.tgInitGame = async function () {
       };
 
       if (hasGSAP) {
-        const heroEl = document.getElementById('tg-email-hero');
-        const subEl  = document.getElementById('tg-email-sub');
-        const lblEl  = document.getElementById('tg-email-lbl');
-        const formEl = document.getElementById('tg-email-form');
-        const skipEl = document.getElementById('tg-email-skip');
-        const fineEl = document.getElementById('tg-email-fine');
+        const heroEl   = document.getElementById('tg-email-hero');
+        const subEl    = document.getElementById('tg-email-sub');
+        const lblEl    = document.getElementById('tg-email-lbl');
+        const formEl   = document.getElementById('tg-email-form');
+        const skipEl   = document.getElementById('tg-email-skip');
+        const fineEl   = document.getElementById('tg-email-fine');
+        const paradeImgs = paradeEl.querySelectorAll('img');
 
         // 1. Slam "curious?" char by char
         const split = new SplitText(heroEl, { type: 'chars' });
@@ -1664,19 +2011,42 @@ window.tgInitGame = async function () {
           clearProps: 'transform,rotation',
         });
 
-        // 2. Sub-text fades up
-        gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.52 });
-        gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3, ease: 'power2.out', delay: 0.72 });
+        // 2. Avatars bounce in one by one, then loop
+        paradeImgs.forEach((img, i) => {
+          gsap.fromTo(img,
+            { opacity: 0, y: 28, scale: 0.2, rotation: (i % 2 === 0 ? -30 : 30) },
+            { opacity: 1, y: 0,  scale: 1,   rotation: 0,
+              duration: 0.55, ease: 'elastic.out(1, 0.45)',
+              delay: 0.4 + i * 0.08,
+              onComplete: () => {
+                // Each avatar gets its own looping personality
+                const anim = img.dataset.anim;
+                const d = 0.3 + Math.random() * 0.4; // slight random offset per character
+                if (anim === 'spin')   gsap.to(img, { rotation: 360,  duration: 2.2, ease: 'none',        repeat: -1, delay: d });
+                if (anim === 'spin2')  gsap.to(img, { rotation: -360, duration: 1.8, ease: 'none',        repeat: -1, delay: d });
+                if (anim === 'bounce') gsap.to(img, { y: -10, duration: 0.42, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'dance')  gsap.to(img, { x: 5, rotation: -12, duration: 0.22, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'bob')    gsap.to(img, { y: -6, rotation: 6,  duration: 1.1, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'wiggle') gsap.to(img, { rotation: 14, scaleX: -1, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+              },
+            }
+          );
+        });
 
-        // 3. Form + supporting copy slide up
-        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 0.88 });
-        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.05 });
-        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.15,
+        // 3. Sub-text and label fade up
+        gsap.fromTo(subEl, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.95 });
+        gsap.fromTo(lblEl, { opacity: 0 },         { opacity: 1,       duration: 0.3, ease: 'power2.out', delay: 1.15 });
+
+        // 4. Form + supporting copy slide up
+        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.3 });
+        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.48 });
+        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.58,
           onComplete: () => { document.getElementById('tg-email-in')?.focus(); },
         });
       } else {
         ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine']
           .forEach(id => { const el = document.getElementById(id); if (el) el.style.opacity = '1'; });
+        paradeEl.querySelectorAll('img').forEach(img => { img.style.opacity = '1'; });
         document.getElementById('tg-email-in')?.focus();
       }
 
@@ -1709,7 +2079,7 @@ window.tgInitGame = async function () {
 
     const archetypeAssets = {
       cartographer: { src: 'camera.png',    opts: { right: '-28px', top: '-12px', w: 56 } },
-      contrarian:   { src: 'boomerang.png', opts: { right: '-24px', top: '-8px',  w: 52, fromRot: -45, toRot: 8 } },
+      contrarian:   { src: 'boomerand.png', opts: { right: '-24px', top: '-8px',  w: 52, fromRot: -45, toRot: 8 } },
       architect:    { src: 'house.png',     opts: { right: '-26px', top: '-14px', w: 54 } },
       operator:     { src: 'watch.png',     opts: { right: '-22px', top: '-6px',  w: 48 } },
       storyteller:  { src: 'mic.png',       opts: { right: '-24px', top: '-10px', w: 52 } },
@@ -1730,15 +2100,8 @@ window.tgInitGame = async function () {
       await new Promise(r => gsap.from(profileCard, { opacity: 0, y: 26, scale: 0.96, duration: 0.55, ease: 'back.out(2)', clearProps: 'all', onComplete: r }));
     }
 
-    // Confetti from both top corners
-    if (window.confetti) {
-      confetti({ particleCount: 55, angle: 58,  spread: 58,
-        origin: { x: 0, y: 0.08 },
-        colors: ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD'], scalar: 0.9 });
-      setTimeout(() => confetti({ particleCount: 55, angle: 122, spread: 58,
-        origin: { x: 1, y: 0.08 },
-        colors: ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD'], scalar: 0.9 }), 120);
-    }
+    // Big asset burst from profile card
+    assetBurst(profileCard, 'celebrate', 18);
 
     await w(350);
 
@@ -1752,25 +2115,16 @@ window.tgInitGame = async function () {
 
     await w(300);
 
-    // Glitch on name + underline sweep
+    // Fix 3: wordPop on archetype name
     const nameEl = document.getElementById('tg-arch-name');
-    if (nameEl && hasGSAP) {
-      const r2 = nameEl.cloneNode(true), b2 = nameEl.cloneNode(true);
-      r2.style.cssText = 'position:absolute;top:0;left:0;color:var(--shift);mix-blend-mode:multiply;pointer-events:none;';
-      b2.style.cssText = 'position:absolute;top:0;left:0;color:var(--trace);mix-blend-mode:multiply;pointer-events:none;';
-      nameEl.style.position = 'relative';
-      nameEl.appendChild(r2); nameEl.appendChild(b2);
-      gsap.timeline()
-        .to(r2, { x: () => (Math.random()-0.5)*14, duration: 0.05, ease: 'steps(1)', repeat: 6, yoyo: true })
-        .to(b2, { x: () => (Math.random()-0.5)*14, duration: 0.05, ease: 'steps(1)', repeat: 6, yoyo: true }, '<')
-        .call(() => {
-          r2.remove(); b2.remove();
-          nameEl.style.position = '';
-          nameEl.style.textDecoration = 'underline';
-          nameEl.style.textDecorationColor = 'var(--trace)';
-          nameEl.style.textDecorationThickness = '2px';
-          nameEl.style.textUnderlineOffset = '4px';
-        });
+    if (nameEl) {
+      const originalName = nameEl.textContent;
+      await wordPop(nameEl, originalName, ['#DBD59C', '#88ABE3', '#DBD59C', '#88ABE3', '#DBD59C']);
+      // Underline decoration after pop settles
+      nameEl.style.textDecoration = 'underline';
+      nameEl.style.textDecorationColor = 'var(--trace)';
+      nameEl.style.textDecorationThickness = '2px';
+      nameEl.style.textUnderlineOffset = '4px';
     }
     await w(700);
 
@@ -1859,7 +2213,11 @@ window.tgInitGame = async function () {
       { opacity: 1, y: 0, rotation: -3, scale: 1,
         duration: 0.88, ease: 'elastic.out(1, 0.52)', delay: 0.08 }
     );
-    setTimeout(() => investorImg.classList.add('tg-decal--bob'), 1000);
+    setTimeout(() => {
+      investorImg.classList.add('tg-decal--bob');
+      // Fix 2: curve text arc above investor image
+      curveText(investorImg, 'YOU\'VE BEEN HERE BEFORE \u2736', { above: true, radius: 48, arc: 150, delay: 0.3 });
+    }, 1000);
 
     // Wallet slides in from the left a beat later, settles above investor's top-left
     gsap.fromTo(walletImg,
@@ -1872,7 +2230,7 @@ window.tgInitGame = async function () {
       walletImg.style.animationDelay = '-0.9s';
     }, 1150);
   }
-  spawnAmbientFloaters();
+  // spawnAmbientFloaters(); // removed — too much
   await w(1300);
 
   // ── Beat 2: Wrong call — capture element so coin can land beside "someone." ──
@@ -1902,8 +2260,16 @@ window.tgInitGame = async function () {
   const spinEl = line(spinWords[0], 'tg-pl--big', 4);
   for (let i = 0; i < spinSeq.length; i++) {
     spinEl.textContent = spinWords[spinSeq[i]];
-    HAPTIC.tap();
+    window.HAPTIC?.tap?.();
     if (i < spinDelays.length) await w(spinDelays[i]);
+  }
+  // Scale pulse on settle — like it landed
+  if (hasGSAP) {
+    gsap.fromTo(spinEl,
+      { scale: 1.18 },
+      { scale: 1, duration: 0.55, ease: 'elastic.out(1, 0.52)' }
+    );
+    window.HAPTIC?.burst?.();
   }
   await w(900);
 
@@ -2127,7 +2493,24 @@ window.tgInitGame = async function () {
     y: 24, stagger: 0.065, staggerEase: 'power2.inOut', duration: 0.52, blur: true,
     ease: hasCE ? 'unfurl' : 'power3.out',
   });
-  await w(1600);
+  await w(1000);
+
+  // ── Gap 1: vision beat expansion ───────────────────────────────────────
+  await reveal(line('Not what they say they\'ll do. Not their self-reported preferences.', 'tg-pl--dim'), {
+    y: 12, stagger: 0.032, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+  });
+  await w(380);
+
+  flash();
+  const visionPopEl = line('', 'tg-pl--big');
+  await wordPop(visionPopEl, 'What they actually do.', ['#DBD59C', null, '#88ABE3', null, '#DBD59C']);
+  await w(500);
+
+  await reveal(line('Every choice in the game is a behavioural signal. Aggregated, they\'re a fingerprint.', 'tg-pl--med'), {
+    y: 12, stagger: 0.034, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+  });
+  assetBurst(visionPopEl, 'data', 7);
+  await w(600);
 
   await w(1800);
   await sBranch0();

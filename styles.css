@@ -28,8 +28,8 @@
 
   /* Typography */
   --font-display: 'Playfair Display', serif;
-  --font-label:   'DM Mono', monospace;
-  --font-body:    'Syne', sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+  --font-label:   -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
 
   /* Motion */
   --ease-slam:   cubic-bezier(0.08, 1.3, 0.52, 1);
@@ -42,7 +42,7 @@
   -webkit-user-select: none; user-select: none;
   -webkit-touch-callout: none;
   word-break: normal;
-  overflow-wrap: normal;
+  overflow-wrap: break-word; /* must be break-word, not normal — normal wins over inherited values and breaks child wrapping */
   hyphens: none;
   -webkit-hyphens: none;
 }
@@ -244,6 +244,7 @@ canvas#webgl {
   display: flex; flex-direction: column;
   overflow: hidden;
   transition: background 60ms ease;
+  container-type: inline-size; /* enables cqw font units scoped to phone width, not viewport */
 }
 .tg-pitch-scene.tg-flash { background: var(--shift); transition: background 0ms; }
 
@@ -312,8 +313,8 @@ canvas#webgl {
 
 /* visual/layout only — no animation */
 /* Wraps at word boundaries, never splits mid-word, never hyphenates */
-.tg-pl         { margin-bottom: 8px; overflow-wrap: break-word; word-break: normal; hyphens: none; }
-.tg-pl--big    { font-family: var(--font-display); font-size: 32px; line-height: 1.15; color: var(--text); margin-bottom: 8px; }
+.tg-pl         { margin-bottom: 8px; overflow-wrap: break-word; word-break: normal; hyphens: none; max-width: 100%; min-width: 0; }
+.tg-pl--big    { font-family: var(--font-display); font-size: clamp(18px, 8cqw, 52px); line-height: 1.15; color: var(--text); margin-bottom: 8px; }
 /* Simple 0→100% sweep: at 0% the bright strip is off-screen right,
    at 100% it's off-screen left — wrap is invisible, no stutter.  */
 @keyframes metalSheen {
@@ -322,7 +323,7 @@ canvas#webgl {
 }
 .tg-investor-word {
   display: block;
-  font-size: 54px;
+  font-size: clamp(34px, 13cqw, 80px);
   line-height: 1.05;
   color: var(--shift);
   position: relative;
@@ -356,11 +357,11 @@ canvas#webgl {
   mix-blend-mode: screen;
 }
 .tg-pl--med    { font-family: var(--font-body); font-size: 17px; font-weight: 500; line-height: 1.55; color: rgba(34,34,34,0.72); margin-bottom: 3px; }
-.tg-pl--dim    { font-family: var(--font-label); font-size: 11px; font-weight: 400; line-height: 1.5; color: var(--trace); letter-spacing: 0.06em; }
+.tg-pl--dim    { font-family: var(--font-body); font-size: 14px; font-weight: 400; line-height: 1.7; color: rgba(136,171,227,0.88); margin-top: 2px; margin-bottom: 2px; }
 .tg-pl--italic { font-style: italic; }
-.tg-pl--impact { font-family: var(--font-display); font-size: 26px; line-height: 1.1; color: var(--text); margin-bottom: 6px; }
+.tg-pl--impact { font-family: var(--font-display); font-size: clamp(16px, 6.5cqw, 42px); line-height: 1.1; color: var(--text); margin-bottom: 6px; }
 .tg-pl--huge   {
-  font-family: var(--font-display); font-size: 44px; line-height: 1;
+  font-family: var(--font-display); font-size: clamp(24px, 11cqw, 64px); line-height: 1;
   color: var(--shift); margin-bottom: 4px;
   animation: xrayGlitch 5s 1.5s infinite;
 }
@@ -559,12 +560,17 @@ canvas#webgl {
 /* Email block */
 .tg-email-hero {
   font-family: var(--font-display); font-style: italic; font-weight: 700;
-  font-size: clamp(52px, 16vw, 80px); line-height: 1; letter-spacing: -0.02em;
-  color: var(--anchor); margin-bottom: 12px; display: block;
+  font-size: clamp(28px, 10cqw, 68px); line-height: 1; letter-spacing: -0.02em;
+  color: var(--anchor); margin-bottom: 10px; display: block;
 }
+.tg-email-parade {
+  display: flex; justify-content: space-around; align-items: flex-end;
+  padding: 6px 0 10px; gap: 2px;
+}
+.tg-email-parade img { width: 36px; height: auto; pointer-events: none; flex-shrink: 0; }
 .tg-email-sub {
-  font-family: var(--font-body); font-size: 13px; line-height: 1.55;
-  color: rgba(34,34,34,0.62); margin-bottom: 6px;
+  font-family: var(--font-body); font-size: clamp(13px, 4.5cqw, 17px); line-height: 1.5;
+  color: rgba(34,34,34,0.65); margin-bottom: 6px;
 }
 .tg-email-list-lbl {
   font-family: var(--font-label); font-size: 8px; letter-spacing: 0.18em;
@@ -684,8 +690,8 @@ canvas#webgl {
   margin: 6px -18px;
 }
 .tg-stat-card .tg-stat-n {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(56px, 13vw, 88px);
+  font-family: var(--font-display);
+  font-size: clamp(48px, 18cqw, 88px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.02em;
@@ -694,7 +700,7 @@ canvas#webgl {
   color: inherit;
 }
 .tg-stat-card .tg-stat-l {
-  font-family: 'DM Mono', monospace;
+  font-family: var(--font-body);
   font-size: 12px;
   margin-top: 7px;
   text-transform: uppercase;
@@ -740,4 +746,98 @@ canvas#webgl {
 @media (max-width: 480px) {
   .tg-intro-scene { padding: 6px 8px; }
   .tg-intro-body  { padding: 8px 10px 14px; }
+}
+
+/* ── Phase 3 motion primitives ───────────────────────────────────────────── */
+.tg-gold { color: #DBD59C; }
+.tg-blue { color: #88ABE3; }
+
+.tg-word-pill {
+  display: inline-block;
+  padding: 0.05em 0.28em;
+  border-radius: 5px;
+}
+
+.tg-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: currentColor;
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: tg-blink 0.7s step-end infinite;
+}
+@keyframes tg-blink { 50% { opacity: 0; } }
+
+/* Attribution line under rlist / testimonials */
+.tg-pl--attr {
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+  margin-top: -6px;
+  padding-left: 4px;
+}
+
+/* Testimonial reel */
+.tg-testimonial {
+  border-left: 2px solid var(--trace);
+  padding: 10px 0 10px 14px;
+  margin: 10px 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-style: italic;
+  color: rgba(34,34,34,0.78);
+  line-height: 1.55;
+  opacity: 0;
+}
+.tg-testimonial-attr {
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--trace);
+  opacity: 0.7;
+  margin-top: 5px;
+  display: block;
+  font-style: normal;
+}
+
+/* Curve text SVG host */
+.tg-curve-host {
+  position: relative;
+  overflow: visible;
+}
+
+/* Stats formation block */
+.tg-stats-formation {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin: 16px 0;
+  overflow: hidden;
+}
+.tg-sf-cell {
+  background: var(--bg);
+  padding: 13px 10px;
+  text-align: center;
+}
+.tg-sf-n {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--shift);
+  display: block;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.tg-sf-l {
+  font-family: var(--font-label);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: rgba(34,34,34,0.45);
+  text-transform: uppercase;
+  line-height: 1.4;
+  display: block;
 }

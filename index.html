@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!--
+  3D Model Credit:
+  "iPhone Air" (https://skfb.ly/pAROn) by rtql8d
+  is licensed under Creative Commons Attribution 4.0
+  http://creativecommons.org/licenses/by/4.0/
+-->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Trove</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 
   <script type="importmap">
@@ -66,7 +72,7 @@
     bounceLight.position.set(1, -8, 5);
     scene.add(bounceLight);
 
-    const greenAccent = new THREE.PointLight(0x8fe63c, 1.4, 22);
+    const greenAccent = new THREE.PointLight(0x88ABE3, 1.4, 22);
     greenAccent.position.set(4, -3, 3);
     scene.add(greenAccent);
 
@@ -300,6 +306,22 @@
 
       phoneGroup.add(phoneMesh);
 
+      // ── Hue-shift phone body materials: green → sky blue (--trace #88ABE3) ──
+      phoneMesh.traverse(child => {
+        if (!child.isMesh) return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach(mat => {
+          if (!mat || !mat.color) return;
+          const hsl = {};
+          mat.color.getHSL(hsl);
+          // Target green-range materials (hue 0.22–0.45) with meaningful saturation
+          if (hsl.s > 0.12 && hsl.h > 0.22 && hsl.h < 0.45) {
+            mat.color.setHSL((hsl.h + 0.22) % 1, hsl.s * 0.85, hsl.l);
+            mat.needsUpdate = true;
+          }
+        });
+      });
+
       // ── Lock screen clock ──────────────────────────────────────────────────
       // Screen face is +X in GLB local space. PlaneGeometry (default +Z normal)
       // rotated Y +π/2 faces +X. Positioned at box0.max.x = the screen surface.
@@ -409,9 +431,9 @@
       haloCv.width = haloCv.height = 256;
       const haloCtx = haloCv.getContext('2d');
       const haloGr  = haloCtx.createRadialGradient(128, 128, 0, 128, 128, 128);
-      haloGr.addColorStop(0,    'rgba(143,230,60,0.26)');
-      haloGr.addColorStop(0.45, 'rgba(143,230,60,0.12)');
-      haloGr.addColorStop(1,    'rgba(143,230,60,0)');
+      haloGr.addColorStop(0,    'rgba(136,171,227,0.26)');
+      haloGr.addColorStop(0.45, 'rgba(136,171,227,0.12)');
+      haloGr.addColorStop(1,    'rgba(136,171,227,0)');
       haloCtx.fillStyle = haloGr;
       haloCtx.fillRect(0, 0, 256, 256);
       const haloMesh = new THREE.Mesh(
@@ -694,8 +716,8 @@
       const bodyY = cardY + 68;
       const aR = 24, aCX = CARD_X + 18 + aR, aCY = bodyY + aR;
       const ag  = qctx.createRadialGradient(aCX - 6, aCY - 6, 2, aCX, aCY, aR);
-      ag.addColorStop(0, '#a2f04a');
-      ag.addColorStop(1, '#68c226');
+      ag.addColorStop(0, '#a8c8f0');
+      ag.addColorStop(1, '#5a8bc7');
       qctx.beginPath();
       qctx.arc(aCX, aCY, aR, 0, Math.PI * 2);
       qctx.fillStyle = ag;
@@ -714,7 +736,7 @@
       const tX = CARD_X + 18 + aR * 2 + 14;
       const msgLines = ['What if you had xray vision', 'for how people actually behave?'];
       qctx.fillStyle    = '#111111';
-      qctx.font         = `600 25px "Nunito", sans-serif`;
+      qctx.font         = `600 25px ${SYS_FONT}`;
       qctx.textAlign    = 'left';
       qctx.textBaseline = 'alphabetic';
       msgLines.forEach((line, i) => qctx.fillText(line, tX, bodyY + 28 + i * 34));
@@ -724,15 +746,15 @@
       const btnX = CARD_X + (CARD_W - btnW) / 2;
       const btnY = cardY + CARD_H - 20 - btnH;
       roundRect(qctx, btnX, btnY, btnW, btnH, btnR);
-      qctx.fillStyle = '#d4f54a';
+      qctx.fillStyle = '#88ABE3';
       qctx.fill();
       const btnGlow = qctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH * 0.5);
       btnGlow.addColorStop(0, 'rgba(255,255,255,0.32)');
       btnGlow.addColorStop(1, 'rgba(255,255,255,0)');
       qctx.fillStyle = btnGlow;
       qctx.fill();
-      qctx.fillStyle    = '#1a2a00';
-      qctx.font         = `700 30px "Nunito", sans-serif`;
+      qctx.fillStyle    = '#1a1e2e';
+      qctx.font         = `700 30px ${SYS_FONT}`;
       qctx.textAlign    = 'center';
       qctx.textBaseline = 'middle';
       qctx.fillText("Let\u2019s find out \u2192", btnX + btnW / 2, btnY + btnH / 2);
