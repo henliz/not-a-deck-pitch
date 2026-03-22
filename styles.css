@@ -313,8 +313,10 @@ canvas#webgl {
 
 /* visual/layout only — no animation */
 /* Wraps at word boundaries, never splits mid-word, never hyphenates */
-.tg-pl         { margin-bottom: 8px; overflow-wrap: break-word; word-break: normal; hyphens: none; max-width: 100%; min-width: 0; }
-.tg-pl--big    { font-family: var(--font-display); font-size: clamp(18px, 8cqw, 52px); line-height: 1.15; color: var(--text); margin-bottom: 8px; }
+.tg-pl         { margin-bottom: 12px; overflow-wrap: break-word; word-break: normal; hyphens: none; max-width: 100%; min-width: 0; }
+.tg-pl--big    { font-family: var(--font-display); font-size: clamp(30px, 12cqw, 52px); font-weight: 700; line-height: 1.15; color: var(--text); margin-bottom: 10px; }
+/* Punchline: key insight statements — gold, display, slams in */
+.tg-pl--punch  { font-family: var(--font-display); font-size: clamp(34px, 14cqw, 60px); font-weight: 700; line-height: 1.05; color: var(--shift); margin-bottom: 10px; }
 /* Simple 0→100% sweep: at 0% the bright strip is off-screen right,
    at 100% it's off-screen left — wrap is invisible, no stutter.  */
 @keyframes metalSheen {
@@ -323,7 +325,7 @@ canvas#webgl {
 }
 .tg-investor-word {
   display: block;
-  font-size: clamp(34px, 13cqw, 80px);
+  font-size: clamp(44px, 18cqw, 96px);
   line-height: 1.05;
   color: var(--shift);
   position: relative;
@@ -356,12 +358,35 @@ canvas#webgl {
   pointer-events: none;
   mix-blend-mode: screen;
 }
-.tg-pl--med    { font-family: var(--font-body); font-size: 17px; font-weight: 500; line-height: 1.55; color: rgba(34,34,34,0.72); margin-bottom: 3px; }
-.tg-pl--dim    { font-family: var(--font-body); font-size: 14px; font-weight: 400; line-height: 1.7; color: rgba(136,171,227,0.88); margin-top: 2px; margin-bottom: 2px; }
+.tg-pl--med    { font-family: var(--font-body); font-size: 15px; font-weight: 500; line-height: 1.45; color: rgba(34,34,34,0.80); margin-bottom: 10px; }
+.tg-pl--prompt { font-family: var(--font-body); font-size: 12px; font-weight: 400; line-height: 1.55; color: rgba(34,34,34,0.52); margin-bottom: 10px; }
+
+/* ── Inline highlight sweep — gold and blue variants ── */
+@keyframes hlReveal {
+  from { background-position: 100% 0; }
+  to   { background-position:   0% 0; }
+}
+.tg-hl {
+  background: linear-gradient(to right, rgba(219,213,156,0.42) 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  border-radius: 3px;
+  padding: 0.04em 3px;
+  animation: hlReveal 0.55s 0.25s ease forwards;
+}
+.tg-hl-b {
+  background: linear-gradient(to right, rgba(136,171,227,0.32) 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  border-radius: 3px;
+  padding: 0.04em 3px;
+  animation: hlReveal 0.55s 0.25s ease forwards;
+}
+.tg-pl--dim    { font-family: var(--font-body); font-size: 13px; font-weight: 400; line-height: 1.72; color: var(--trace); opacity: 0.92; margin-top: 0; margin-bottom: 12px; }
 .tg-pl--italic { font-style: italic; }
-.tg-pl--impact { font-family: var(--font-display); font-size: clamp(16px, 6.5cqw, 42px); line-height: 1.1; color: var(--text); margin-bottom: 6px; }
+.tg-pl--impact { font-family: var(--font-display); font-size: clamp(28px, 11cqw, 48px); font-weight: 700; line-height: 1.1; color: var(--text); margin-bottom: 8px; }
 .tg-pl--huge   {
-  font-family: var(--font-display); font-size: clamp(24px, 11cqw, 64px); line-height: 1;
+  font-family: var(--font-display); font-size: clamp(32px, 13.5cqw, 44px); font-weight: 700; line-height: 1;
   color: var(--shift); margin-bottom: 4px;
   animation: xrayGlitch 5s 1.5s infinite;
 }
@@ -469,7 +494,7 @@ canvas#webgl {
   border-left: 2px solid var(--shift);
   padding: 12px 0 12px 16px;
   margin: 16px 0;
-  font-family: var(--font-display); font-size: 16px; font-style: italic;
+  font-family: var(--font-display); font-size: 20px; font-style: italic; font-weight: 400;
   color: rgba(34,34,34,0.8); line-height: 1.6;
 }
 
@@ -481,20 +506,27 @@ canvas#webgl {
   margin: 16px 0; overflow: hidden;
 }
 .tg-stat { background: var(--bg); padding: 14px 10px; text-align: center; }
-.tg-stat-n { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--shift); display: block; line-height: 1; margin-bottom: 5px; }
+.tg-stat-n { font-family: var(--font-display); font-size: 34px; font-weight: 900; color: var(--shift); display: block; line-height: 1; margin-bottom: 5px; }
 .tg-stat-l { font-family: var(--font-label); font-size: 8.5px; letter-spacing: 0.1em; color: rgba(34,34,34,0.5); text-transform: uppercase; line-height: 1.45; display: block; }
 
 /* Reveal list */
 .tg-rlist { margin: 14px 0; display: flex; flex-direction: column; gap: 8px; }
 .tg-ritem {
-  display: flex; align-items: baseline; gap: 11px;
-  font-family: var(--font-body); font-size: 14px; color: rgba(34,34,34,0.78); line-height: 1.5;
+  display: flex; align-items: baseline; gap: 14px;
+  font-family: var(--font-body); font-size: 16px; color: rgba(34,34,34,0.82); line-height: 1.55;
   opacity: 0; transform: translateY(6px);
   animation: tgRitemIn 0.4s ease forwards;
-  min-width: 0; /* flex items default to min-width:auto which ignores container bounds */
-  overflow-wrap: break-word; word-break: normal;
+  min-width: 0;
 }
-.tg-ritem::before { content: attr(data-m); color: var(--trace); font-family: var(--font-label); font-size: 9px; flex-shrink: 0; margin-top: 2px; }
+.tg-ritem::before {
+  content: attr(data-m); color: var(--trace); font-family: var(--font-body);
+  font-size: 20px; font-weight: 700; flex-shrink: 0; line-height: 1; margin-top: 2px;
+}
+/* Text child — takes remaining width and wraps properly */
+.tg-ritem-text {
+  flex: 1; min-width: 0;
+  overflow-wrap: break-word; word-break: normal; hyphens: none;
+}
 @keyframes tgRitemIn { to { opacity: 1; transform: none; } }
 
 /* Ask grid */
@@ -506,7 +538,7 @@ canvas#webgl {
 }
 .tg-ask-cell { background: var(--bg); padding: 14px 12px; }
 .tg-ask-lbl  { font-family: var(--font-label); font-size: 8px; letter-spacing: 0.18em; color: rgba(34,34,34,0.4); text-transform: uppercase; margin-bottom: 6px; }
-.tg-ask-val  { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--shift); line-height: 1; }
+.tg-ask-val  { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--shift); line-height: 1; }
 .tg-ask-sub  { font-family: var(--font-body); font-size: 11px; color: rgba(34,34,34,0.5); margin-top: 5px; font-style: italic; line-height: 1.4; }
 
 /* Profile card */
@@ -523,7 +555,7 @@ canvas#webgl {
 .tg-profile-card::before { top: 7px; left: 7px; border-width: 1px 0 0 1px; }
 .tg-profile-card::after  { bottom: 7px; right: 7px; border-width: 0 1px 1px 0; }
 .tg-p-tag  { font-family: var(--font-label); font-size: 8px; letter-spacing: 0.22em; color: var(--trace); text-transform: uppercase; margin-bottom: 9px; }
-.tg-p-name { font-family: var(--font-display); font-size: 26px; font-weight: 600; color: var(--anchor); margin-bottom: 4px; line-height: 1.1; }
+.tg-p-name { font-family: var(--font-display); font-size: 32px; font-weight: 900; color: var(--anchor); margin-bottom: 4px; line-height: 1.1; }
 .tg-p-sub  { font-family: var(--font-label); font-size: 9px; color: rgba(34,34,34,0.45); letter-spacing: 0.06em; margin-bottom: 12px; }
 .tg-p-desc { font-family: var(--font-body); font-size: 14px; font-style: italic; color: rgba(34,34,34,0.72); line-height: 1.6; margin-bottom: 14px; }
 .tg-p-together { font-family: var(--font-label); font-size: 10px; color: rgba(34,34,34,0.5); line-height: 1.65; border-top: 1px solid var(--border); padding-top: 12px; }
@@ -602,7 +634,7 @@ canvas#webgl {
 .tg-share-card::before { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
 .tg-share-card::after  { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
 .tg-share-tag  { font-family: var(--font-label); font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--trace); opacity: 0.65; margin-bottom: 5px; }
-.tg-share-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--anchor); margin-bottom: 3px; }
+.tg-share-name { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--anchor); margin-bottom: 3px; }
 .tg-share-sub  { font-family: var(--font-label); font-size: 9px; color: rgba(34,34,34,0.42); margin-bottom: 8px; }
 .tg-share-url  { font-family: var(--font-label); font-size: 7px; color: rgba(34,34,34,0.22); }
 .tg-share-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -691,8 +723,8 @@ canvas#webgl {
 }
 .tg-stat-card .tg-stat-n {
   font-family: var(--font-display);
-  font-size: clamp(48px, 18cqw, 88px);
-  font-weight: 700;
+  font-size: clamp(58px, 20cqw, 98px);
+  font-weight: 900;
   line-height: 1;
   letter-spacing: -0.02em;
   display: block;
@@ -736,8 +768,9 @@ canvas#webgl {
   border-radius: 8px;
   padding: 16px 20px;
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 20px;
   font-style: italic;
+  font-weight: 400;
   color: rgba(34,34,34,0.82);
   line-height: 1.6;
   min-height: 1em;
@@ -753,9 +786,7 @@ canvas#webgl {
 .tg-blue { color: #88ABE3; }
 
 .tg-word-pill {
-  display: inline-block;
-  padding: 0.05em 0.28em;
-  border-radius: 5px;
+  display: inline;
 }
 
 .tg-cursor {
@@ -785,7 +816,8 @@ canvas#webgl {
   padding: 10px 0 10px 14px;
   margin: 10px 0;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 18px;
+  font-weight: 400;
   font-style: italic;
   color: rgba(34,34,34,0.78);
   line-height: 1.55;
@@ -825,8 +857,8 @@ canvas#webgl {
 }
 .tg-sf-n {
   font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 900;
   color: var(--shift);
   display: block;
   line-height: 1;
