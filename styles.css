@@ -557,19 +557,24 @@ canvas#webgl {
 .tg-cont:hover { background: var(--trace); color: var(--still); }
 
 /* Email block */
-.tg-email-q   { font-family: var(--font-label); font-size: 10px; letter-spacing: 0.06em; color: rgba(34,34,34,0.5); margin-bottom: 14px; }
-.tg-email-yesno { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.tg-e-yes {
-  background: transparent; border: 1px solid var(--trace);
-  padding: 9px 18px; color: var(--trace);
-  font-family: var(--font-label); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-  cursor: pointer; transition: background 180ms, color 180ms;
+.tg-email-hero {
+  font-family: var(--font-display); font-style: italic; font-weight: 700;
+  font-size: clamp(52px, 16vw, 80px); line-height: 1; letter-spacing: -0.02em;
+  color: var(--anchor); margin-bottom: 12px; display: block;
 }
-.tg-e-yes:hover { background: var(--trace); color: var(--still); }
+.tg-email-sub {
+  font-family: var(--font-body); font-size: 13px; line-height: 1.55;
+  color: rgba(34,34,34,0.62); margin-bottom: 6px;
+}
+.tg-email-list-lbl {
+  font-family: var(--font-label); font-size: 8px; letter-spacing: 0.18em;
+  color: var(--trace); text-transform: uppercase; margin-bottom: 14px;
+}
+.tg-email-q   { font-family: var(--font-label); font-size: 10px; letter-spacing: 0.06em; color: rgba(34,34,34,0.5); margin-bottom: 14px; }
 .tg-e-no {
   background: transparent; border: none; color: rgba(34,34,34,0.38);
   font-family: var(--font-label); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-  cursor: pointer; transition: color 180ms; padding: 9px 0;
+  cursor: pointer; transition: color 180ms; padding: 9px 0; display: block; margin-top: 4px;
 }
 .tg-e-no:hover { color: var(--anchor); }
 .tg-email-form { display: flex; border: 1px solid var(--border); margin-bottom: 7px; }
@@ -577,7 +582,7 @@ canvas#webgl {
 .tg-email-in::placeholder { color: rgba(34,34,34,0.22); }
 .tg-email-send { background: var(--trace); color: var(--still); border: none; font-family: var(--font-label); font-size: 12px; padding: 10px 14px; cursor: pointer; transition: opacity 0.15s; }
 .tg-email-send:hover { opacity: 0.82; }
-.tg-email-fine { font-family: var(--font-label); font-size: 8px; color: rgba(34,34,34,0.32); letter-spacing: 0.06em; }
+.tg-email-fine { font-family: var(--font-label); font-size: 8px; color: rgba(34,34,34,0.32); letter-spacing: 0.06em; margin-top: 8px; display: block; }
 
 /* Share card */
 .tg-share-card {
@@ -686,16 +691,17 @@ canvas#webgl {
   letter-spacing: -0.02em;
   display: block;
   margin-bottom: 0;
+  color: inherit;
 }
 .tg-stat-card .tg-stat-l {
   font-family: 'DM Mono', monospace;
   font-size: 12px;
-  opacity: 0.72;
   margin-top: 7px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   display: block;
   line-height: 1.4;
+  color: inherit;
 }
 
 /* Orbiting text ring host */

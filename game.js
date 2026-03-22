@@ -114,7 +114,7 @@ window.tToggleSpeedPanel = function () {
 
 window.tSetSpeed = function (mult) {
   window.tgSpeedMult = mult;
-  if (window.gsap) gsap.globalTimeline.timeScale(mult);
+  if (window.gsap) gsap.globalTimeline.timeScale(1 / mult);
   document.querySelectorAll('.t-speed-option').forEach(b => {
     b.classList.toggle('t-speed-active', parseFloat(b.dataset.speed) === mult);
   });
@@ -152,10 +152,10 @@ window.tgInitGame = async function () {
   /* ── Wrapped-style palette constants ── */
   const RING_COLORS  = ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD'];
   const STAT_COLORS  = [
-    { bg: '#DBD59C', fg: '#222222' },
-    { bg: '#88ABE3', fg: '#F9F9F2' },
-    { bg: '#C3D9FF', fg: '#222222' },
-    { bg: '#FFFBCD', fg: '#222222' },
+    { bg: '#DBD59C', fg: '#88ABE3' },  // dark yellow → cool blue text
+    { bg: '#88ABE3', fg: '#FFFBCD' },  // cool blue   → light yellow text
+    { bg: '#C3D9FF', fg: '#222222' },  // echo blue   → anchor text
+    { bg: '#FFFBCD', fg: '#88ABE3' },  // light yellow → cool blue text
   ];
   let ringColorIdx = 0;
   let statColorIdx = 0;
@@ -561,50 +561,98 @@ window.tgInitGame = async function () {
   /* ── Single Wrapped-style stat card ──────────────────────────────────────
      Appends to `container`. Returns the card element.                     */
   async function statCard(stat, container) {
-    const pal  = STAT_COLORS[statColorIdx++ % STAT_COLORS.length];
+    const pal  = STAT_COLORS[statColorIdx % STAT_COLORS.length];
+    const dir  = statColorIdx % 2 === 0 ? -1 : 1;   // alternating slam direction L/R
+    statColorIdx++;
     const card = document.createElement('div');
     card.className = 'tg-stat-card';
-    card.style.cssText = `background:${pal.bg};color:${pal.fg};`;
+    card.style.cssText = `background:${pal.bg};`;
     card.innerHTML =
-      `<div class="tg-stat-n" style="opacity:0;transform:scale(0.1)">${stat.n}</div>` +
-      `<div class="tg-stat-l" style="opacity:0">${stat.l}</div>`;
+      `<div class="tg-stat-n" style="opacity:0;transform:scale(0.1);color:${pal.fg}">${stat.n}</div>` +
+      `<div class="tg-stat-l" style="opacity:0;color:${pal.fg}">${stat.l}</div>`;
 
     if (stat.asset) {
       const img = document.createElement('img');
       img.src = `./assets/${stat.asset}`;
-      img.className = 'tg-decal--bob';
       img.style.cssText =
         'position:absolute;right:18px;top:50%;transform:translateY(-50%);' +
-        'width:54px;height:auto;opacity:0;pointer-events:none;';
+        'width:68px;height:auto;opacity:0;pointer-events:none;';
       card.appendChild(img);
     }
     container.appendChild(card);
     scrollPitch();
 
     if (hasGSAP) {
-      if (window.HAPTIC) HAPTIC.impact('light');
+      if (window.HAPTIC) HAPTIC.impact('medium');
       const numEl = card.querySelector('.tg-stat-n');
       const lblEl = card.querySelector('.tg-stat-l');
       const imgEl = card.querySelector('img');
 
-      gsap.from(card, { x: -28, opacity: 0, duration: 0.32,
-        ease: hasCE ? 'slam' : 'back.out(2)' });
-      await new Promise(r =>
-        gsap.to(numEl, { opacity: 1, scale: 1, duration: 0.58,
-          ease: 'elastic.out(1, 0.38)', delay: 0.1, onComplete: r })
+      // Slam from alternating corners with tilt
+      gsap.fromTo(card,
+        { x: dir * 72, y: dir * 16, rotation: dir * 5, scale: 0.78, opacity: 0 },
+        { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1,
+          duration: 0.48, ease: hasCE ? 'slam' : 'back.out(2.5)',
+          clearProps: 'rotation,transform' }
       );
-      gsap.to(lblEl, { opacity: 0.72, y: 0, duration: 0.32, ease: 'power2.out' });
+
+      // Brightness flash on impact
+      gsap.to(card, {
+        filter: 'brightness(1.22)', duration: 0.12, delay: 0.36,
+        ease: 'power2.out', yoyo: true, repeat: 1,
+        onComplete: () => { card.style.filter = ''; },
+      });
+
+      // Number: ScrambleText if available, else elastic pop
+      await new Promise(r => {
+        if (hasScrTx) {
+          gsap.set(numEl, { opacity: 1, scale: 1 });
+          gsap.to(numEl, {
+            duration: 0.9, delay: 0.14,
+            scrambleText: { text: stat.n, chars: '0123456789%+KMmins/', revealDelay: 0.06, speed: 0.65 },
+            ease: 'none', onComplete: r,
+          });
+        } else {
+          gsap.to(numEl, { opacity: 1, scale: 1, duration: 0.62,
+            ease: 'elastic.out(1, 0.38)', delay: 0.14, onComplete: r });
+        }
+      });
+
+      // Label slides up
+      gsap.fromTo(lblEl,
+        { opacity: 0, y: 10 },
+        { opacity: 0.84, y: 0, duration: 0.36, ease: 'power3.out' }
+      );
+
+      // Image: full-rotation explosive entrance
       if (imgEl) {
         gsap.fromTo(imgEl,
-          { opacity: 0, scale: 0.15, rotation: -28 },
-          { opacity: 1, scale: 1, rotation: 5, duration: 0.65,
-            ease: 'elastic.out(1, 0.5)', delay: 0.12 });
+          { opacity: 0, scale: 0.04, rotation: dir * -400, x: dir * 48 },
+          { opacity: 1, scale: 1,    rotation: dir * 6,    x: 0,
+            duration: 1.1, ease: 'elastic.out(1, 0.38)', delay: 0.2,
+            onComplete: () => {
+              // Settle into a slow bob after explosive entrance
+              gsap.to(imgEl, { y: -6, rotation: dir * 4, duration: 1.8,
+                ease: 'sine.inOut', yoyo: true, repeat: -1 });
+            },
+          }
+        );
       }
-      gsap.fromTo(card, { x: -7 }, { x: 0, duration: 0.4,
-        ease: 'elastic.out(1, 0.32)' });
+
+      // Mini confetti burst from card center after it lands
+      if (window.confetti) {
+        const rect = card.getBoundingClientRect();
+        const ox = (rect.left + rect.width  * 0.5) / window.innerWidth;
+        const oy = (rect.top  + rect.height * 0.5) / window.innerHeight;
+        setTimeout(() => confetti({
+          particleCount: 22, spread: 60, origin: { x: ox, y: oy },
+          colors: [pal.bg, pal.fg, '#FFFBCD', '#88ABE3'],
+          scalar: 0.65, ticks: 70,
+        }), 380);
+      }
     } else {
-      card.querySelector('.tg-stat-n').style.cssText = 'opacity:1;transform:none;';
-      card.querySelector('.tg-stat-l').style.opacity = '0.72';
+      card.querySelector('.tg-stat-n').style.cssText = `opacity:1;transform:none;color:${pal.fg}`;
+      card.querySelector('.tg-stat-l').style.cssText = `opacity:0.84;color:${pal.fg}`;
     }
     return card;
   }
@@ -819,91 +867,130 @@ window.tgInitGame = async function () {
     return curY + lh;
   }
 
-  async function generateShareCard(arch) {
-    const W = 900, H = 1120;
+  async function generateShareCard(arch, id) {
+    const W = 900, H = 1200;
     const cvs = document.createElement('canvas');
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
 
-    // Background
+    const ARCH_COLORS = {
+      cartographer: '#DBD59C', contrarian: '#88ABE3',
+      architect: '#C3D9FF',   operator:   '#FFFBCD', storyteller: '#DBD59C',
+    };
+    const ARCH_ASSETS = {
+      cartographer: 'camera.png',   contrarian: 'boomerang.png',
+      architect:    'house.png',    operator:   'watch.png', storyteller: 'mic.png',
+    };
+
+    const accentColor = ARCH_COLORS[id] || '#DBD59C';
+    const headerH = 460;
+
+    // White base
     ctx.fillStyle = '#F9F9F2';
     ctx.fillRect(0, 0, W, H);
 
-    // Outer frame
-    ctx.strokeStyle = 'rgba(34,34,34,0.1)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(24, 24, W - 48, H - 48);
+    // Coloured header block (Wrapped-style)
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(0, 0, W, headerH);
 
-    // Corner marks in trace blue
-    ctx.strokeStyle = '#88ABE3'; ctx.lineWidth = 2.5;
-    const cm = 44;
-    [[24,24,1,1],[W-24,24,-1,1],[24,H-24,1,-1],[W-24,H-24,-1,-1]].forEach(([x,y,sx,sy]) => {
-      ctx.beginPath();
-      ctx.moveTo(x, y); ctx.lineTo(x + cm*sx, y);
-      ctx.moveTo(x, y); ctx.lineTo(x, y + cm*sy);
-      ctx.stroke();
+    // Subtle large circle in header
+    ctx.fillStyle = 'rgba(34,34,34,0.05)';
+    ctx.beginPath(); ctx.arc(W / 2, headerH / 2, 280, 0, Math.PI * 2); ctx.fill();
+
+    // Scattered decorative dots in header
+    ctx.fillStyle = 'rgba(34,34,34,0.08)';
+    [[80,55,22],[830,38,16],[145,390,20],[755,330,14],
+     [455,28,18],[685,430,10],[115,205,12],[805,195,18],
+     [345,415,14],[610,75,10]].forEach(([x,y,r]) => {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     });
 
-    // investor.png
+    // Sparkle dots
+    ctx.fillStyle = 'rgba(34,34,34,0.22)';
+    [[145,348,5],[762,130,4],[498,445,6],[198,108,3.5],[708,395,4.5]].forEach(([x,y,r]) => {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Character asset — centred in the coloured header
+    const assetSrc = ARCH_ASSETS[id] || 'investor.png';
     await new Promise(res => {
       const img = new Image();
-      img.onload = () => { ctx.drawImage(img, W/2 - 110, 90, 220, 220); res(); };
+      img.onload = () => {
+        const sz = 230;
+        ctx.drawImage(img, W / 2 - sz / 2, headerH / 2 - sz / 2, sz, sz);
+        res();
+      };
       img.onerror = res;
-      img.src = './assets/investor.png';
+      img.src = `./assets/${assetSrc}`;
     });
 
     // Ensure fonts ready
     try {
       await Promise.all([
-        document.fonts.load('600 54px "Playfair Display"'),
-        document.fonts.load('400 15px "DM Mono"'),
-        document.fonts.load('500 21px "Syne"'),
+        document.fonts.load('700 68px "Playfair Display"'),
+        document.fonts.load('400 16px "DM Mono"'),
+        document.fonts.load('500 22px "Syne"'),
       ]);
     } catch(e) {}
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
 
-    // Tag
+    // Tag — spaced letters
     ctx.fillStyle = '#88ABE3';
     ctx.font = '400 13px "DM Mono"';
-    // Manual letter-spacing approximation
-    const tag = 'YOUR INVESTOR ARCHETYPE';
-    let tx = W/2 - ctx.measureText(tag).width/2 - tag.length*1.5;
-    tag.split('').forEach(ch => { ctx.fillText(ch, tx, 342); tx += ctx.measureText(ch).width + 3; });
+    const tagStr = 'YOUR INVESTOR ARCHETYPE';
+    let tx = W / 2 - ctx.measureText(tagStr).width / 2 - tagStr.length * 1.5;
+    tagStr.split('').forEach(ch => { ctx.fillText(ch, tx, headerH + 26); tx += ctx.measureText(ch).width + 3; });
 
-    // Archetype name
+    // Name
     ctx.fillStyle = '#222222';
-    ctx.font = '600 54px "Playfair Display"';
-    ctx.fillText(arch.name, W/2, 374);
+    ctx.font = '700 68px "Playfair Display"';
+    ctx.fillText(arch.name, W / 2, headerH + 58);
+
+    // Blue underline under name
+    const nameW = ctx.measureText(arch.name).width;
+    ctx.strokeStyle = '#88ABE3'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - nameW / 2, headerH + 142);
+    ctx.lineTo(W / 2 + nameW / 2, headerH + 142);
+    ctx.stroke();
 
     // Sub
     ctx.fillStyle = 'rgba(34,34,34,0.42)';
-    ctx.font = '400 15px "DM Mono"';
-    ctx.fillText(arch.sub, W/2, 446);
+    ctx.font = '400 18px "DM Mono"';
+    ctx.fillText(arch.sub, W / 2, headerH + 158);
 
-    // Divider
+    // Divider + gold accent
     ctx.strokeStyle = 'rgba(34,34,34,0.1)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(80, 486); ctx.lineTo(W-80, 486); ctx.stroke();
-
-    // Gold accent line
-    ctx.strokeStyle = '#DBD59C'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(W/2 - 36, 490); ctx.lineTo(W/2 + 36, 490); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(80, headerH + 206); ctx.lineTo(W - 80, headerH + 206); ctx.stroke();
+    ctx.strokeStyle = '#DBD59C'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(W / 2 - 42, headerH + 210); ctx.lineTo(W / 2 + 42, headerH + 210); ctx.stroke();
 
     // Description
     ctx.fillStyle = 'rgba(34,34,34,0.72)';
-    ctx.font = '500 21px "Syne"';
-    const descBottom = wrapTextCanvas(ctx, arch.desc, W/2, 516, W - 160, 34);
+    ctx.font = '500 22px "Syne"';
+    const descBottom = wrapTextCanvas(ctx, arch.desc, W / 2, headerH + 236, W - 160, 34);
 
     // Together line
     const togetherText = arch.together.replace(/<\/?strong>/g, '');
     ctx.fillStyle = 'rgba(34,34,34,0.45)';
     ctx.font = '400 16px "DM Mono"';
-    wrapTextCanvas(ctx, togetherText, W/2, Math.max(descBottom + 24, 780), W - 200, 26);
+    wrapTextCanvas(ctx, togetherText, W / 2, Math.max(descBottom + 22, headerH + 580), W - 200, 26);
+
+    // Corner brackets
+    ctx.strokeStyle = 'rgba(34,34,34,0.14)'; ctx.lineWidth = 1.5;
+    const cm = 38;
+    [[24,24,1,1],[W-24,24,-1,1],[24,H-24,1,-1],[W-24,H-24,-1,-1]].forEach(([x,y,sx,sy]) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y); ctx.lineTo(x + cm * sx, y);
+      ctx.moveTo(x, y); ctx.lineTo(x, y + cm * sy);
+      ctx.stroke();
+    });
 
     // trove.garden
     ctx.fillStyle = '#DBD59C';
-    ctx.font = '400 15px "DM Mono"';
-    ctx.fillText('trove.garden', W/2, H - 58);
+    ctx.font = '400 16px "DM Mono"';
+    ctx.fillText('trove.garden', W / 2, H - 48);
 
     return cvs;
   }
@@ -1520,17 +1607,18 @@ window.tgInitGame = async function () {
       const emailDiv = document.createElement('div');
       emailDiv.className = 'tg-pl';
       emailDiv.innerHTML = `
-        <div class="tg-email-q">before we reveal — want us to send your profile to you?</div>
-        <div class="tg-email-form">
-          <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@fund.com" autocomplete="email">
+        <div class="tg-email-hero" id="tg-email-hero" style="opacity:0">curious?</div>
+        <div class="tg-email-sub" id="tg-email-sub" style="opacity:0">stay up to date with upcoming drops</div>
+        <div class="tg-email-list-lbl" id="tg-email-lbl" style="opacity:0">first-look list — one note when it's real</div>
+        <div class="tg-email-form" id="tg-email-form" style="opacity:0">
+          <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@somewhere.com" autocomplete="email">
           <button class="tg-email-send" id="tg-email-send">→</button>
         </div>
-        <button class="tg-e-no" id="tg-email-skip">show me first →</button>
-        <div class="tg-email-fine">no spam. your profile + one note from helen.</div>
+        <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
+        <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
       `;
       pitch.appendChild(emailDiv);
       scrollPitch();
-      if (hasGSAP) gsap.from(emailDiv, { opacity: 0, y: 12, duration: 0.4, ease: 'power3.out' });
 
       const submit = () => {
         const val = document.getElementById('tg-email-in')?.value?.trim();
@@ -1544,13 +1632,56 @@ window.tgInitGame = async function () {
           leads.push({ email: val, archetype: getArchetype(), ts: Date.now() });
           localStorage.setItem('tg-leads', JSON.stringify(leads));
         } catch (e) {}
-        emailDiv.innerHTML = `<div class="tg-email-fine" style="opacity:0.8;font-size:13px;margin:6px 0">noted ✓ helen will be in touch.</div>`;
-        setTimeout(resolveEmail, 700);
+        if (hasGSAP) {
+          gsap.to(['#tg-email-form','#tg-email-skip','#tg-email-fine'], { opacity: 0, y: -6, duration: 0.25, stagger: 0.06 });
+          setTimeout(() => {
+            emailDiv.innerHTML = `<div style="font-family:var(--font-label);font-size:12px;color:var(--trace);letter-spacing:0.08em;padding:6px 0;opacity:0" id="tg-email-ok">you're on the list ✓</div>`;
+            gsap.to('#tg-email-ok', { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out' });
+            setTimeout(resolveEmail, 800);
+          }, 350);
+        } else {
+          emailDiv.innerHTML = `<div class="tg-email-fine" style="opacity:0.8;font-size:13px;margin:6px 0">you're on the list ✓</div>`;
+          setTimeout(resolveEmail, 700);
+        }
       };
+
+      if (hasGSAP) {
+        const heroEl = document.getElementById('tg-email-hero');
+        const subEl  = document.getElementById('tg-email-sub');
+        const lblEl  = document.getElementById('tg-email-lbl');
+        const formEl = document.getElementById('tg-email-form');
+        const skipEl = document.getElementById('tg-email-skip');
+        const fineEl = document.getElementById('tg-email-fine');
+
+        // 1. Slam "curious?" char by char
+        const split = new SplitText(heroEl, { type: 'chars' });
+        gsap.set(heroEl, { opacity: 1 });
+        gsap.from(split.chars, {
+          opacity: 0, y: 36, scale: 0.5,
+          rotation: i => (Math.sin(i * 1.4) * 18),
+          duration: 0.55, ease: hasCE ? 'slam' : 'back.out(2.5)',
+          stagger: { each: 0.07, ease: 'power2.out' },
+          clearProps: 'transform,rotation',
+        });
+
+        // 2. Sub-text fades up
+        gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power3.out', delay: 0.52 });
+        gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3, ease: 'power2.out', delay: 0.72 });
+
+        // 3. Form + supporting copy slide up
+        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 0.88 });
+        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.05 });
+        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.15,
+          onComplete: () => { document.getElementById('tg-email-in')?.focus(); },
+        });
+      } else {
+        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine']
+          .forEach(id => { const el = document.getElementById(id); if (el) el.style.opacity = '1'; });
+        document.getElementById('tg-email-in')?.focus();
+      }
 
       setTimeout(() => {
         const inp = document.getElementById('tg-email-in');
-        inp?.focus();
         inp?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
         document.getElementById('tg-email-send')?.addEventListener('click', submit);
         document.getElementById('tg-email-skip')?.addEventListener('click', resolveEmail);
@@ -1643,60 +1774,47 @@ window.tgInitGame = async function () {
     }
     await w(700);
 
-    // ── Share card ────────────────────────────────────────────────────────────
-    const arcId = getArchetype();
-    const a     = ARCHETYPES[arcId];
-    const cvs   = await generateShareCard(a);
-    cvs.style.cssText = 'width:100%;height:auto;display:block;border:1px solid var(--border);margin-bottom:14px;';
-    if (window.gsap) {
-      gsap.fromTo(cvs,
-        { filter: 'saturate(0) blur(7px) brightness(1.4)' },
-        { filter: 'saturate(1) blur(0px) brightness(1)', duration: 1.3, ease: 'power2.out', clearProps: 'filter' });
-    }
-
-    const shareWrap = document.createElement('div');
-    shareWrap.className = 'tg-pl tg-share-wrap';
-    const tag = document.createElement('div');
-    tag.className = 'tg-share-tag';
-    tag.textContent = 'your card';
-    shareWrap.appendChild(tag);
-    shareWrap.appendChild(cvs);
-
+    // Share button lives on the profile card — canvas generated silently on tap
     const shareBtn = document.createElement('button');
     shareBtn.className = 'tg-share-btn-main';
     shareBtn.textContent = 'share this →';
     shareBtn.onclick = async () => {
+      shareBtn.textContent = 'generating…';
+      shareBtn.disabled = true;
       try {
+        const cvs = await generateShareCard(arch, id);
         const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
-        const file = new File([blob], `trove-${arcId}.png`, { type: 'image/png' });
+        const file = new File([blob], `trove-${id}.png`, { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
-            title: a.name,
-            text: `${a.name} — ${a.sub}\n\ntrove.garden`,
+            title: arch.name,
+            text: `${arch.name} — ${arch.sub}\n\ntrove.garden`,
             files: [file],
           });
         } else if (navigator.share) {
-          await navigator.share({ title: a.name, text: `${a.name} — ${a.sub}`, url: 'https://trove.garden' });
+          await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}`, url: 'https://trove.garden' });
         } else {
           const link = document.createElement('a');
-          link.download = `trove-${arcId}.png`;
+          link.download = `trove-${id}.png`;
           link.href = cvs.toDataURL('image/png');
           link.click();
           shareBtn.textContent = 'saved ✓';
-          setTimeout(() => { shareBtn.textContent = 'share this →'; }, 2200);
+          setTimeout(() => { shareBtn.textContent = 'share this →'; shareBtn.disabled = false; }, 2200);
+          return;
         }
       } catch (e) { /* cancelled */ }
+      shareBtn.textContent = 'share this →';
+      shareBtn.disabled = false;
     };
-    shareWrap.appendChild(shareBtn);
+    profileCard.appendChild(shareBtn);
+    if (hasGSAP) gsap.from(shareBtn, { opacity: 0, y: 10, duration: 0.4, ease: 'power3.out', delay: 0.15 });
 
     const contact = document.createElement('div');
     contact.className = 'tg-pl tg-contact';
     contact.innerHTML = `<div>Helen Huang · Founder, Trove</div><div><a href="mailto:helen@trove.garden">helen@trove.garden</a></div>`;
-
-    pitch.appendChild(shareWrap);
     pitch.appendChild(contact);
     scrollPitch();
-    if (hasGSAP) gsap.from([shareWrap, contact], { opacity: 0, y: 18, duration: 0.48, ease: 'back.out(2)', stagger: 0.1 });
+    if (hasGSAP) gsap.from(contact, { opacity: 0, y: 18, duration: 0.48, ease: 'back.out(2)' });
     setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 150);
   }
 
