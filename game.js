@@ -402,10 +402,10 @@ window.tgInitGame = async function () {
         scale:    opts.scale    ?? 1,
         rotation: opts.rotation ?? 0,
         ...(applyBlur ? { filter: 'blur(10px)' } : {}),
-        duration: opts.duration ?? 0.55,
+        duration: opts.duration ?? 0.65,
         ease:     opts.ease     ?? defaultEase,
         stagger:  {
-          each: opts.stagger      ?? 0.07,
+          each: opts.stagger      ?? 0.10,
           from: opts.from         ?? 'start',
           ease: opts.staggerEase  ?? 'power2.inOut',
         },
@@ -1503,7 +1503,7 @@ window.tgInitGame = async function () {
     await w(200);
     // Type B — narration
     await reveal(line('<span class="tg-hl">Every important decision</span> about people runs on one type of data:', 'tg-pl--med'), {
-      y: 16, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 16, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(200);
     // Type A — statement
@@ -1524,7 +1524,7 @@ window.tgInitGame = async function () {
     await w(400);
     // Type D — the landing line
     const deadEl = line('Self-reporting isn\'t just noisy. It\'s <span class="tg-dead-word">dead.</span>', 'tg-pl--med tg-pl--italic', 8);
-    await reveal(deadEl, { y: 14, stagger: 0.05, duration: 0.42, ease: hasCE ? 'unfurl' : 'power3.out' });
+    await reveal(deadEl, { y: 14, stagger: 0.07, duration: 0.55, ease: hasCE ? 'unfurl' : 'power3.out' });
     // Heartbreak anchors right beside the word "dead."
     const deadWord = deadEl.querySelector('.tg-dead-word');
     if (deadWord) {
@@ -1559,7 +1559,7 @@ window.tgInitGame = async function () {
     await w(200);
     // Type B — setup
     await reveal(line('You <span class="tg-hl-b">stop asking</span> people who they are.', 'tg-pl--med'), {
-      y: 16, stagger: 0.05, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 16, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(600); // longer pause — next line is the answer
     flash();
@@ -1587,11 +1587,11 @@ window.tgInitGame = async function () {
     tanglesEl.appendChild(decal('gaming.png', 'tg-decal--bob', { right: '-26px', top: '-8px', w: 50, fromY: -25, delay: 0.2 }));
     await w(160);
     await reveal(line('A first date. A workplace crisis. A creative standoff at midnight.', 'tg-pl--med'), {
-      y: 12, stagger: 0.04, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 12, stagger: 0.07, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(120);
     await reveal(line('You make choices. <span class="tg-hl">Real ones, under actual pressure.</span>', 'tg-pl--med'), {
-      y: 12, stagger: 0.04, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 12, stagger: 0.07, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     // Type C — pull quote
@@ -1613,7 +1613,7 @@ window.tgInitGame = async function () {
     await ringWipeChapter('Why This Survives');
     await w(200);
     await reveal(line('Every previous attempt made <span class="tg-hl">the same mistake.</span>', 'tg-pl--med'), {
-      y: 16, stagger: 0.05, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 16, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     await dimLines('They still asked people to describe their behaviour. Personality tests — self-reported. 360 reviews — observer-reported. Assessment centres — performed. All gameable. All dead in an AI world.', 160);
@@ -1628,11 +1628,11 @@ window.tgInitGame = async function () {
     });
     await w(600);
     await reveal(line('You build a scenario. You watch what someone does.', 'tg-pl--med'), {
-      y: 14, stagger: 0.04, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(120);
     await reveal(line('The measurement is <span class="tg-hl-b">invisible</span> — they\'re too absorbed in the story to perform.', 'tg-pl--med'), {
-      y: 12, stagger: 0.038, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     // Type C — pull quote + phone decal
@@ -1656,11 +1656,11 @@ window.tgInitGame = async function () {
     await ringWipeChapter('Not a Tool. A Layer.');
     await w(200);
     await reveal(line('Most behavioural tools sit on top of <span class="tg-hl">existing workflows.</span>', 'tg-pl--med'), {
-      y: 14, stagger: 0.038, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.065, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(120);
     await reveal(line('You administer them. Someone takes the test. <span class="tg-hl-b">You get a report.</span>', 'tg-pl--med'), {
-      y: 12, stagger: 0.038, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     // Type A — statement
@@ -1685,7 +1685,7 @@ window.tgInitGame = async function () {
       'When they apply for a job, go on a date, or authorize a landlord to screen them, they share that profile. <span class="tg-hl">The platform pays to read it.</span>',
     ]) {
       await reveal(line(s, 'tg-pl--med'), {
-        y: 12, stagger: 0.032, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+        y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
       });
       await w(180);
     }
@@ -1710,7 +1710,7 @@ window.tgInitGame = async function () {
     await ringWipeChapter('The B2B Model');
     await w(200);
     await reveal(line('Four companies reached out after the Valentine\'s Day campaign. None of them were pitched. They played the consumer product and <span class="tg-hl">saw the enterprise application themselves.</span>', 'tg-pl--med'), {
-      y: 14, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     askGrid([
@@ -1747,7 +1747,7 @@ window.tgInitGame = async function () {
     userEl.appendChild(decal('id.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 48, delay: 0.2 }));
     await w(600);
     await reveal(line('This isn\'t a privacy policy nicety — it\'s <span class="tg-hl-b">the core of the business model.</span> Trove profiles are <span class="tg-hl">assets users accumulate</span> and choose to share. You authorize what gets seen and to whom. You can revoke it.', 'tg-pl--med'), {
-      y: 14, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     await dimLines('That consent architecture is what makes the B2B product valuable. An enterprise buyer is getting a signal that the person chose to share with them. That\'s a different conversation than a background check or a scraped LinkedIn.');
@@ -1781,7 +1781,7 @@ window.tgInitGame = async function () {
     await w(300);
     // Type B — setup for the pivot
     await reveal(line('She didn\'t start Trove because it was <span class="tg-hl-b">a good market.</span>', 'tg-pl--med tg-pl--italic'), {
-      y: 14, stagger: 0.05, duration: 0.44, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.55, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(500); // hold — next line is the answer
     flash();
@@ -1820,7 +1820,7 @@ window.tgInitGame = async function () {
     await w(200);
     // Slide in from left — different from the blur-reveal used elsewhere
     await reveal(line('Everyone else trying to solve the "know people better" problem is <span class="tg-hl">building better questionnaires.</span>', 'tg-pl--med'), {
-      x: -18, stagger: 0.022, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+      x: -18, stagger: 0.06, duration: 0.52, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     flash();
@@ -1868,12 +1868,12 @@ window.tgInitGame = async function () {
     oneCampaignEl.appendChild(decal('icecream.png', 'tg-decal--bob', { right: '-28px', top: '-10px', w: 46, fromY: -30, delay: 0.2 }));
     await w(300);
     await reveal(line('500 emails. No ads. No paid influencers. <span class="tg-hl">Nothing.</span>', 'tg-pl--med'), {
-      y: 14, stagger: 0.045, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     const viralEl = line('<span class="tg-hl">8× organic amplification.</span> People shared it because they wanted their friends to see their own results.', 'tg-pl--med');
     await reveal(viralEl, {
-      y: 14, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     fullScreenAssetSweep('banana.png');
     viralEl.style.position = 'relative'; viralEl.style.overflow = 'visible';
@@ -2029,7 +2029,7 @@ window.tgInitGame = async function () {
     });
     await w(350);
     await reveal(line('We\'re financing the next phase: <span class="tg-hl">100K active behavioural profiles,</span> 1–2 paid B2B pilots, <span class="tg-hl-b">retention across verticals</span> beyond dating.', 'tg-pl--med'), {
-      y: 14, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     askGrid([
@@ -2047,7 +2047,7 @@ window.tgInitGame = async function () {
     await w(500);
 
     await reveal(line('We\'re looking for investors who <span class="tg-hl">think in platforms, not products.</span> Who understand that <span class="tg-hl-b">the moat is the dataset</span> and the app is just how you fill it.', 'tg-pl--med'), {
-      y: 12, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 12, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(700);
     await contBtn('See your investor profile →');
@@ -2813,7 +2813,7 @@ window.tgInitGame = async function () {
 
   // ── Gap 1: vision beat expansion ───────────────────────────────────────
   await reveal(line('Not what they say they\'ll do. Not their self-reported preferences.', 'tg-pl--dim'), {
-    y: 12, stagger: 0.032, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+    y: 12, stagger: 0.065, duration: 0.52, ease: hasCE ? 'unfurl' : 'power3.out',
   });
   await w(380);
 
@@ -2823,7 +2823,7 @@ window.tgInitGame = async function () {
   await w(500);
 
   await reveal(line('Every choice in the game is <span class="tg-hl-b">a behavioural signal.</span> Aggregated, they\'re <span class="tg-hl">a fingerprint.</span>', 'tg-pl--med'), {
-    y: 12, stagger: 0.034, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
+    y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
   });
   assetBurst(visionPopEl, 'data', 7);
   await w(600);
