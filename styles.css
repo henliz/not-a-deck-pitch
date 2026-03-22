@@ -41,6 +41,10 @@
   box-sizing: border-box; margin: 0; padding: 0;
   -webkit-user-select: none; user-select: none;
   -webkit-touch-callout: none;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  -webkit-hyphens: none;
 }
 
 html, body {
@@ -307,8 +311,9 @@ canvas#webgl {
 }
 
 /* visual/layout only — no animation */
-.tg-pl         { margin-bottom: 8px; }
-.tg-pl--big    { font-family: var(--font-display); font-size: 32px; line-height: 1.15; color: var(--text); margin-bottom: 8px; hyphens: none; overflow-wrap: normal; word-break: normal; }
+/* Wraps at word boundaries, never splits mid-word, never hyphenates */
+.tg-pl         { margin-bottom: 8px; overflow-wrap: break-word; word-break: normal; hyphens: none; }
+.tg-pl--big    { font-family: var(--font-display); font-size: 32px; line-height: 1.15; color: var(--text); margin-bottom: 8px; }
 /* Simple 0→100% sweep: at 0% the bright strip is off-screen right,
    at 100% it's off-screen left — wrap is invisible, no stutter.  */
 @keyframes metalSheen {
@@ -353,11 +358,10 @@ canvas#webgl {
 .tg-pl--med    { font-family: var(--font-body); font-size: 17px; font-weight: 500; line-height: 1.55; color: rgba(34,34,34,0.72); margin-bottom: 3px; }
 .tg-pl--dim    { font-family: var(--font-label); font-size: 11px; font-weight: 400; line-height: 1.5; color: var(--trace); letter-spacing: 0.06em; }
 .tg-pl--italic { font-style: italic; }
-.tg-pl--impact { font-family: var(--font-display); font-size: 26px; line-height: 1.1; color: var(--text); margin-bottom: 6px; hyphens: none; overflow-wrap: normal; word-break: normal; white-space: nowrap; }
+.tg-pl--impact { font-family: var(--font-display); font-size: 26px; line-height: 1.1; color: var(--text); margin-bottom: 6px; }
 .tg-pl--huge   {
   font-family: var(--font-display); font-size: 44px; line-height: 1;
   color: var(--shift); margin-bottom: 4px;
-  hyphens: none; overflow-wrap: normal; word-break: normal;
   animation: xrayGlitch 5s 1.5s infinite;
 }
 
@@ -431,6 +435,35 @@ canvas#webgl {
 .tg-ch::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
 /* Pull quote */
+/* ── Inline Trove wordmark — scales to 1em, sits on baseline ── */
+.tg-trove-mark {
+  height: 0.85em;
+  width: auto;
+  display: inline-block;
+  vertical-align: -0.05em;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Trove logo reveal ── */
+.tg-hero-logo {
+  position: relative;
+  display: inline-block;
+  height: 40px;
+  overflow: visible;
+  margin: 12px 0 4px;
+}
+.tg-hero-word {
+  height: 36px; width: auto; display: block;
+}
+.tg-hero-oh {
+  position: absolute;
+  top: 6px; left: 0;
+  width: 24px; height: 24px;
+  object-fit: contain;
+  transform-origin: center;
+}
+
 .tg-pq {
   border-left: 2px solid var(--shift);
   padding: 12px 0 12px 16px;
@@ -457,6 +490,8 @@ canvas#webgl {
   font-family: var(--font-body); font-size: 14px; color: rgba(34,34,34,0.78); line-height: 1.5;
   opacity: 0; transform: translateY(6px);
   animation: tgRitemIn 0.4s ease forwards;
+  min-width: 0; /* flex items default to min-width:auto which ignores container bounds */
+  overflow-wrap: break-word; word-break: normal;
 }
 .tg-ritem::before { content: attr(data-m); color: var(--trace); font-family: var(--font-label); font-size: 9px; flex-shrink: 0; margin-top: 2px; }
 @keyframes tgRitemIn { to { opacity: 1; transform: none; } }
@@ -560,6 +595,15 @@ canvas#webgl {
 .tg-share-sub  { font-family: var(--font-label); font-size: 9px; color: rgba(34,34,34,0.42); margin-bottom: 8px; }
 .tg-share-url  { font-family: var(--font-label); font-size: 7px; color: rgba(34,34,34,0.22); }
 .tg-share-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tg-share-btn-main {
+  display: block; width: 100%; margin-top: 12px;
+  background: var(--anchor); color: var(--still);
+  border: none; font-family: var(--font-label); font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 15px 20px; cursor: pointer;
+  transition: opacity 180ms;
+}
+.tg-share-btn-main:hover { opacity: 0.78; }
 .tg-share-dl {
   background: transparent; border: 1px solid var(--border);
   font-family: var(--font-label); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
@@ -575,6 +619,117 @@ canvas#webgl {
 
 /* Inline decals — attached to tg-pl elements, GSAP animates in */
 .tg-inline-decal { display: block; pointer-events: none; user-select: none; }
+
+@keyframes lubDub {
+  0%   { transform: scale(1);    }
+  8%   { transform: scale(1.28); } /* lub */
+  16%  { transform: scale(1);    }
+  26%  { transform: scale(1.16); } /* dub */
+  36%  { transform: scale(1);    }
+  100% { transform: scale(1);    } /* rest */
+}
+.tg-decal--lubdub { animation: lubDub 1.5s ease-in-out infinite; }
+.tg-dead-word { display: inline; }
+
+
+/* ══════════════════════════════════════════════════════════════
+   WRAPPED-STYLE MOTION DESIGN
+══════════════════════════════════════════════════════════════ */
+
+/* Ring wipe overlay — starts 4px, GSAP scales to cover viewport */
+.tg-ring-wipe {
+  position: fixed;
+  left: 50%; top: 50%;
+  width: 4px; height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10000;
+  transform-origin: center center;
+}
+
+/* Chapter bg watermark */
+.tg-ch-bg-label {
+  position: absolute;
+  left: -4px;
+  font-family: var(--font-display);
+  font-size: clamp(72px, 20vw, 128px);
+  font-weight: 900;
+  opacity: 0.06;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+  color: var(--anchor);
+  line-height: 1;
+  top: -0.1em;
+}
+
+/* Stat card — full-bleed Wrapped style */
+.tg-stat-card {
+  width: calc(100% + 36px);
+  min-height: 140px;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 28px;
+  position: relative;
+  overflow: hidden;
+  margin: 6px -18px;
+}
+.tg-stat-card .tg-stat-n {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(56px, 13vw, 88px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  display: block;
+  margin-bottom: 0;
+}
+.tg-stat-card .tg-stat-l {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  opacity: 0.72;
+  margin-top: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: block;
+  line-height: 1.4;
+}
+
+/* Orbiting text ring host */
+.tg-orbit-host {
+  position: absolute;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* Pull quote shimmer border */
+@keyframes shimmerBorder {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.tg-pq-shimmer {
+  background: linear-gradient(90deg, #DBD59C, #88ABE3, #C3D9FF, #DBD59C);
+  background-size: 300% 100%;
+  animation: shimmerBorder 2.8s linear infinite;
+  padding: 2px;
+  border-radius: 10px;
+  margin: 14px 0;
+  position: relative;
+}
+.tg-pq-inner {
+  background: var(--bg, #F9F9F2);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-style: italic;
+  color: rgba(34,34,34,0.82);
+  line-height: 1.6;
+  min-height: 1em;
+}
 
 @media (max-width: 480px) {
   .tg-intro-scene { padding: 6px 8px; }

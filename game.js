@@ -101,9 +101,9 @@ window.tgAPI = {
 window.tgPaused = false;
 window.tTogglePause = function () {
   window.tgPaused = !window.tgPaused;
+  if (window.gsap) gsap.globalTimeline.paused(window.tgPaused);
   const btn = document.getElementById('t-pause-btn');
-  if (!btn) return;
-  btn.textContent = window.tgPaused ? '▶' : '⏸';
+  if (btn) btn.textContent = window.tgPaused ? '▶' : '⏸';
 };
 
 /* ── Speed control ── */
@@ -114,6 +114,7 @@ window.tToggleSpeedPanel = function () {
 
 window.tSetSpeed = function (mult) {
   window.tgSpeedMult = mult;
+  if (window.gsap) gsap.globalTimeline.timeScale(mult);
   document.querySelectorAll('.t-speed-option').forEach(b => {
     b.classList.toggle('t-speed-active', parseFloat(b.dataset.speed) === mult);
   });
@@ -146,7 +147,18 @@ window.tgInitGame = async function () {
     CustomEase.create('snap',    'M0,0 C0,0 0.05,0.9 0.1,1 0.15,1.1 0.25,0.95 1,1');
   }
 
-  const w = ms => new Promise(r => setTimeout(r, ms * window.tgSpeedMult));
+  const w = ms => window.tgAPI.wait(ms);
+
+  /* ── Wrapped-style palette constants ── */
+  const RING_COLORS  = ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD'];
+  const STAT_COLORS  = [
+    { bg: '#DBD59C', fg: '#222222' },
+    { bg: '#88ABE3', fg: '#F9F9F2' },
+    { bg: '#C3D9FF', fg: '#222222' },
+    { bg: '#FFFBCD', fg: '#222222' },
+  ];
+  let ringColorIdx = 0;
+  let statColorIdx = 0;
 
   function scrollPitch() {
     if (hasGSAP) {
@@ -156,10 +168,13 @@ window.tgInitGame = async function () {
     }
   }
 
+  const TMARK = '<img src="./TroveLogo.png" class="tg-trove-mark" alt="Trove">';
+  const tmark = s => s.replace(/\bTrove\b/g, TMARK);
+
   function line(html, cls, mt = 0) {
     const d = document.createElement('div');
     d.className = 'tg-pl ' + (cls || '');
-    d.innerHTML = html;
+    d.innerHTML = tmark(html);
     if (mt) d.style.marginTop = mt + 'px';
     pitch.appendChild(d);
     scrollPitch();
@@ -168,6 +183,7 @@ window.tgInitGame = async function () {
 
   /* Flash + scene shake — animate scene, not pitch (avoids clipping shift) */
   function flash(double = false) {
+    if (window.HAPTIC) HAPTIC.impact('medium');
     const scene = pitch.closest('.tg-pitch-scene');
     if (!scene) return;
     scene.classList.add('tg-flash');
@@ -320,6 +336,7 @@ window.tgInitGame = async function () {
   ═══════════════════════════════════════════════════════ */
   const scores = { cartographer: 0, contrarian: 0, architect: 0, operator: 0, storyteller: 0 };
   let moveCount = 0;
+  let choiceCount = 0; // user branch choices only — drives progress bar
   function score(wts) {
     const keys = ['cartographer','contrarian','architect','operator','storyteller'];
     const mult = moveCount === 0 ? 1.5 : 1;
@@ -401,50 +418,285 @@ window.tgInitGame = async function () {
     return d;
   }
 
-  // Type C — pull quote with motion (async, pauses before + after)
-  async function pqReveal(text, assetSrc = null, assetOpts = {}) {
-    await w(400);
-    const d = document.createElement('blockquote');
-    d.className = 'tg-pl tg-pq';
-    d.innerHTML = text;
-    d.style.opacity = '0';
-    pitch.appendChild(d);
+  /* ── Ring wipe chapter transition ─────────────────────────────────────────
+     Full-screen colour circle expands → chapter label slams in at peak →
+     circle contracts. Returns the DOM chapter label element.              */
+  async function ringWipeChapter(label) {
+    if (window.HAPTIC) HAPTIC.impact('heavy');
+
+    /* All 4 palette colours cascade in sequence — gold→blue→soft→cream,
+       rotated each chapter so the dominant (last/top) colour cycles.     */
+    const startIdx  = ringColorIdx++ % 4;
+    const ordered   = RING_COLORS.map((_, i) => RING_COLORS[(startIdx + i) % 4]);
+    const topColor  = ordered[3]; // the ring left visible at peak
+    const textColor = topColor === '#88ABE3' ? '#F9F9F2' : '#222222';
+
+    /* 4 rings appended to scene (position:absolute, clipped inside phone) */
+    const rings = ordered.map((c, i) => {
+      const r = document.createElement('div');
+      r.style.cssText =
+        `position:absolute;left:50%;top:50%;` +
+        `width:4px;height:4px;margin:-2px 0 0 -2px;` +
+        `border-radius:50%;pointer-events:none;background:${c};` +
+        `z-index:${200 + i};transform-origin:center center;`;
+      scene.appendChild(r);
+      return r;
+    });
+
+    /* Large bold label, absolutely positioned inside scene */
+    const floatLbl = document.createElement('div');
+    floatLbl.style.cssText =
+      `position:absolute;z-index:210;left:50%;top:50%;` +
+      `transform:translate(-50%,-50%);text-align:center;max-width:85%;` +
+      `font-family:var(--font-display);font-size:clamp(20px,5.5vw,28px);` +
+      `font-weight:700;line-height:1.15;letter-spacing:-0.01em;` +
+      `pointer-events:none;opacity:0;color:${textColor};`;
+    floatLbl.textContent = label;
+    scene.appendChild(floatLbl);
+
+    /* DOM label + background watermark (stay in scroll after wipe) */
+    const bgLbl = document.createElement('div');
+    bgLbl.className = 'tg-ch-bg-label';
+    bgLbl.textContent = label;
+
+    const d = document.createElement('div');
+    d.className = 'tg-ch';
+    d.textContent = label;
+    d.style.position = 'relative';
+    d.style.zIndex   = '1';
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;overflow:hidden;';
+    wrap.appendChild(bgLbl);
+    wrap.appendChild(d);
+    pitch.appendChild(wrap);
     scrollPitch();
+
     if (hasGSAP) {
-      await new Promise(r => gsap.fromTo(d,
-        { opacity: 0, y: 22, filter: 'blur(6px)' },
-        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.65, ease: 'power3.out', clearProps: 'filter', onComplete: r }
-      ));
-    } else { d.style.opacity = '1'; }
-    if (assetSrc) {
-      d.style.position = 'relative'; d.style.overflow = 'visible';
-      d.appendChild(decal(assetSrc, 'tg-decal--bob', assetOpts));
+      /* Scale relative to scene so rings stay inside the phone */
+      const maxSc = Math.ceil(
+        Math.hypot(scene.offsetWidth || 320, scene.offsetHeight || 600) / 2
+      ) + 6;
+
+      gsap.set(rings, { scale: 0 });
+      await new Promise(r =>
+        gsap.timeline({ onComplete: r })
+          /* Cascade expand: gold first, cream last */
+          .to(rings, { scale: maxSc, duration: 0.52, ease: 'power2.inOut',
+            stagger: 0.12 })
+          /* Label slams in when cream ring is at peak */
+          .fromTo(floatLbl,
+            { opacity: 0, scale: 0.72 },
+            { opacity: 1, scale: 1,   duration: 0.24, ease: 'back.out(3)' }, '-=0.1')
+          /* Hold — long enough to actually read the label */
+          .to({}, { duration: 0.65 })
+          /* Cascade contract: cream first, gold last */
+          .to([...rings].reverse(), { scale: 0, duration: 0.42,
+            ease: 'power2.inOut', stagger: 0.1 })
+          .to(floatLbl, { opacity: 0, duration: 0.22, ease: 'power2.in' }, '<+=0.05')
+          .call(() => { rings.forEach(r => r.remove()); floatLbl.remove(); })
+          /* Watermark slides in under the chapter divider */
+          .fromTo(bgLbl,
+            { opacity: 0, x: '-18%' },
+            { opacity: 0.06, x: '0%', duration: 0.6, ease: 'power2.out' }, '-=0.2')
+      );
+    } else {
+      rings.forEach(r => r.remove()); floatLbl.remove();
     }
-    await w(900);
     return d;
   }
 
-  // Type E — stat block with staggered entrance
-  function statsBlock(stats) {
-    const d = document.createElement('div');
-    d.className = 'tg-pl tg-stats';
-    d.innerHTML = stats.map(s =>
-      `<div class="tg-stat"><span class="tg-stat-n">${s.n}</span><span class="tg-stat-l">${s.l}</span></div>`
-    ).join('');
-    pitch.appendChild(d);
-    scrollPitch();
-    return d;
+  /* ── Orbiting SVG text ring around an element ──────────────────────────── */
+  function orbitingTextRing(anchorEl, phrase) {
+    phrase = phrase || '\u2736 TROVE \u2736 BEHAVIORAL LAYER \u2736 TROVE \u2736';
+    const R  = 88;
+    const D  = R * 2 + 28;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width',   D);
+    svg.setAttribute('height',  D);
+    svg.setAttribute('viewBox', `0 0 ${D} ${D}`);
+    svg.style.cssText =
+      `position:absolute;pointer-events:none;z-index:30;opacity:0;` +
+      `top:50%;left:50%;transform:translate(-50%,-50%);overflow:visible;`;
+
+    const pid   = `op-${Math.random().toString(36).slice(2, 7)}`;
+    const defs  = document.createElementNS(ns, 'defs');
+    const circ  = document.createElementNS(ns, 'circle');
+    circ.setAttribute('id', pid);
+    circ.setAttribute('cx', D / 2); circ.setAttribute('cy', D / 2);
+    circ.setAttribute('r', R);      circ.setAttribute('fill', 'none');
+    defs.appendChild(circ);
+    svg.appendChild(defs);
+
+    const txt = document.createElementNS(ns, 'text');
+    txt.style.cssText =
+      `font-family:'DM Mono',monospace;font-size:10px;` +
+      `fill:rgba(136,171,227,0.65);letter-spacing:1.5px;`;
+    const tp = document.createElementNS(ns, 'textPath');
+    tp.setAttribute('href', `#${pid}`);
+    tp.textContent = phrase;
+    txt.appendChild(tp);
+    svg.appendChild(txt);
+
+    anchorEl.style.position = 'relative';
+    anchorEl.style.overflow = 'visible';
+    anchorEl.appendChild(svg);
+
+    if (hasGSAP) {
+      gsap.fromTo(svg, { opacity: 0, scale: 0.7 },
+        { opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(2)',
+          transformOrigin: '50% 50%' });
+      gsap.to(svg, { rotation: 360, transformOrigin: '50% 50%',
+        duration: 20, ease: 'none', repeat: -1 });
+      gsap.to(svg, { opacity: 0, duration: 0.5, ease: 'power2.in', delay: 4.5,
+        onComplete: () => svg.remove() });
+    } else {
+      svg.style.opacity = '1';
+      setTimeout(() => svg.remove(), 5000);
+    }
+    return svg;
   }
+
+  /* ── Single Wrapped-style stat card ──────────────────────────────────────
+     Appends to `container`. Returns the card element.                     */
+  async function statCard(stat, container) {
+    const pal  = STAT_COLORS[statColorIdx++ % STAT_COLORS.length];
+    const card = document.createElement('div');
+    card.className = 'tg-stat-card';
+    card.style.cssText = `background:${pal.bg};color:${pal.fg};`;
+    card.innerHTML =
+      `<div class="tg-stat-n" style="opacity:0;transform:scale(0.1)">${stat.n}</div>` +
+      `<div class="tg-stat-l" style="opacity:0">${stat.l}</div>`;
+
+    if (stat.asset) {
+      const img = document.createElement('img');
+      img.src = `./assets/${stat.asset}`;
+      img.className = 'tg-decal--bob';
+      img.style.cssText =
+        'position:absolute;right:18px;top:50%;transform:translateY(-50%);' +
+        'width:54px;height:auto;opacity:0;pointer-events:none;';
+      card.appendChild(img);
+    }
+    container.appendChild(card);
+    scrollPitch();
+
+    if (hasGSAP) {
+      if (window.HAPTIC) HAPTIC.impact('light');
+      const numEl = card.querySelector('.tg-stat-n');
+      const lblEl = card.querySelector('.tg-stat-l');
+      const imgEl = card.querySelector('img');
+
+      gsap.from(card, { x: -28, opacity: 0, duration: 0.32,
+        ease: hasCE ? 'slam' : 'back.out(2)' });
+      await new Promise(r =>
+        gsap.to(numEl, { opacity: 1, scale: 1, duration: 0.58,
+          ease: 'elastic.out(1, 0.38)', delay: 0.1, onComplete: r })
+      );
+      gsap.to(lblEl, { opacity: 0.72, y: 0, duration: 0.32, ease: 'power2.out' });
+      if (imgEl) {
+        gsap.fromTo(imgEl,
+          { opacity: 0, scale: 0.15, rotation: -28 },
+          { opacity: 1, scale: 1, rotation: 5, duration: 0.65,
+            ease: 'elastic.out(1, 0.5)', delay: 0.12 });
+      }
+      gsap.fromTo(card, { x: -7 }, { x: 0, duration: 0.4,
+        ease: 'elastic.out(1, 0.32)' });
+    } else {
+      card.querySelector('.tg-stat-n').style.cssText = 'opacity:1;transform:none;';
+      card.querySelector('.tg-stat-l').style.opacity = '0.72';
+    }
+    return card;
+  }
+
+  /* ── Ambient background floaters ─────────────────────────────────────── */
+  function spawnAmbientFloaters() {
+    const srcs = ['flower.png','babystar.png','apple.png','starhehe.png'];
+    srcs.forEach((src, i) => {
+      const img  = document.createElement('img');
+      img.src    = `./assets/${src}`;
+      const pct  = 6 + i * 22 + Math.random() * 10;
+      const sz   = 16 + Math.random() * 10;
+      img.style.cssText =
+        `position:absolute;left:${pct}%;top:${55 + i * 90}px;` +
+        `width:${sz}px;height:auto;opacity:0;pointer-events:none;` +
+        `z-index:1;will-change:transform;`;
+      pitch.appendChild(img);
+      if (hasGSAP) {
+        gsap.to(img, { opacity: 0.10 + Math.random() * 0.09,
+          duration: 1.4, delay: i * 0.25, ease: 'power2.out' });
+        gsap.to(img, {
+          y: -(32 + Math.random() * 48),
+          rotation: (Math.random() - 0.5) * 18,
+          duration: 2.6 + Math.random() * 2.8,
+          ease: 'sine.inOut', yoyo: true, repeat: -1,
+          delay: Math.random() * 2.5,
+        });
+      }
+      setTimeout(() => {
+        if (hasGSAP) gsap.to(img, { opacity: 0, duration: 1.5,
+          onComplete: () => img.remove() });
+        else img.remove();
+      }, 28000);
+    });
+  }
+
+  // Type C — pull quote: shimmer border + ScrambleText reveal
+  async function pqReveal(text, assetSrc = null, assetOpts = {}, assetCls = 'tg-decal--bob') {
+    await w(300);
+    const shimmer = document.createElement('div');
+    shimmer.className = 'tg-pl tg-pq-shimmer';
+    shimmer.style.opacity = '0';
+    const d = document.createElement('blockquote');
+    d.className = 'tg-pq-inner';
+    shimmer.appendChild(d);
+    pitch.appendChild(shimmer);
+    scrollPitch();
+
+    if (hasGSAP && hasScrTx) {
+      // Slide shimmer wrapper in, then ScrambleText the quote
+      const textOnly = text.replace(/<[^>]*>/g, '');
+      await new Promise(r => gsap.fromTo(shimmer,
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', onComplete: r }
+      ));
+      await new Promise(r => gsap.to(d, {
+        duration: 1.1,
+        scrambleText: { text: textOnly, chars: '!<>-_\\/[]{}—=+*^?#░▒▓',
+          revealDelay: 0.08, speed: 0.52 },
+        ease: 'none', onComplete: r,
+      }));
+      d.innerHTML = tmark(text); // restore any HTML markup
+    } else if (hasGSAP) {
+      d.innerHTML = tmark(text);
+      await new Promise(r => gsap.fromTo(shimmer,
+        { opacity: 0, y: 20, filter: 'blur(5px)' },
+        { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.6,
+          ease: 'power3.out', clearProps: 'filter', onComplete: r }
+      ));
+    } else {
+      d.innerHTML = tmark(text);
+      shimmer.style.opacity = '1';
+    }
+
+    if (assetSrc) {
+      shimmer.style.position = 'relative'; shimmer.style.overflow = 'visible';
+      shimmer.appendChild(decal(assetSrc, assetCls, assetOpts));
+    }
+    await w(800);
+    return shimmer;
+  }
+
+  // Type E — Wrapped-style full-bleed stat cards, one per stat
   async function statsBlockReveal(stats) {
-    const d = statsBlock(stats);
-    if (!hasGSAP) return d;
-    await new Promise(r => gsap.from(d.querySelectorAll('.tg-stat'), {
-      opacity: 0, y: 20, scale: 0.88,
-      duration: 0.5, ease: 'back.out(2)',
-      stagger: { each: 0.12, ease: 'power2.inOut' },
-      clearProps: 'transform,scale', onComplete: r,
-    }));
-    return d;
+    const wrap = document.createElement('div');
+    wrap.className = 'tg-pl';
+    pitch.appendChild(wrap);
+    for (const stat of stats) {
+      await statCard(stat, wrap);
+      await w(160);
+    }
+    return wrap;
   }
 
   // Type F — reveal list, word-by-word per item
@@ -525,6 +777,28 @@ window.tgInitGame = async function () {
           gsap.to(sel, { scale: 1.06, duration: 0.12, ease: 'power2.out',
             onComplete: () => gsap.to(sel, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.38)' }) });
         }
+        // Confetti burst from button position
+        if (window.confetti) {
+          const br = sel.getBoundingClientRect();
+          confetti({
+            particleCount: 55, spread: 72,
+            origin: {
+              x: (br.left + br.width  / 2) / window.innerWidth,
+              y: (br.top  + br.height / 2) / window.innerHeight,
+            },
+            colors: ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD','#F9F9F2'],
+            scalar: 0.85,
+          });
+        }
+        // Brief ScrambleText on selected button text
+        if (hasGSAP && hasScrTx) {
+          const orig = sel.textContent;
+          gsap.to(sel, { duration: 0.52,
+            scrambleText: { text: orig, chars: '!<>-_\\/[]{}░▒▓', speed: 0.65 } });
+        }
+        // 3 branch choices per playthrough: 25%→50%→75%. sRevealArchetype sets 100%.
+        choiceCount++;
+        window.tgAPI.setProgress(25 + Math.min(choiceCount, 3) * 25);
         setTimeout(() => resolve(idx), 600);
       };
     });
@@ -652,7 +926,7 @@ window.tgInitGame = async function () {
 
   async function sBranch0() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The Question');
+    await ringWipeChapter('The Question');
     await w(200);
     await reveal(line('So.', 'tg-pl--impact'), {
       type: 'chars', y: 0,
@@ -680,7 +954,7 @@ window.tgInitGame = async function () {
   // ── BRANCH A ──────────────────────────────────────────
   async function sA1_curious() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The Signal Problem');
+    await ringWipeChapter('The Signal Problem');
     await w(200);
     // Type B — narration
     await reveal(line('Every important decision about people runs on one type of data:', 'tg-pl--med'), {
@@ -704,11 +978,15 @@ window.tgInitGame = async function () {
     ]);
     await w(400);
     // Type D — the landing line
-    const deadEl = line('Self-reporting isn\'t just noisy. It\'s dead.', 'tg-pl--med tg-pl--italic', 8);
+    const deadEl = line('Self-reporting isn\'t just noisy. It\'s <span class="tg-dead-word">dead.</span>', 'tg-pl--med tg-pl--italic', 8);
     await reveal(deadEl, { y: 14, stagger: 0.05, duration: 0.42, ease: hasCE ? 'unfurl' : 'power3.out' });
-    // Heartbreak drops in after the death sentence
-    deadEl.style.position = 'relative'; deadEl.style.overflow = 'visible';
-    deadEl.appendChild(decal('heartbreak.png', 'tg-decal--bob', { right: '-24px', top: '-8px', w: 52, fromY: -40, delay: 0.2 }));
+    // Heartbreak anchors right beside the word "dead."
+    const deadWord = deadEl.querySelector('.tg-dead-word');
+    if (deadWord) {
+      deadWord.style.position = 'relative';
+      deadWord.style.overflow = 'visible';
+      deadWord.appendChild(decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% + 4px)', top: '-6px', w: 52, fromY: -30, delay: 0.2 }));
+    }
     await w(500);
     await reveal(line('40–80% of applicants now use AI to write about themselves. $8.8 trillion lost annually to employee disengagement — the cost of not actually knowing the people you hire.', 'tg-pl--dim'), {
       y: 10, stagger: 0.03, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -725,7 +1003,7 @@ window.tgInitGame = async function () {
 
   async function sA2_soWhat() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The New Signal');
+    await ringWipeChapter('The New Signal');
     await w(200);
     // Type B — setup
     await reveal(line('You stop asking people who they are.', 'tg-pl--med'), {
@@ -749,9 +1027,12 @@ window.tgInitGame = async function () {
     watchEl.appendChild(decal('camera.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 46, delay: 0.2 }));
     await w(700);
     // Type B — narration
-    await reveal(line('Trove builds tangles — interactive, story-based scenarios that put you inside emotionally real moments. A first date. A workplace crisis. A creative standoff at midnight. You make choices. Real ones, under actual pressure.', 'tg-pl--med'), {
+    const tanglesEl = line('Trove builds tangles — interactive, story-based scenarios that put you inside emotionally real moments. A first date. A workplace crisis. A creative standoff at midnight. You make choices. Real ones, under actual pressure.', 'tg-pl--med');
+    await reveal(tanglesEl, {
       y: 14, stagger: 0.035, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
+    tanglesEl.style.position = 'relative'; tanglesEl.style.overflow = 'visible';
+    tanglesEl.appendChild(decal('gaming.png', 'tg-decal--bob', { right: '-26px', top: '-8px', w: 50, fromY: -25, delay: 0.2 }));
     await w(350);
     // Type C — pull quote
     await pqReveal('The scenario is the instrument. The choice is the data.');
@@ -770,7 +1051,7 @@ window.tgInitGame = async function () {
 
   async function sA2_beenTried() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('Why This Survives');
+    await ringWipeChapter('Why This Survives');
     await w(200);
     await reveal(line('Every previous attempt made the same mistake.', 'tg-pl--med'), {
       y: 16, stagger: 0.05, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -810,7 +1091,7 @@ window.tgInitGame = async function () {
   // ── BRANCH B ──────────────────────────────────────────
   async function sB1_seen() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('Not a Tool. A Layer.');
+    await ringWipeChapter('Not a Tool. A Layer.');
     await w(200);
     await reveal(line('Most behavioural tools sit on top of existing workflows. You administer them. Someone takes the test. You get a report.', 'tg-pl--med'), {
       y: 14, stagger: 0.038, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -850,7 +1131,7 @@ window.tgInitGame = async function () {
 
   async function sB2_b2b() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The B2B Model');
+    await ringWipeChapter('The B2B Model');
     await w(200);
     await reveal(line('Four companies reached out after the Valentine\'s Day campaign. None of them were pitched. They played the consumer product and saw the enterprise application themselves.', 'tg-pl--med'), {
       y: 14, stagger: 0.036, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -876,7 +1157,7 @@ window.tgInitGame = async function () {
 
   async function sB2_dataset() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('Who Owns the Data');
+    await ringWipeChapter('Who Owns the Data');
     await w(200);
     flash();
     // Type A — statement, id.png pops in
@@ -911,7 +1192,7 @@ window.tgInitGame = async function () {
   // ── BRANCH C ──────────────────────────────────────────
   async function sC1_founder() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('Helen Huang');
+    await ringWipeChapter('Helen Huang');
     await w(200);
     // Credentials with mic decal
     const credEl = line('Second-time founder. Former PM at Microsoft and Zynga. Bootstrapped a profitable edtech startup to seven figures. Forbes 30 Under 30.', 'tg-pl--med');
@@ -957,7 +1238,7 @@ window.tgInitGame = async function () {
 
   async function sC2_conviction() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The Insight');
+    await ringWipeChapter('The Insight');
     await w(200);
     await reveal(line('Everyone else trying to solve the "know people better" problem is building better questionnaires.', 'tg-pl--med'), {
       y: 14, stagger: 0.038, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -993,24 +1274,30 @@ window.tgInitGame = async function () {
     await w(200);
     flash(true);
     // Type A — statement
-    await reveal(line('One campaign.', 'tg-pl--big', 8), {
+    const oneCampaignEl = line('One campaign.', 'tg-pl--big', 8);
+    await reveal(oneCampaignEl, {
       type: 'chars', from: 'center', stagger: 0.06, duration: 0.6, ease: hasCE ? 'slam' : 'back.out(3)',
     });
+    oneCampaignEl.style.position = 'relative'; oneCampaignEl.style.overflow = 'visible';
+    oneCampaignEl.appendChild(decal('icecream.png', 'tg-decal--bob', { right: '-28px', top: '-10px', w: 46, fromY: -30, delay: 0.2 }));
     await w(300);
     await reveal(line('500 emails. No ads. No paid influencers. Nothing.', 'tg-pl--med'), {
       y: 14, stagger: 0.045, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
-    await reveal(line('8× organic amplification. People shared it because they wanted their friends to see their own results.', 'tg-pl--med'), {
+    const viralEl = line('8× organic amplification. People shared it because they wanted their friends to see their own results.', 'tg-pl--med');
+    await reveal(viralEl, {
       y: 14, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
+    viralEl.style.position = 'relative'; viralEl.style.overflow = 'visible';
+    viralEl.appendChild(decal('banana.png', 'tg-decal--bob', { right: '-26px', top: '-6px', w: 42, fromY: -28, delay: 0.15 }));
     await w(350);
     // Type E — stats with stagger
     const statsEl = await statsBlockReveal([
-      { n: '78%',   l: 'returned day 3 — zero push notifications' },
-      { n: '7 min', l: 'median session length' },
-      { n: '24K+',  l: 'behavioural data points, 2,100+ players' },
-      { n: '4',     l: 'unsolicited B2B inquiries — none pitched' },
+      { n: '78%',   l: 'returned day 3 — zero push notifications', asset: 'boomerand.png' },
+      { n: '7 min', l: 'median session length',                    asset: 'watch.png'     },
+      { n: '24K+',  l: 'behavioural data points, 2,100+ players',  asset: 'id.png'        },
+      { n: '4',     l: 'unsolicited B2B inquiries — none pitched',  asset: 'waller.png'   },
     ]);
     // babystar pops in top-right after stats land
     statsEl.style.position = 'relative'; statsEl.style.overflow = 'visible';
@@ -1021,15 +1308,41 @@ window.tgInitGame = async function () {
       '"Show it to my therapist. This is literally going to be the topic of our next session." — player, 4:44am',
       'phone.png', { right: '-20px', top: '-4px', w: 44, delay: 0.5 }
     );
-    await reveal(line('When the campaign ended, 60 complete strangers opted into a Discord to play the next one together. Nobody asked them to.', 'tg-pl--dim'), {
+    const discordEl = line('When the campaign ended, 60 complete strangers opted into a Discord to play the next one together. Nobody asked them to.', 'tg-pl--dim');
+    await reveal(discordEl, {
       y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
     });
+    discordEl.style.position = 'relative'; discordEl.style.overflow = 'visible';
+    discordEl.appendChild(decal('bubblublower.png', 'tg-decal--bob', { right: '-24px', top: '-8px', w: 44, fromY: -22, delay: 0.2 }));
     await w(400);
     // THE thesis line — needs the most air
-    await pqReveal(
-      'That\'s not a retention metric. That\'s people who want to keep being seen.',
-      'fish.png', { right: '-18px', top: '0', w: 40, delay: 0.5 }
-    );
+    await pqReveal('That\'s not a retention metric. That\'s people who want to keep being seen.');
+
+    // Fish swims the full pitch width — lives in scroll content, scrolls away naturally
+    {
+      // Wrapper: absolute in pitch (scroll content), handles X + flip
+      const fishWrap = document.createElement('div');
+      const fishImg  = document.createElement('img');
+      fishImg.src = './assets/fish.png';
+      fishImg.style.cssText = 'width:72px;height:auto;display:block;pointer-events:none;';
+      fishWrap.style.cssText = `position:absolute;left:0;top:${pitch.scrollTop + pitch.clientHeight * 0.38}px;pointer-events:none;z-index:20;`;
+      fishWrap.appendChild(fishImg);
+      pitch.appendChild(fishWrap);
+
+      const sw = pitch.clientWidth;
+
+      gsap.set(fishWrap, { x: sw + 80 });
+
+      // Y sine — bigger amplitude, mismatched period for natural feel
+      gsap.to(fishWrap, { y: 55, duration: 1.6, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+
+      // Two laps per cycle: Lap A = close (big, swims left), Lap B = far (small, swims right)
+      gsap.timeline({ repeat: -1 })
+        .to(fishWrap, { x: -80, duration: 5.5, ease: 'none',
+          onStart() { gsap.set(fishWrap, { scaleX: -1 }); gsap.to(fishImg, { scale: 1.45, duration: 0.5, ease: 'power2.out' }); } })
+        .to(fishWrap, { x: sw + 80, duration: 5.5, ease: 'none',
+          onStart() { gsap.set(fishWrap, { scaleX: 1 });  gsap.to(fishImg, { scale: 0.65, duration: 0.5, ease: 'power2.out' }); } });
+    }
     // 900ms hold already baked into pqReveal — add a beat before choices
     await w(200);
     const idx = await branchChoices([
@@ -1043,7 +1356,7 @@ window.tgInitGame = async function () {
 
   async function sShared_moat() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The Flywheel');
+    await ringWipeChapter('The Flywheel');
     await w(200);
     flash();
     // Type A — statement
@@ -1062,11 +1375,18 @@ window.tgInitGame = async function () {
       { m: '04', t: 'More B2B value → more users → more plays' },
     ]);
     rlistEl.style.position = 'relative'; rlistEl.style.overflow = 'visible';
-    rlistEl.appendChild(decal('frog.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 50, fromY: -30, fromScale: 0.3, delay: 0.3 }));
+    const frogImg = decal('frog.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 50, fromY: -30, fromScale: 0.3, delay: 0.3 });
+    rlistEl.appendChild(frogImg);
+    // Socks: unexpected wildcard on the list container
+    rlistEl.appendChild(decal('socks.png', 'tg-decal--bob', { right: '-22px', top: '60px', w: 36, fromY: 20, fromRot: 15, toRot: -8, delay: 0.6 }));
+    setTimeout(() => orbitingTextRing(frogImg, '\u2736 THE DATA IS THE MOAT \u2736 THE DATA IS THE MOAT \u2736'), 900);
     await w(400);
-    await reveal(line('You can\'t shortcut this with GPUs. A competitor starting today would need years of real human behavioural data across diverse emotional contexts. Trove\'s head start is the dataset — and it compounds with every tangle played.', 'tg-pl--dim'), {
+    const noGPUsEl = line('You can\'t shortcut this with GPUs. A competitor starting today would need years of real human behavioural data across diverse emotional contexts. Trove\'s head start is the dataset — and it compounds with every tangle played.', 'tg-pl--dim');
+    await reveal(noGPUsEl, {
       y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
     });
+    noGPUsEl.style.position = 'relative'; noGPUsEl.style.overflow = 'visible';
+    noGPUsEl.appendChild(decal('turtle.png', 'tg-decal--bob', { right: '-22px', top: '-4px', w: 46, fromY: -18, delay: 0.25 }));
     await w(350);
     await reveal(line('The comparable isn\'t another assessment tool. It\'s Plaid. $430M ARR from API access to data users already had. Trove is building the behavioural equivalent of that infrastructure layer.', 'tg-pl--dim'), {
       y: 10, stagger: 0.028, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -1079,7 +1399,7 @@ window.tgInitGame = async function () {
   // ── THE ASK ───────────────────────────────────────────
   async function sAsk() {
     await w(900); line('', 'tg-pl', 16);
-    chapter('The Ask');
+    await ringWipeChapter('The Ask');
     await w(200);
     score([1,0,1,1,0]);
     flash(true);
@@ -1116,7 +1436,7 @@ window.tgInitGame = async function () {
   async function sRevealArchetype() {
     await w(900); line('', 'tg-pl', 16);
     window.tgAPI.setProgress(100);
-    chapter('you just told us something');
+    await ringWipeChapter('you just told us something');
     await w(300);
     // Type B — setup
     await reveal(line('Not about Trove.', 'tg-pl--med'), {
@@ -1139,7 +1459,119 @@ window.tgInitGame = async function () {
     await reveal(line('That\'s a Trove profile. You built one just now — without filling out a single form.', 'tg-pl--med tg-pl--italic'), {
       y: 14, stagger: 0.04, duration: 0.42, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
-    await w(1000); // anticipation pause before reveal
+    await w(600);
+
+    // ── TroveOh → TroveLogo animation ──
+    await new Promise(resolve => {
+      const wrap = document.createElement('div');
+      wrap.className = 'tg-pl tg-hero-logo';
+      const wordImg = document.createElement('img');
+      wordImg.src = './TroveLogo.png';
+      wordImg.className = 'tg-hero-word';
+      wordImg.style.opacity = '0';
+      const ohImg = document.createElement('img');
+      ohImg.src = './TroveOh.png';
+      ohImg.className = 'tg-hero-oh';
+      wrap.append(wordImg, ohImg);
+      pitch.appendChild(wrap);
+      scrollPitch();
+
+      // Wait for images to load before measuring
+      let loaded = 0;
+      const onLoad = () => { if (++loaded < 2) return; go(); };
+      wordImg.onload = onLoad; ohImg.onload = onLoad;
+      if (wordImg.complete) onLoad();
+      if (ohImg.complete)   onLoad();
+
+      function go() {
+        const W    = wordImg.offsetWidth  || 88;
+        const ohW  = ohImg.offsetWidth    || 24;
+        const gap  = 14;
+        const startX      = W + gap;
+        const endX        = Math.round(W * 0.48 - ohW / 2);
+        const totalDur    = 2100;
+        const crossfadeAt = 0.62;
+        const crossfadeDur= 620;
+        const totalRot    = 720;
+
+        ohImg.style.transform = `translateX(${startX}px)`;
+        const ease = p => p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2,2)/2;
+
+        let startTime = null;
+        function frame(ts) {
+          if (!startTime) startTime = ts;
+          const elapsed = ts - startTime;
+          const p  = Math.min(1, elapsed / totalDur);
+          const e  = ease(p);
+          ohImg.style.transform = `translateX(${startX + (endX - startX) * e}px) rotate(${e * totalRot}deg)`;
+          const cp = Math.max(0, Math.min(1, (elapsed - totalDur * crossfadeAt) / crossfadeDur));
+          ohImg.style.opacity   = String(1 - cp);
+          wordImg.style.opacity = String(cp);
+          if (p < 1) requestAnimationFrame(frame);
+          else { ohImg.remove(); resolve(); }
+        }
+        requestAnimationFrame(frame);
+      }
+    });
+    await w(500); // hold on the wordmark
+
+    // ── Email capture — gate before archetype reveal ───────────────────────
+    await new Promise(resolveEmail => {
+      const emailDiv = document.createElement('div');
+      emailDiv.className = 'tg-pl';
+      emailDiv.innerHTML = `
+        <div class="tg-email-q">before we reveal — want us to send your profile to you?</div>
+        <div class="tg-email-form">
+          <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@fund.com" autocomplete="email">
+          <button class="tg-email-send" id="tg-email-send">→</button>
+        </div>
+        <button class="tg-e-no" id="tg-email-skip">show me first →</button>
+        <div class="tg-email-fine">no spam. your profile + one note from helen.</div>
+      `;
+      pitch.appendChild(emailDiv);
+      scrollPitch();
+      if (hasGSAP) gsap.from(emailDiv, { opacity: 0, y: 12, duration: 0.4, ease: 'power3.out' });
+
+      const submit = () => {
+        const val = document.getElementById('tg-email-in')?.value?.trim();
+        if (!val || !val.includes('@')) {
+          const inp = document.getElementById('tg-email-in');
+          if (inp) { inp.style.outline = '1px solid var(--shift)'; setTimeout(() => { inp.style.outline = ''; }, 1200); }
+          return;
+        }
+        try {
+          const leads = JSON.parse(localStorage.getItem('tg-leads') || '[]');
+          leads.push({ email: val, archetype: getArchetype(), ts: Date.now() });
+          localStorage.setItem('tg-leads', JSON.stringify(leads));
+        } catch (e) {}
+        emailDiv.innerHTML = `<div class="tg-email-fine" style="opacity:0.8;font-size:13px;margin:6px 0">noted ✓ helen will be in touch.</div>`;
+        setTimeout(resolveEmail, 700);
+      };
+
+      setTimeout(() => {
+        const inp = document.getElementById('tg-email-in');
+        inp?.focus();
+        inp?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+        document.getElementById('tg-email-send')?.addEventListener('click', submit);
+        document.getElementById('tg-email-skip')?.addEventListener('click', resolveEmail);
+      }, 80);
+    });
+    await w(400);
+
+    // ── Screen takeover: blue flash before archetype ──
+    if (hasGSAP && scene) {
+      if (window.HAPTIC) HAPTIC.notification('success');
+      const cover = document.createElement('div');
+      cover.style.cssText =
+        'position:absolute;inset:0;background:#88ABE3;z-index:100;pointer-events:none;opacity:0;';
+      scene.appendChild(cover);
+      await new Promise(r =>
+        gsap.timeline({ onComplete: r })
+          .to(cover, { opacity: 1, duration: 0.22, ease: 'power2.in' })
+          .to(cover, { opacity: 0, duration: 0.42, ease: 'power2.out', delay: 0.18 })
+          .call(() => cover.remove())
+      );
+    }
 
     const id   = getArchetype();
     const arch = ARCHETYPES[id];
@@ -1166,12 +1598,26 @@ window.tgInitGame = async function () {
     if (hasGSAP) {
       await new Promise(r => gsap.from(profileCard, { opacity: 0, y: 26, scale: 0.96, duration: 0.55, ease: 'back.out(2)', clearProps: 'all', onComplete: r }));
     }
-    await w(400);
+
+    // Confetti from both top corners
+    if (window.confetti) {
+      confetti({ particleCount: 55, angle: 58,  spread: 58,
+        origin: { x: 0, y: 0.08 },
+        colors: ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD'], scalar: 0.9 });
+      setTimeout(() => confetti({ particleCount: 55, angle: 122, spread: 58,
+        origin: { x: 1, y: 0.08 },
+        colors: ['#DBD59C','#88ABE3','#C3D9FF','#FFFBCD'], scalar: 0.9 }), 120);
+    }
+
+    await w(350);
 
     // Archetype asset pops in on the profile card
     profileCard.style.position = 'relative'; profileCard.style.overflow = 'visible';
     const { src, opts } = archetypeAssets[id];
     profileCard.appendChild(decal(src, 'tg-decal--bob', { ...opts, delay: 0 }));
+    // Orbiting ring around the profile card after asset lands
+    setTimeout(() => orbitingTextRing(profileCard,
+      `\u2736 ${arch.name.toUpperCase()} \u2736 TROVE INVESTOR \u2736 `), 700);
 
     await w(300);
 
@@ -1195,130 +1641,63 @@ window.tgInitGame = async function () {
           nameEl.style.textUnderlineOffset = '4px';
         });
     }
-    await w(500);
+    await w(700);
 
-    const emailDiv = document.createElement('div');
-    emailDiv.className = 'tg-pl';
-    emailDiv.innerHTML = `
-      <div class="tg-email-q">Want this sent to you, along with how we'd work together?</div>
-      <div class="tg-email-yesno">
-        <button class="tg-e-yes" onclick="window._tgYes()">yes, send it</button>
-        <button class="tg-e-no"  onclick="window._tgSkip()">skip →</button>
-      </div>
-    `;
-    pitch.appendChild(emailDiv);
+    // ── Share card ────────────────────────────────────────────────────────────
+    const arcId = getArchetype();
+    const a     = ARCHETYPES[arcId];
+    const cvs   = await generateShareCard(a);
+    cvs.style.cssText = 'width:100%;height:auto;display:block;border:1px solid var(--border);margin-bottom:14px;';
+    if (window.gsap) {
+      gsap.fromTo(cvs,
+        { filter: 'saturate(0) blur(7px) brightness(1.4)' },
+        { filter: 'saturate(1) blur(0px) brightness(1)', duration: 1.3, ease: 'power2.out', clearProps: 'filter' });
+    }
+
+    const shareWrap = document.createElement('div');
+    shareWrap.className = 'tg-pl tg-share-wrap';
+    const tag = document.createElement('div');
+    tag.className = 'tg-share-tag';
+    tag.textContent = 'your card';
+    shareWrap.appendChild(tag);
+    shareWrap.appendChild(cvs);
+
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'tg-share-btn-main';
+    shareBtn.textContent = 'share this →';
+    shareBtn.onclick = async () => {
+      try {
+        const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
+        const file = new File([blob], `trove-${arcId}.png`, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: a.name,
+            text: `${a.name} — ${a.sub}\n\ntrove.garden`,
+            files: [file],
+          });
+        } else if (navigator.share) {
+          await navigator.share({ title: a.name, text: `${a.name} — ${a.sub}`, url: 'https://trove.garden' });
+        } else {
+          const link = document.createElement('a');
+          link.download = `trove-${arcId}.png`;
+          link.href = cvs.toDataURL('image/png');
+          link.click();
+          shareBtn.textContent = 'saved ✓';
+          setTimeout(() => { shareBtn.textContent = 'share this →'; }, 2200);
+        }
+      } catch (e) { /* cancelled */ }
+    };
+    shareWrap.appendChild(shareBtn);
+
+    const contact = document.createElement('div');
+    contact.className = 'tg-pl tg-contact';
+    contact.innerHTML = `<div>Helen Huang · Founder, Trove</div><div><a href="mailto:helen@trove.garden">helen@trove.garden</a></div>`;
+
+    pitch.appendChild(shareWrap);
+    pitch.appendChild(contact);
     scrollPitch();
-    if (hasGSAP) gsap.from(emailDiv, { opacity: 0, y: 12, duration: 0.4, ease: 'power3.out' });
-
-    window._tgYes = () => {
-      emailDiv.innerHTML = `
-        <div class="tg-email-q">drop your email:</div>
-        <div class="tg-email-form">
-          <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@fund.com" autocomplete="email">
-          <button class="tg-email-send" onclick="window._tgSend()">→</button>
-        </div>
-        <div class="tg-email-fine">no spam. your profile + one note from helen.</div>
-      `;
-      setTimeout(() => {
-        const inp = document.getElementById('tg-email-in');
-        inp?.focus();
-        inp?.addEventListener('keydown', e => { if (e.key === 'Enter') window._tgSend(); });
-      }, 80);
-    };
-
-    window._tgSend = () => {
-      const val = document.getElementById('tg-email-in')?.value?.trim();
-      if (!val || !val.includes('@')) {
-        const inp = document.getElementById('tg-email-in');
-        if (inp) { inp.style.outline = '1px solid var(--shift)'; setTimeout(() => { inp.style.outline = ''; }, 1200); }
-        return;
-      }
-      emailDiv.innerHTML = `<div class="tg-email-fine" style="opacity:0.8;font-size:10px">noted. helen will be in touch.</div>`;
-      setTimeout(window._tgSkip, 600);
-    };
-
-    window._tgSkip = async () => {
-      if (document.querySelector('.tg-share-wrap')) return;
-      const a = ARCHETYPES[getArchetype()];
-      const arcId = getArchetype();
-
-      // Generate the canvas card
-      const cvs = await generateShareCard(a);
-      cvs.style.cssText = 'width:100%;height:auto;display:block;border:1px solid var(--border);margin-bottom:12px;';
-
-      const shareWrap = document.createElement('div');
-      shareWrap.className = 'tg-pl tg-share-wrap';
-
-      const tag = document.createElement('div');
-      tag.className = 'tg-share-tag';
-      tag.textContent = 'your card';
-      shareWrap.appendChild(tag);
-      shareWrap.appendChild(cvs);
-
-      // Action buttons
-      const actions = document.createElement('div');
-      actions.className = 'tg-share-actions';
-
-      // Download
-      const dlBtn = document.createElement('button');
-      dlBtn.className = 'tg-share-dl';
-      dlBtn.textContent = 'download png';
-      dlBtn.onclick = () => {
-        const link = document.createElement('a');
-        link.download = `trove-${arcId}.png`;
-        link.href = cvs.toDataURL('image/png');
-        link.click();
-        dlBtn.textContent = 'saved ✓';
-        setTimeout(() => { dlBtn.textContent = 'download png'; }, 2200);
-      };
-      actions.appendChild(dlBtn);
-
-      // Share (Web Share API — opens native sheet: Messages, WhatsApp, Mail, AirDrop, etc.)
-      const shareBtn = document.createElement('button');
-      shareBtn.className = 'tg-share-dl';
-      shareBtn.textContent = 'share →';
-      shareBtn.onclick = async () => {
-        try {
-          const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
-          const file = new File([blob], `trove-${arcId}.png`, { type: 'image/png' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: a.name,
-              text: `${a.name} — ${a.sub}\n\ntrove.garden`,
-              files: [file],
-            });
-          } else if (navigator.share) {
-            await navigator.share({ title: a.name, text: `${a.name} — ${a.sub}`, url: 'https://trove.garden' });
-          } else {
-            // Fallback: copy text to clipboard
-            await navigator.clipboard?.writeText(`${a.name} — ${a.sub} — trove.garden`);
-            shareBtn.textContent = 'link copied ✓';
-            setTimeout(() => { shareBtn.textContent = 'share →'; }, 2200);
-          }
-        } catch(e) { /* user cancelled or unsupported */ }
-      };
-      actions.appendChild(shareBtn);
-
-      // Email (mailto — text only; user attaches the downloaded PNG)
-      const emailLink = document.createElement('a');
-      emailLink.className = 'tg-share-dl';
-      emailLink.style.textDecoration = 'none';
-      emailLink.href = `mailto:?subject=${encodeURIComponent('My Trove Investor Archetype')}&body=${encodeURIComponent(`${a.name}\n${a.sub}\n\n${a.desc}\n\ntrove.garden`)}`;
-      emailLink.textContent = 'email';
-      actions.appendChild(emailLink);
-
-      shareWrap.appendChild(actions);
-
-      const contact = document.createElement('div');
-      contact.className = 'tg-pl tg-contact';
-      contact.innerHTML = `<div>Helen Huang · Founder, Trove</div><div><a href="mailto:helen@trove.garden">helen@trove.garden</a></div>`;
-
-      pitch.appendChild(shareWrap);
-      pitch.appendChild(contact);
-      scrollPitch();
-      if (hasGSAP) gsap.from([shareWrap, contact], { opacity: 0, y: 18, duration: 0.48, ease: 'back.out(2)', stagger: 0.1 });
-      setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 150);
-    };
+    if (hasGSAP) gsap.from([shareWrap, contact], { opacity: 0, y: 18, duration: 0.48, ease: 'back.out(2)', stagger: 0.1 });
+    setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 150);
   }
 
   window.tgAPI.setProgress(0);
@@ -1375,6 +1754,7 @@ window.tgInitGame = async function () {
       walletImg.style.animationDelay = '-0.9s';
     }, 1150);
   }
+  spawnAmbientFloaters();
   await w(1300);
 
   // ── Beat 2: Wrong call — capture element so coin can land beside "someone." ──
@@ -1384,8 +1764,6 @@ window.tgInitGame = async function () {
     ease: hasCE ? 'unfurl' : 'power3.out',
   });
   await w(900);
-
-  window.tgAPI.setProgress(20);
 
   // ── Coin: launches from wallet, lands inline beside "someone." ──
   if (hasGSAP) {
@@ -1477,8 +1855,6 @@ window.tgInitGame = async function () {
   }
   await w(1000);
 
-  window.tgAPI.setProgress(45);
-
   // ── Beat 4: What happened? — chars from center, blur, stagger ease ────
   flash();
   await reveal(line('What happened?', 'tg-pl--impact', 18), {
@@ -1535,10 +1911,10 @@ window.tgInitGame = async function () {
           onComplete: () => gsap.to(sel, { scale: 1, duration: 0.9, ease: 'elastic.out(1, 0.38)' }),
         });
       }
+      window.tgAPI.setProgress(25);
       setTimeout(() => resolve(idx), 540);
     };
   });
-  window.tgAPI.setProgress(70);
 
   scrollPitch();
   await w(800);
@@ -1620,7 +1996,8 @@ window.tgInitGame = async function () {
     if (hasGSAP) {
       gsap.fromTo(decalGroup,
         { opacity: 0, y: 18, scale: 0.5, rotation: -10 },
-        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.7, ease: 'elastic.out(1, 0.48)' }
+        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.7, ease: 'elastic.out(1, 0.48)',
+          onComplete: () => orbitingTextRing(bulbImg, '\u2736 XRAY VISION \u2736 BEHAVIORAL SIGNAL \u2736') }
       );
     } else {
       decalGroup.style.opacity = '1';
