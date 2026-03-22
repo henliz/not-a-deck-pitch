@@ -282,7 +282,8 @@ canvas#webgl {
   display: inline-block;
   vertical-align: middle;
   width: 72px;
-  height: auto;
+  height: 72px;
+  object-fit: contain;
   margin-left: 8px;
 }
 
@@ -415,6 +416,165 @@ canvas#webgl {
 .tg-pitch-choice:hover { background: rgba(136,171,227,0.15); color: var(--anchor); }
 .tg-pitch-choice:active { transform: scale(0.97); }
 .tg-pitch-choice.selected { background: var(--shift); color: var(--anchor); font-weight: 700; }
+
+/* ══════════════════════════════════════════════════════════════
+   BRANCHING GAME — chapters, stats, profiles, email, share
+══════════════════════════════════════════════════════════════ */
+
+/* Chapter label */
+.tg-ch {
+  font-family: var(--font-label); font-size: 9px;
+  letter-spacing: 0.22em; color: var(--trace); text-transform: uppercase;
+  margin-bottom: 22px; margin-top: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.tg-ch::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* Pull quote */
+.tg-pq {
+  border-left: 2px solid var(--shift);
+  padding: 12px 0 12px 16px;
+  margin: 16px 0;
+  font-family: var(--font-display); font-size: 16px; font-style: italic;
+  color: rgba(34,34,34,0.8); line-height: 1.6;
+}
+
+/* Stats grid */
+.tg-stats {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border);
+  margin: 16px 0; overflow: hidden;
+}
+.tg-stat { background: var(--bg); padding: 14px 10px; text-align: center; }
+.tg-stat-n { font-family: var(--font-display); font-size: 28px; font-weight: 600; color: var(--shift); display: block; line-height: 1; margin-bottom: 5px; }
+.tg-stat-l { font-family: var(--font-label); font-size: 8.5px; letter-spacing: 0.1em; color: rgba(34,34,34,0.5); text-transform: uppercase; line-height: 1.45; display: block; }
+
+/* Reveal list */
+.tg-rlist { margin: 14px 0; display: flex; flex-direction: column; gap: 8px; }
+.tg-ritem {
+  display: flex; align-items: baseline; gap: 11px;
+  font-family: var(--font-body); font-size: 14px; color: rgba(34,34,34,0.78); line-height: 1.5;
+  opacity: 0; transform: translateY(6px);
+  animation: tgRitemIn 0.4s ease forwards;
+}
+.tg-ritem::before { content: attr(data-m); color: var(--trace); font-family: var(--font-label); font-size: 9px; flex-shrink: 0; margin-top: 2px; }
+@keyframes tgRitemIn { to { opacity: 1; transform: none; } }
+
+/* Ask grid */
+.tg-ask-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border);
+  margin: 16px 0; overflow: hidden;
+}
+.tg-ask-cell { background: var(--bg); padding: 14px 12px; }
+.tg-ask-lbl  { font-family: var(--font-label); font-size: 8px; letter-spacing: 0.18em; color: rgba(34,34,34,0.4); text-transform: uppercase; margin-bottom: 6px; }
+.tg-ask-val  { font-family: var(--font-display); font-size: 20px; font-weight: 600; color: var(--shift); line-height: 1; }
+.tg-ask-sub  { font-family: var(--font-body); font-size: 11px; color: rgba(34,34,34,0.5); margin-top: 5px; font-style: italic; line-height: 1.4; }
+
+/* Profile card */
+.tg-profile-card {
+  background: rgba(195,217,255,0.12);
+  border: 1px solid rgba(136,171,227,0.28);
+  padding: 20px 18px; margin: 18px 0;
+  position: relative;
+}
+.tg-profile-card::before, .tg-profile-card::after {
+  content: ''; position: absolute; width: 9px; height: 9px;
+  border-color: var(--trace); border-style: solid; opacity: 0.5;
+}
+.tg-profile-card::before { top: 7px; left: 7px; border-width: 1px 0 0 1px; }
+.tg-profile-card::after  { bottom: 7px; right: 7px; border-width: 0 1px 1px 0; }
+.tg-p-tag  { font-family: var(--font-label); font-size: 8px; letter-spacing: 0.22em; color: var(--trace); text-transform: uppercase; margin-bottom: 9px; }
+.tg-p-name { font-family: var(--font-display); font-size: 26px; font-weight: 600; color: var(--anchor); margin-bottom: 4px; line-height: 1.1; }
+.tg-p-sub  { font-family: var(--font-label); font-size: 9px; color: rgba(34,34,34,0.45); letter-spacing: 0.06em; margin-bottom: 12px; }
+.tg-p-desc { font-family: var(--font-body); font-size: 14px; font-style: italic; color: rgba(34,34,34,0.72); line-height: 1.6; margin-bottom: 14px; }
+.tg-p-together { font-family: var(--font-label); font-size: 10px; color: rgba(34,34,34,0.5); line-height: 1.65; border-top: 1px solid var(--border); padding-top: 12px; }
+.tg-p-together strong { color: var(--anchor); font-family: var(--font-display); font-size: 12px; font-style: italic; font-weight: 400; }
+
+/* Branch choices — explorer style, different from chat bubbles */
+.tg-branch-choices { display: flex; flex-direction: column; gap: 7px; margin-top: 18px; }
+.tg-branch-choice {
+  background: transparent; border: 1px solid var(--border);
+  padding: 11px 14px; text-align: left; cursor: pointer;
+  color: var(--text); font-family: var(--font-body);
+  font-size: 13px; font-weight: 400; line-height: 1.45;
+  display: flex; align-items: flex-start; gap: 10px;
+  transition: border-color 180ms ease, background 180ms ease;
+  width: 100%;
+}
+.tg-branch-choice:hover { border-color: var(--trace); background: rgba(136,171,227,0.06); }
+.tg-branch-choice .bc-arr { font-family: var(--font-label); font-size: 9px; color: var(--trace); flex-shrink: 0; padding-top: 3px; transition: transform 180ms ease; }
+.tg-branch-choice:hover .bc-arr { transform: translateX(3px); }
+.tg-branch-choice.selected { border-color: var(--shift); background: rgba(219,213,156,0.1); }
+
+/* Continue button */
+.tg-cont {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 22px; background: transparent;
+  border: 1px solid var(--trace);
+  padding: 10px 18px; color: var(--trace);
+  font-family: var(--font-label); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; transition: background 180ms ease, color 180ms ease;
+}
+.tg-cont:hover { background: var(--trace); color: var(--still); }
+
+/* Email block */
+.tg-email-q   { font-family: var(--font-label); font-size: 10px; letter-spacing: 0.06em; color: rgba(34,34,34,0.5); margin-bottom: 14px; }
+.tg-email-yesno { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.tg-e-yes {
+  background: transparent; border: 1px solid var(--trace);
+  padding: 9px 18px; color: var(--trace);
+  font-family: var(--font-label); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer; transition: background 180ms, color 180ms;
+}
+.tg-e-yes:hover { background: var(--trace); color: var(--still); }
+.tg-e-no {
+  background: transparent; border: none; color: rgba(34,34,34,0.38);
+  font-family: var(--font-label); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: pointer; transition: color 180ms; padding: 9px 0;
+}
+.tg-e-no:hover { color: var(--anchor); }
+.tg-email-form { display: flex; border: 1px solid var(--border); margin-bottom: 7px; }
+.tg-email-in { flex: 1; background: transparent; border: none; outline: none; font-family: var(--font-label); font-size: 12px; padding: 10px 12px; color: var(--anchor); min-width: 0; }
+.tg-email-in::placeholder { color: rgba(34,34,34,0.22); }
+.tg-email-send { background: var(--trace); color: var(--still); border: none; font-family: var(--font-label); font-size: 12px; padding: 10px 14px; cursor: pointer; transition: opacity 0.15s; }
+.tg-email-send:hover { opacity: 0.82; }
+.tg-email-fine { font-family: var(--font-label); font-size: 8px; color: rgba(34,34,34,0.32); letter-spacing: 0.06em; }
+
+/* Share card */
+.tg-share-card {
+  border: 1px solid var(--border); padding: 16px 18px; margin: 16px 0;
+  position: relative;
+}
+.tg-share-card::before, .tg-share-card::after {
+  content: ''; position: absolute; width: 7px; height: 7px;
+  border-color: rgba(136,171,227,0.45); border-style: solid;
+}
+.tg-share-card::before { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+.tg-share-card::after  { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+.tg-share-tag  { font-family: var(--font-label); font-size: 7.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--trace); opacity: 0.65; margin-bottom: 5px; }
+.tg-share-name { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--anchor); margin-bottom: 3px; }
+.tg-share-sub  { font-family: var(--font-label); font-size: 9px; color: rgba(34,34,34,0.42); margin-bottom: 8px; }
+.tg-share-url  { font-family: var(--font-label); font-size: 7px; color: rgba(34,34,34,0.22); }
+.tg-share-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tg-share-dl {
+  background: transparent; border: 1px solid var(--border);
+  font-family: var(--font-label); font-size: 8.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(34,34,34,0.45); padding: 6px 11px; cursor: pointer;
+  transition: border-color 180ms, color 180ms;
+}
+.tg-share-dl:hover { border-color: var(--anchor); color: var(--anchor); }
+
+/* Contact footer */
+.tg-contact { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); font-family: var(--font-label); font-size: 10px; color: rgba(34,34,34,0.4); letter-spacing: 0.05em; line-height: 1.8; }
+.tg-contact a { color: var(--trace); text-decoration: none; }
+.tg-contact a:hover { text-decoration: underline; }
+
+/* Inline decals — attached to tg-pl elements, GSAP animates in */
+.tg-inline-decal { display: block; pointer-events: none; user-select: none; }
 
 @media (max-width: 480px) {
   .tg-intro-scene { padding: 6px 8px; }
