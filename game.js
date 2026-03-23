@@ -1387,15 +1387,16 @@ window.tgInitGame = async function () {
     };
     const ARCH_TYPE_IMG = {
       cartographer: 'Cartographer.png', contrarian: 'Contrarian.png',
-      architect:    'Architect.png',    operator:   'investor.png', storyteller: 'investor.png',
+      architect:    'Architect.png',    operator:   'Operator.png', storyteller: 'Storyteller.png',
     };
 
     const accentColor = ARCH_COLORS[id] || '#DBD59C';
     const BLUE  = '#88ABE3';
     const CREAM = '#F9F9F2';
     const DARK  = '#222222';
-    const PAD   = 44;
-    const IW    = W - PAD * 2;
+    const PAD   = 28;   // outer card padding
+    const GAP   = 14;   // gap between bento tiles
+    const IW    = W - PAD * 2;   // 844px inner width
 
     // ── Helpers ───────────────────────────────────────────────────────
     function scRoundRect(x, y, w, h, r, fill, stroke) {
@@ -1414,6 +1415,19 @@ window.tgInitGame = async function () {
       if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
     }
 
+    function clipRR(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath(); ctx.clip();
+    }
+
     async function drawAsset(src, x, y, w, h, rotDeg = 0) {
       return new Promise(res => {
         const img = new Image();
@@ -1424,37 +1438,27 @@ window.tgInitGame = async function () {
             ctx.rotate(rotDeg * Math.PI / 180);
             ctx.drawImage(img, -w / 2, -h / 2, w, h);
             ctx.restore();
-          } else {
-            ctx.drawImage(img, x, y, w, h);
-          }
+          } else { ctx.drawImage(img, x, y, w, h); }
           res();
         };
-        img.onerror = res;
-        img.src = src;
+        img.onerror = res; img.src = src;
       });
     }
 
-    // Draw image aspect-ratio-preserved, centered within bounds
     async function drawAssetFit(src, x, y, w, h) {
       return new Promise(res => {
         const img = new Image();
         img.onload = () => {
-          const scale = Math.min(w / img.naturalWidth, h / img.naturalHeight);
-          const dw    = img.naturalWidth  * scale;
-          const dh    = img.naturalHeight * scale;
-          ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+          const s = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+          ctx.drawImage(img, x + (w - img.naturalWidth * s) / 2, y + (h - img.naturalHeight * s) / 2, img.naturalWidth * s, img.naturalHeight * s);
           res();
         };
-        img.onerror = res;
-        img.src = src;
+        img.onerror = res; img.src = src;
       });
     }
 
-    // Word-wrap helper — draws wrapped lines, returns line count
     function wrapText(text, x, y, maxW, lineH) {
-      const words = text.split(' ');
-      let line = '';
-      const lines = [];
+      const words = text.split(' '); let line = ''; const lines = [];
       for (const word of words) {
         const test = line ? line + ' ' + word : word;
         if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = word; }
@@ -1471,28 +1475,25 @@ window.tgInitGame = async function () {
         const div = document.createElement('div');
         div.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
         document.body.appendChild(div);
-        new QRCode(div, {
-          text: url, width: size, height: size,
-          colorDark: '#222222', colorLight: '#F9F9F2',
-          correctLevel: QRCode.CorrectLevel.M,
-        });
+        new QRCode(div, { text: url, width: size, height: size, colorDark: '#222222', colorLight: '#F9F9F2', correctLevel: QRCode.CorrectLevel.M });
         setTimeout(() => {
-          const qrCanvas = div.querySelector('canvas');
-          const qrImg    = div.querySelector('img');
-          if (qrCanvas) { div.remove(); resolve(qrCanvas); }
-          else if (qrImg) {
-            const c = document.createElement('canvas');
-            c.width = size; c.height = size;
-            const x = c.getContext('2d');
-            const i = new Image();
+          const qc = div.querySelector('canvas'), qi = div.querySelector('img');
+          if (qc) { div.remove(); resolve(qc); }
+          else if (qi) {
+            const c = document.createElement('canvas'); c.width = size; c.height = size;
+            const x = c.getContext('2d'), i = new Image();
             i.onload = () => { x.drawImage(i, 0, 0, size, size); div.remove(); resolve(c); };
-            i.src = qrImg.src;
+            i.src = qi.src;
           } else { div.remove(); resolve(null); }
         }, 300);
       });
     }
 
     function setLS(val) { try { ctx.letterSpacing = val; } catch(e) {} }
+    function hexRgba(hex, a) {
+      const h = hex.replace('#','');
+      return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
+    }
 
     // ── Session signals ───────────────────────────────────────────────
     const recapTraits = (data && data.traits) || [];
@@ -1511,198 +1512,182 @@ window.tgInitGame = async function () {
     // ── Font preload ──────────────────────────────────────────────────
     try {
       await Promise.all([
-        document.fonts.load('900 72px "Playfair Display"'),
-        document.fonts.load('400 italic 20px "Playfair Display"'),
+        document.fonts.load('900 46px "Playfair Display"'),
+        document.fonts.load('400 italic 17px "Playfair Display"'),
         document.fonts.load('400 13px "DM Mono"'),
       ]);
     } catch(e) {}
 
-    // ═══════════════════════════════════════════════════════════════════
-    // DRAW
-    // ═══════════════════════════════════════════════════════════════════
+    // ── Bento layout constants ────────────────────────────────────────
+    // Two columns
+    const COL_L = 340;
+    const COL_R = IW - COL_L - GAP;   // 490px
+    // Row y-positions and heights (sum = 1200)
+    const R1_Y = 58,  R1_H = 420;     // top row   (illustration + title)
+    const R2_Y = R1_Y + R1_H + GAP;   // 492
+    const R2_H = 200;                  // middle row (quote + traits)
+    const R3_Y = R2_Y + R2_H + GAP;   // 706
+    const R3_H = 190;                  // signals row (full-width)
+    const R4_Y = R3_Y + R3_H + GAP;   // 910
+    const R4_H = H - R4_Y - PAD;      // 262 — footer row
+    const TR   = 16;                   // tile border radius
+    const TP   = 22;                   // tile inner padding
 
-    // ── 1. Background ─────────────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════════
+    // DRAW
+    // ════════════════════════════════════════════════════════════════
+
+    // 1. Card background
     ctx.fillStyle = CREAM;
     ctx.fillRect(0, 0, W, H);
 
-    // ── 2. Top accent bar (3px) ───────────────────────────────────────
+    // Accent bar at very top
     ctx.fillStyle = accentColor;
     ctx.fillRect(0, 0, W, 3);
 
-    // ── 3. Header strip ───────────────────────────────────────────────
-    ctx.textBaseline = 'top';
-    ctx.textAlign    = 'left';
-    ctx.fillStyle    = BLUE;
-    ctx.font         = '400 9px "DM Mono", monospace';
-    setLS('0.18em');
-    ctx.fillText('YOUR INVESTOR ARCHETYPE', PAD, 22);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(34,34,34,0.35)';
-    setLS('0.04em');
-    ctx.fillText('trove.garden', W - PAD, 22);
-    setLS('0');
+    // Eyebrow header line
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
+    setLS('0.16em'); ctx.fillText('INVESTOR ARCHETYPE · TROVE', PAD, 18);
+    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(34,34,34,0.30)';
+    setLS('0.04em'); ctx.fillText('2026', W - PAD, 18); setLS('0');
 
-    ctx.fillStyle = 'rgba(34,34,34,0.08)';
-    ctx.fillRect(PAD, 50, IW, 1);
+    // ── TILE 1: Title (top-left) ──────────────────────────────────────
+    const T1X = PAD, T1Y = R1_Y, T1W = COL_L, T1H = R1_H;
+    scRoundRect(T1X, T1Y, T1W, T1H, TR, hexRgba(BLUE, 0.10), hexRgba(BLUE, 0.28));
 
-    // ── 4. Character illustration tile ───────────────────────────────
-    const TILE_X = PAD, TILE_Y = 64, TILE_W = IW, TILE_H = 372;
+    // "YOUR TYPE" eyebrow inside tile
+    ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    setLS('0.16em'); ctx.fillText('YOUR TYPE', T1X + TP, T1Y + TP); setLS('0');
 
-    // Tile bg: soft accent tint
-    const _ah = accentColor.replace('#', '');
-    const _ar = parseInt(_ah.slice(0,2),16), _ag = parseInt(_ah.slice(2,4),16), _ab = parseInt(_ah.slice(4,6),16);
-    scRoundRect(TILE_X, TILE_Y, TILE_W, TILE_H, 18, `rgba(${_ar},${_ag},${_ab},0.14)`, null);
+    // "The" prefix
+    ctx.fillStyle = 'rgba(34,34,34,0.42)'; ctx.font = '400 15px "DM Mono", monospace';
+    setLS('0.06em'); ctx.fillText('The', T1X + TP, T1Y + TP + 28); setLS('0');
 
-    // Clip tile and draw character illustration aspect-fit
-    ctx.save();
-    const _TR = 18;
-    ctx.beginPath();
-    ctx.moveTo(TILE_X + _TR, TILE_Y);
-    ctx.lineTo(TILE_X + TILE_W - _TR, TILE_Y);
-    ctx.quadraticCurveTo(TILE_X + TILE_W, TILE_Y, TILE_X + TILE_W, TILE_Y + _TR);
-    ctx.lineTo(TILE_X + TILE_W, TILE_Y + TILE_H - _TR);
-    ctx.quadraticCurveTo(TILE_X + TILE_W, TILE_Y + TILE_H, TILE_X + TILE_W - _TR, TILE_Y + TILE_H);
-    ctx.lineTo(TILE_X + _TR, TILE_Y + TILE_H);
-    ctx.quadraticCurveTo(TILE_X, TILE_Y + TILE_H, TILE_X, TILE_Y + TILE_H - _TR);
-    ctx.lineTo(TILE_X, TILE_Y + _TR);
-    ctx.quadraticCurveTo(TILE_X, TILE_Y, TILE_X + _TR, TILE_Y);
-    ctx.closePath();
-    ctx.clip();
-    await drawAssetFit(
-      `./assets/${ARCH_TYPE_IMG[id] || 'investor.png'}`,
-      TILE_X + 24, TILE_Y + 20, TILE_W - 48, TILE_H - 40
-    );
-    ctx.restore();
-
-    // Doodle icon — bottom-right of tile, slightly inset, tilted
-    const DOODLE_SZ = 68;
-    await drawAsset(
-      `./assets/${ARCH_ASSETS[id] || 'camera.png'}`,
-      TILE_X + TILE_W - DOODLE_SZ - 14, TILE_Y + TILE_H - DOODLE_SZ - 10,
-      DOODLE_SZ, DOODLE_SZ, 9
-    );
-
-    // ── 5. Archetype name ─────────────────────────────────────────────
-    const NAME_Y = TILE_Y + TILE_H + 26;
-    ctx.textAlign    = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle    = DARK;
-
-    // Auto-shrink font if name is too wide
-    let nfs = 72;
+    // Archetype word — auto-fit font
+    const archWord = arch.name.replace(/^The\s+/, '');
+    let nfs = 46;
     ctx.font = `900 ${nfs}px "Playfair Display", serif`;
     setLS('-0.02em');
-    if (ctx.measureText(arch.name).width > IW * 0.97) {
-      nfs = Math.floor(nfs * (IW * 0.97) / ctx.measureText(arch.name).width);
+    const nameMaxW = T1W - TP * 2;
+    if (ctx.measureText(archWord).width > nameMaxW) {
+      nfs = Math.floor(nfs * nameMaxW / ctx.measureText(archWord).width);
       ctx.font = `900 ${nfs}px "Playfair Display", serif`;
     }
-    ctx.fillText(arch.name, PAD, NAME_Y);
+    ctx.fillStyle = DARK;
+    ctx.fillText(archWord, T1X + TP, T1Y + TP + 52);
     setLS('0');
 
-    // Tagline / sub
-    const SUB_Y = NAME_Y + Math.round(nfs * 1.18);
-    ctx.fillStyle = 'rgba(34,34,34,0.50)';
-    ctx.font      = '400 13px "DM Mono", monospace';
-    setLS('0.04em');
-    ctx.fillText(arch.sub, PAD, SUB_Y);
+    // Tagline
+    ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '400 12px "DM Mono", monospace';
+    setLS('0.02em');
+    ctx.fillText(arch.sub, T1X + TP, T1Y + TP + 52 + Math.round(nfs * 1.2));
     setLS('0');
 
-    // ── 6. Insight quote block ────────────────────────────────────────
-    const RULE1_Y = SUB_Y + 30;
-    ctx.fillStyle  = 'rgba(34,34,34,0.08)';
-    ctx.fillRect(PAD, RULE1_Y, IW, 1);
+    // Doodle icon — bottom-right of title tile
+    const DSZ = 62;
+    await drawAsset(
+      `./assets/${ARCH_ASSETS[id] || 'camera.png'}`,
+      T1X + T1W - DSZ - TP, T1Y + T1H - DSZ - TP, DSZ, DSZ, 8
+    );
 
-    const INS_Y = RULE1_Y + 18, INS_H = 148;
-    scRoundRect(PAD, INS_Y, IW, INS_H, 12, 'rgba(136,171,227,0.14)', null);
-    // Blue left accent bar
-    ctx.fillStyle = BLUE;
-    ctx.fillRect(PAD, INS_Y, 3, INS_H);
+    // ── TILE 2: Character illustration (top-right) ────────────────────
+    const T2X = PAD + COL_L + GAP, T2Y = R1_Y, T2W = COL_R, T2H = R1_H;
+    scRoundRect(T2X, T2Y, T2W, T2H, TR, hexRgba(accentColor, 0.15), null);
+    ctx.save(); clipRR(T2X, T2Y, T2W, T2H, TR);
+    await drawAssetFit(`./assets/${ARCH_TYPE_IMG[id] || 'investor.png'}`, T2X + 16, T2Y + 16, T2W - 32, T2H - 32);
+    ctx.restore();
 
-    ctx.textAlign    = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle    = DARK;
-    ctx.font         = '400 italic 20px "Playfair Display", serif';
-    wrapText(`"${arch.insight || arch.sub}"`, PAD + 22, INS_Y + 22, IW - 44, 30);
+    // ── TILE 3: Insight quote (middle-left) ──────────────────────────
+    const T3X = PAD, T3Y = R2_Y, T3W = COL_L, T3H = R2_H;
+    scRoundRect(T3X, T3Y, T3W, T3H, TR, hexRgba(BLUE, 0.22), null);
 
-    // ── 7. Trait pills ────────────────────────────────────────────────
-    const TRAITS_LBL_Y = INS_Y + INS_H + 22;
-    ctx.fillStyle    = 'rgba(34,34,34,0.40)';
-    ctx.font         = '400 9px "DM Mono", monospace';
-    ctx.textBaseline = 'top';
-    setLS('0.18em');
-    ctx.fillText('TRAITS', PAD, TRAITS_LBL_Y);
-    setLS('0');
+    ctx.fillStyle = DARK; ctx.font = '400 italic 16px "Playfair Display", serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    wrapText(`"${arch.insight || arch.sub}"`, T3X + TP, T3Y + TP, T3W - TP * 2, 25);
 
-    const PILLS_Y = TRAITS_LBL_Y + 22, PILL_H = 26;
-    let pillX = PAD;
-    ctx.font = '400 9px "DM Mono", monospace';
-    setLS('0.12em');
-    (arch.traits || []).forEach(trait => {
-      const label = trait.toUpperCase();
-      const tw    = ctx.measureText(label).width + 28;
-      scRoundRect(pillX, PILLS_Y, tw, PILL_H, 99, accentColor, null);
-      ctx.fillStyle    = DARK;
-      ctx.textBaseline = 'middle';
-      ctx.fillText(label, pillX + 14, PILLS_Y + PILL_H / 2);
-      ctx.textBaseline = 'top';
-      pillX += tw + 10;
+    // ── TILE 4: Traits (middle-right) ────────────────────────────────
+    const T4X = PAD + COL_L + GAP, T4Y = R2_Y, T4W = COL_R, T4H = R2_H;
+    scRoundRect(T4X, T4Y, T4W, T4H, TR, CREAM, 'rgba(34,34,34,0.08)');
+
+    ctx.fillStyle = 'rgba(34,34,34,0.38)'; ctx.font = '400 9px "DM Mono", monospace';
+    ctx.textBaseline = 'top'; setLS('0.16em');
+    ctx.fillText('TRAITS', T4X + TP, T4Y + TP); setLS('0');
+
+    const pW = T4W - TP * 2, pH = 34, pGap = 10, pStart = T4Y + TP + 24;
+    (arch.traits || []).forEach((trait, i) => {
+      const py = pStart + i * (pH + pGap);
+      scRoundRect(T4X + TP, py, pW, pH, 8, hexRgba(accentColor, 0.22), hexRgba(accentColor, 0.50));
+      ctx.fillStyle = DARK; ctx.font = '400 11px "DM Mono", monospace';
+      ctx.textBaseline = 'middle'; setLS('0.08em');
+      ctx.fillText(trait.toUpperCase(), T4X + TP + 14, py + pH / 2);
+      setLS('0');
     });
-    setLS('0');
 
-    // ── 8. Session signals ────────────────────────────────────────────
-    const RULE2_Y = PILLS_Y + PILL_H + 22;
-    ctx.fillStyle  = 'rgba(34,34,34,0.08)';
-    ctx.fillRect(PAD, RULE2_Y, IW, 1);
+    // ── TILE 5: Your Signals (full-width) ────────────────────────────
+    const T5X = PAD, T5Y = R3_Y, T5W = IW, T5H = R3_H;
+    scRoundRect(T5X, T5Y, T5W, T5H, TR, DARK, null);
 
-    const SIG_LBL_Y = RULE2_Y + 18;
-    ctx.fillStyle    = BLUE;
-    ctx.font         = '400 9px "DM Mono", monospace';
-    ctx.textBaseline = 'top';
-    setLS('0.18em');
-    ctx.fillText('YOUR SIGNALS', PAD, SIG_LBL_Y);
-    setLS('0');
-
-    ctx.font      = '400 13px "DM Mono", monospace';
-    ctx.fillStyle = 'rgba(34,34,34,0.55)';
-    setLS('0.01em');
-    signals.forEach((sig, i) => {
-      ctx.fillText(`— ${sig}`, PAD, SIG_LBL_Y + 24 + i * 26);
-    });
-    setLS('0');
-
+    // Ghost move count watermark
     if (moveCount > 0) {
-      const movesY = SIG_LBL_Y + 24 + signals.length * 26 + 10;
-      ctx.fillStyle = 'rgba(34,34,34,0.28)';
-      ctx.font      = '400 11px "DM Mono", monospace';
-      setLS('0.04em');
-      ctx.fillText(`${moveCount} decisions made`, PAD, movesY);
+      ctx.save();
+      ctx.font = `900 148px "Playfair Display", serif`;
+      ctx.fillStyle = 'rgba(249,249,242,0.04)';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(moveCount), T5X + T5W - 28, T5Y + T5H / 2);
+      ctx.restore();
+    }
+
+    // "YOUR SIGNALS" label
+    ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    setLS('0.18em'); ctx.fillText('YOUR SIGNALS', T5X + TP, T5Y + TP); setLS('0');
+
+    // Signal lines
+    ctx.font = '400 14px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(249,249,242,0.85)';
+    setLS('0.01em');
+    signals.forEach((sig, i) => ctx.fillText(`— ${sig}`, T5X + TP, T5Y + TP + 26 + i * 30));
+    setLS('0');
+
+    // Move count, right-aligned
+    if (moveCount > 0) {
+      ctx.fillStyle = hexRgba(BLUE, 0.65);
+      ctx.font = '400 11px "DM Mono", monospace';
+      ctx.textAlign = 'right'; setLS('0.06em');
+      ctx.fillText(`${moveCount} decisions`, T5X + T5W - TP, T5Y + T5H - TP - 2);
       setLS('0');
     }
 
-    // ── 9. Footer ─────────────────────────────────────────────────────
-    const FOOTER_RULE_Y = H - 152;
-    ctx.fillStyle = 'rgba(34,34,34,0.08)';
-    ctx.fillRect(PAD, FOOTER_RULE_Y, IW, 1);
+    // ── TILE 6: Logo + CTA (bottom-left) ─────────────────────────────
+    const T6X = PAD, T6Y = R4_Y, T6W = COL_L, T6H = R4_H;
+    scRoundRect(T6X, T6Y, T6W, T6H, TR, hexRgba(accentColor, 1), null);
 
-    await drawAsset('./TroveLogo.png', PAD, FOOTER_RULE_Y + 24, 120, 36, 0);
+    await drawAsset('./TroveLogo.png', T6X + TP, T6Y + TP + 8, 114, 34, 0);
 
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(34,34,34,0.30)';
-    ctx.font      = '400 11px "DM Mono", monospace';
-    setLS('0.04em');
-    ctx.fillText('trove.garden · 2026', W / 2, FOOTER_RULE_Y + 37);
+    ctx.fillStyle = 'rgba(34,34,34,0.60)'; ctx.font = '400 12px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.04em');
+    ctx.fillText('see your type →', T6X + TP, T6Y + TP + 8 + 34 + 18);
     setLS('0');
 
-    const qrSize   = 86;
+    // ── TILE 7: QR code (bottom-right) ───────────────────────────────
+    const T7X = PAD + COL_L + GAP, T7Y = R4_Y, T7W = COL_R, T7H = R4_H;
+    scRoundRect(T7X, T7Y, T7W, T7H, TR, '#FFFFFF', 'rgba(34,34,34,0.08)');
+
+    const qrSize   = Math.min(T7W - TP * 2, T7H - TP * 2 - 20);
     const qrCanvas = await generateQR('https://henliz.github.io/not-a-deck-pitch/', qrSize);
     if (qrCanvas) {
-      const qrX = W - PAD - qrSize;
-      const qrY = FOOTER_RULE_Y + 16;
-      scRoundRect(qrX - 6, qrY - 6, qrSize + 12, qrSize + 12, 8, '#FFFFFF', 'rgba(34,34,34,0.08)');
+      const qrX = T7X + Math.round((T7W - qrSize) / 2);
+      const qrY = T7Y + Math.round((T7H - qrSize - 20) / 2);
       ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+      ctx.fillStyle = 'rgba(34,34,34,0.35)'; ctx.font = '400 10px "DM Mono", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; setLS('0.08em');
+      ctx.fillText('scan to play', T7X + T7W / 2, qrY + qrSize + 10);
+      setLS('0');
     }
 
-    // Subtle outer card frame
+    // Subtle outer frame
     ctx.strokeStyle = 'rgba(34,34,34,0.08)';
     ctx.lineWidth   = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
@@ -2620,7 +2605,6 @@ window.tgInitGame = async function () {
           <button class="tg-email-send" id="tg-email-send">join →</button>
         </div>
         <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
-        <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
         <div class="tg-email-helen" id="tg-email-helen" style="opacity:0">Helen Huang · Founder, Trove &nbsp;·&nbsp; <a href="mailto:helen@trove.garden" class="tg-email-helen-link">helen@trove.garden</a></div>
       `;
 
@@ -2628,7 +2612,7 @@ window.tgInitGame = async function () {
       // scattered around the container: top corners, mid sides, bottom corners
       const paradeSpots = [
         { src: 'starhehe.png',    anim: 'spin',   css: 'top:6px;left:4px'        },
-        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:4px'       },
+        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:-18px'     },
         { src: 'frog.png',        anim: 'bounce', css: 'top:40%;left:2px'        },
         { src: 'derpy.png',       anim: 'dance',  css: 'top:40%;right:2px'       },
         { src: 'turtle.png',      anim: 'bob',    css: 'bottom:30px;left:4px'    },
@@ -2719,11 +2703,9 @@ window.tgInitGame = async function () {
         gsap.fromTo(fineEl,  { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.36,
           onComplete: () => { emailDiv.querySelector('#tg-email-in')?.focus(); },
         });
-        const skipEl = emailDiv.querySelector('#tg-email-skip');
-        gsap.fromTo(skipEl, { opacity: 0 }, { opacity: 1, duration: 0.25, delay: 1.5 });
-        gsap.fromTo(helenEl, { opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', delay: 1.65 });
+        gsap.fromTo(helenEl, { opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', delay: 1.5 });
       } else {
-        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-fine','tg-email-skip','tg-email-helen']
+        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-fine','tg-email-helen']
           .forEach(id => { const el = emailDiv.querySelector('#' + id); if (el) el.style.opacity = '1'; });
         paradeEl.querySelectorAll('img').forEach(img => { img.style.opacity = '1'; });
         emailDiv.querySelector('#tg-email-in')?.focus();
@@ -2732,7 +2714,6 @@ window.tgInitGame = async function () {
       setTimeout(() => {
         emailDiv.querySelector('#tg-email-in')?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
         emailDiv.querySelector('#tg-email-send')?.addEventListener('click', submit);
-        emailDiv.querySelector('#tg-email-skip')?.addEventListener('click', () => { HAPTIC.tap(); resolveEmail(); });
       }, 80);
     });
   }
@@ -3168,23 +3149,38 @@ window.tgInitGame = async function () {
     await w(400);
     await w(600);
 
+    // ── Section break ─────────────────────────────────────
+    const sectionBreak = document.createElement('div');
+    sectionBreak.className = 'tg-pl tg-section-break';
+    sectionBreak.innerHTML = `<span class="tg-sb-rule"></span><img src="./TroveLogo.png" class="tg-sb-logo" alt="Trove"><span class="tg-sb-rule"></span>`;
+    pitch.appendChild(sectionBreak);
+    scrollPitch();
+    if (hasGSAP) gsap.fromTo(sectionBreak, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out', delay: 0.1 });
+    else sectionBreak.style.opacity = '1';
+
     // ── Curious / Helen contact + email CTA ───────────────
     await w(600);
     await emailCapture();
     await w(400);
 
     // ── Play again ────────────────────────────────────────
+    const playAgainWrap = document.createElement('div');
+    playAgainWrap.className = 'tg-pl tg-play-again-wrap';
     const playAgain = document.createElement('button');
-    playAgain.className = 'tg-pl tg-play-again';
+    playAgain.className = 'tg-play-again';
     playAgain.textContent = 'play again →';
+    const playAgainSub = document.createElement('div');
+    playAgainSub.className = 'tg-play-again-sub';
+    playAgainSub.textContent = 'each run reveals something different.';
+    playAgainWrap.append(playAgain, playAgainSub);
     playAgain.onclick = () => {
       HAPTIC.tap();
       if (hasGSAP) gsap.to(pitch, { opacity: 0, duration: 0.35, onComplete: () => window.tgInitGame?.() });
       else window.tgInitGame?.();
     };
-    pitch.appendChild(playAgain);
+    pitch.appendChild(playAgainWrap);
     scrollPitch();
-    if (hasGSAP) gsap.from(playAgain, { opacity: 0, y: 14, duration: 0.38, ease: 'power3.out', delay: 0.2 });
+    if (hasGSAP) gsap.from(playAgainWrap, { opacity: 0, y: 14, duration: 0.38, ease: 'power3.out', delay: 0.2 });
     setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 150);
   }
 
