@@ -101,6 +101,7 @@ window.tgAPI = {
 /* ── Pause control ── */
 window.tgPaused = false;
 window.tTogglePause = function () {
+  window.HAPTIC?.tap?.();
   window.tgPaused = !window.tgPaused;
   if (window.gsap) gsap.globalTimeline.paused(window.tgPaused);
   const btn = document.getElementById('t-pause-btn');
@@ -109,11 +110,13 @@ window.tTogglePause = function () {
 
 /* ── Speed control ── */
 window.tToggleSpeedPanel = function () {
+  window.HAPTIC?.tap?.();
   const panel = document.getElementById('t-speed-panel');
   if (panel) panel.classList.toggle('open');
 };
 
 window.tSetSpeed = function (mult) {
+  window.HAPTIC?.tap?.();
   window.tgSpeedMult = mult;
   // Only pacing (w() waits) changes — animations always stay snappy
   document.querySelectorAll('.t-speed-option').forEach(b => {
@@ -165,6 +168,7 @@ window.tgInitGame = async function () {
   ];
   let ringColorIdx = 0;
   let statColorIdx = 0;
+  let pqColorIdx   = 0;
 
   const BURST_SETS = {
     celebrate: ['babystar.png','starhehe.png','flower.png','icecream.png','coin.png'],
@@ -303,7 +307,7 @@ window.tgInitGame = async function () {
     if (hasGSAP) {
       gsap.from(wrap, { opacity: 0, duration: 0.7, ease: 'power2.out' });
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        const halfW = track.offsetWidth / 2;
+        const halfW = track.scrollWidth / 2;
         if (!halfW) return;
         // Slow horizontal drift
         gsap.fromTo(track, { x: 0 },
@@ -335,7 +339,9 @@ window.tgInitGame = async function () {
   }, { passive: true });
 
   function scrollPitch() {
-    if (_atBottom) pitch.scrollTop = pitch.scrollHeight - pitch.clientHeight;
+    if (_atBottom) requestAnimationFrame(() => {
+      pitch.scrollTop = pitch.scrollHeight - pitch.clientHeight;
+    });
   }
   function scrollPitchSnap() {
     _atBottom = true;
@@ -456,8 +462,15 @@ window.tgInitGame = async function () {
 
       const tl = gsap.timeline({
         onComplete: () => {
+          // Snap coin to where landed actually rendered (scroll may have shifted since tween start)
+          const r  = landed.getBoundingClientRect();
+          const sr = scene.getBoundingClientRect();
+          gsap.set(coin, {
+            x: r.left - sr.left + r.width  / 2 - SZ / 2,
+            y: r.top  - sr.top  + r.height / 2 - SZ / 2,
+            scale: landScale,
+          });
           coin.remove();
-          // Cross-fade: flying coin gone, DOM coin fades in at its natural layout spot
           gsap.to(landed, { opacity: 1, duration: 0.22, ease: 'power1.out' });
           resolve();
         },
@@ -611,12 +624,15 @@ window.tgInitGame = async function () {
     const topColor  = ordered[3]; // the ring left visible at peak
     const textColor = topColor === '#88ABE3' ? '#F9F9F2' : '#222222';
 
-    /* 4 rings appended to scene (position:absolute, clipped inside phone) */
+    /* 4 rings appended to scene (position:absolute, clipped inside phone).
+       Start at scene width so scale factor stays ~3-4× — avoids mobile
+       rasterisation of a tiny element being stretched to fill the screen. */
+    const _sw = scene.offsetWidth || 320;
     const rings = ordered.map((c, i) => {
       const r = document.createElement('div');
       r.style.cssText =
         `position:absolute;left:50%;top:50%;` +
-        `width:4px;height:4px;margin:-2px 0 0 -2px;` +
+        `width:${_sw}px;height:${_sw}px;margin:${-_sw/2}px 0 0 ${-_sw/2}px;` +
         `border-radius:50%;pointer-events:none;background:${c};` +
         `z-index:${200 + i};transform-origin:center center;`;
       scene.appendChild(r);
@@ -627,9 +643,9 @@ window.tgInitGame = async function () {
     const floatLbl = document.createElement('div');
     floatLbl.style.cssText =
       `position:absolute;z-index:210;left:50%;top:50%;` +
-      `transform:translate(-50%,-50%);text-align:center;max-width:88%;` +
-      `font-family:var(--font-display);font-size:clamp(36px,10cqw,62px);` +
-      `font-weight:700;line-height:1.1;letter-spacing:-0.02em;` +
+      `transform:translate(-50%,-50%);text-align:center;max-width:92%;` +
+      `font-family:var(--font-display);font-size:clamp(56px,18cqw,96px);` +
+      `font-weight:800;line-height:0.95;letter-spacing:-0.03em;` +
       `pointer-events:none;opacity:0;color:${textColor};`;
     floatLbl.textContent = label;
     scene.appendChild(floatLbl);
@@ -654,53 +670,76 @@ window.tgInitGame = async function () {
 
     if (hasGSAP) {
       const maxSc = Math.ceil(
-        Math.hypot(scene.offsetWidth || 320, scene.offsetHeight || 600) / 2
-      ) + 6;
+        Math.hypot(_sw, scene.offsetHeight || 600) / _sw
+      ) + 1;
 
       gsap.set(rings, { scale: 0 });
 
       // 1. Rings cascade expand
       await new Promise(r =>
-        gsap.to(rings, { scale: maxSc, duration: 0.52, ease: 'power2.inOut', stagger: 0.12, onComplete: r })
+        gsap.to(rings, { scale: maxSc, duration: 0.48, ease: 'power3.inOut', stagger: 0.1, onComplete: r })
       );
 
-      // 2. Label chars slam in from below
+      // 2. Words punch in one by one — huge, overshoot, settle
       gsap.set(floatLbl, { opacity: 1 });
       if (window.SplitText) {
-        const split = new SplitText(floatLbl, { type: 'chars' });
-        await new Promise(r => gsap.from(split.chars, {
-          opacity: 0,
-          y: 50,
-          rotation: () => gsap.utils.random(-20, 20),
-          scale: () => gsap.utils.random(0.2, 0.65),
-          duration: 0.52,
-          ease: hasCE ? 'slam' : 'back.out(3)',
-          stagger: { each: 0.06, from: 'center' },
-          clearProps: 'transform,opacity',
-          onComplete: r,
-        }));
-        split.revert();
+        const split = new SplitText(floatLbl, { type: 'words' });
+        split.words.forEach(wEl => { wEl.style.display = 'inline-block'; });
+
+        await new Promise(r => {
+          gsap.timeline({ onComplete: r })
+            .from(split.words, {
+              opacity: 0,
+              y: 90,
+              scale: 0.25,
+              rotation: () => gsap.utils.random(-14, 14),
+              duration: 0.62,
+              ease: hasCE ? 'yank' : 'back.out(2.8)',
+              stagger: { each: 0.14, from: 'start' },
+              clearProps: 'transform,opacity',
+            })
+            // settle pulse after last word lands
+            .to(floatLbl, { scale: 1.06, duration: 0.1, ease: 'power1.out', yoyo: true, repeat: 1 }, '-=0.05');
+        });
+
+        // 3. Hold
+        await w(1700);
+
+        // 4. Words scatter out, rings contract, watermark slides in
+        await new Promise(r =>
+          gsap.timeline({ onComplete: r })
+            .to(split.words, {
+              opacity: 0,
+              y: () => gsap.utils.random(-70, -20),
+              scale: 1.25,
+              rotation: () => gsap.utils.random(-8, 8),
+              duration: 0.35,
+              ease: 'power2.in',
+              stagger: { each: 0.05, from: 'random' },
+            })
+            .to([...rings].reverse(), { scale: 0, duration: 0.4, ease: 'power2.inOut', stagger: 0.09 }, '-=0.15')
+            .call(() => { split.revert(); rings.forEach(rEl => rEl.remove()); floatLbl.remove(); })
+            .fromTo(bgLbl,
+              { opacity: 0, x: '-18%' },
+              { opacity: 0.06, x: '0%', duration: 0.6, ease: 'power2.out' }, '-=0.2')
+        );
       } else {
         await new Promise(r => gsap.from(floatLbl, {
-          scale: 0.7, y: 30, duration: 0.4, ease: 'back.out(3)', onComplete: r,
+          scale: 0.6, y: 40, duration: 0.45, ease: 'back.out(3)', onComplete: r,
         }));
+        await w(1700);
+        await new Promise(r =>
+          gsap.timeline({ onComplete: r })
+            .to(floatLbl, { opacity: 0, y: -30, duration: 0.28, ease: 'power2.in' })
+            .to([...rings].reverse(), { scale: 0, duration: 0.4, ease: 'power2.inOut', stagger: 0.09 }, '<+=0.08')
+            .call(() => { rings.forEach(rEl => rEl.remove()); floatLbl.remove(); })
+            .fromTo(bgLbl,
+              { opacity: 0, x: '-18%' },
+              { opacity: 0.06, x: '0%', duration: 0.6, ease: 'power2.out' }, '-=0.2')
+        );
       }
-
-      // 3. Hold — actually read the label
-      await w(1400);
-
-      // 4. Label exits up, rings contract, watermark slides in
-      await new Promise(r =>
-        gsap.timeline({ onComplete: r })
-          .to(floatLbl, { opacity: 0, y: -24, duration: 0.28, ease: 'power2.in' })
-          .to([...rings].reverse(), { scale: 0, duration: 0.42, ease: 'power2.inOut', stagger: 0.1 }, '<+=0.08')
-          .call(() => { rings.forEach(r => r.remove()); floatLbl.remove(); })
-          .fromTo(bgLbl,
-            { opacity: 0, x: '-18%' },
-            { opacity: 0.06, x: '0%', duration: 0.6, ease: 'power2.out' }, '-=0.2')
-      );
     } else {
-      rings.forEach(r => r.remove()); floatLbl.remove();
+      rings.forEach(rEl => rEl.remove()); floatLbl.remove();
     }
     return d;
   }
@@ -738,7 +777,9 @@ window.tgInitGame = async function () {
     txt.appendChild(tp);
     svg.appendChild(txt);
 
-    anchorEl.style.position = 'relative';
+    if (window.getComputedStyle(anchorEl).position === 'static') {
+      anchorEl.style.position = 'relative';
+    }
     anchorEl.style.overflow = 'visible';
     anchorEl.appendChild(svg);
 
@@ -812,7 +853,9 @@ window.tgInitGame = async function () {
     txt.appendChild(tp);
     svg.appendChild(txt);
 
-    anchorEl.style.position = 'relative';
+    if (window.getComputedStyle(anchorEl).position === 'static') {
+      anchorEl.style.position = 'relative';
+    }
     anchorEl.style.overflow = 'visible';
     anchorEl.appendChild(svg);
 
@@ -968,7 +1011,7 @@ window.tgInitGame = async function () {
       .filter(Boolean);
     for (const chunk of chunks) {
       await reveal(line(chunk, 'tg-pl--dim'), {
-        y: 8, stagger: 0.022, duration: 0.34, ease: hasCE ? 'unfurl' : 'power3.out',
+        y: 8, stagger: 0.06, duration: 0.50, ease: hasCE ? 'unfurl' : 'power3.out',
       });
       if (gap > 0) await w(gap);
     }
@@ -1120,11 +1163,14 @@ window.tgInitGame = async function () {
   async function pqReveal(text, assetSrc = null, assetOpts = {}, assetCls = 'tg-decal--bob') {
     await w(300);
     HAPTIC.begin();
+    const pqFills = ['#C3D9FF', '#FFFBCD']; // echo blue, light yellow — alternate each card
+    const pqBg = pqFills[pqColorIdx++ % pqFills.length];
     const shimmer = document.createElement('div');
     shimmer.className = 'tg-pl tg-pq-shimmer';
     shimmer.style.opacity = '0';
     const d = document.createElement('blockquote');
     d.className = 'tg-pq-inner';
+    d.style.background = pqBg;
     shimmer.appendChild(d);
     pitch.appendChild(shimmer);
     scrollPitch();
@@ -1564,7 +1610,7 @@ window.tgInitGame = async function () {
     await w(600); // longer pause — next line is the answer
     flash();
     // Type D — the answer, word-by-word from center
-    const watchEl = line('You watch them make decisions.', 'tg-pl--big', 8);
+    const watchEl = line('You watch them<br>make decisions.', 'tg-pl--big', 8);
     if (hasGSAP) {
       const split = new SplitText(watchEl, { type: 'words' });
       await new Promise(r => gsap.from(split.words, {
@@ -1574,17 +1620,22 @@ window.tgInitGame = async function () {
         clearProps: 'transform,scale', onComplete: r,
       }));
     }
-    // Camera beside "watch"
+    // Camera beside "watch" — with periodic flash
     watchEl.style.position = 'relative'; watchEl.style.overflow = 'visible';
-    watchEl.appendChild(decal('camera.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 46, delay: 0.2 }));
+    const cameraImg = decal('camera.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 46, delay: 0.2 });
+    watchEl.appendChild(cameraImg);
+    if (hasGSAP) {
+      // Flash fires after decal lands (~0.9s), then pulses every ~3s
+      gsap.timeline({ delay: 0.95, repeat: -1, repeatDelay: 2.8 })
+        .to(cameraImg, { filter: 'brightness(6) saturate(0)', scale: 1.12, duration: 0.05, ease: 'none' })
+        .to(cameraImg, { filter: 'brightness(1) saturate(1)', scale: 1, duration: 0.38, ease: 'power2.out' });
+    }
     await w(700);
-    // Type B — narration
+    // Type B — narration (gaming.png moved to pq card below)
     const tanglesEl = line('Trove builds <span class="tg-hl">tangles</span> — interactive, story-based scenarios that put you inside <span class="tg-hl-b">emotionally real moments.</span>', 'tg-pl--med');
     await reveal(tanglesEl, {
       y: 14, stagger: 0.035, duration: 0.4, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
-    tanglesEl.style.position = 'relative'; tanglesEl.style.overflow = 'visible';
-    tanglesEl.appendChild(decal('gaming.png', 'tg-decal--bob', { right: '-26px', top: '-8px', w: 50, fromY: -25, delay: 0.2 }));
     await w(160);
     await reveal(line('A first date. A workplace crisis. A creative standoff at midnight.', 'tg-pl--med'), {
       y: 12, stagger: 0.07, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -1594,8 +1645,9 @@ window.tgInitGame = async function () {
       y: 12, stagger: 0.07, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
-    // Type C — pull quote
-    await pqReveal('The scenario is the instrument. The choice is the data.');
+    // Type C — pull quote (gaming.png large, overlapping top-right corner)
+    await pqReveal('The scenario is the instrument. The choice is the data.',
+      'gaming.png', { right: '-28px', top: '-36px', w: 96, fromY: -30, delay: 0.5 });
     await dimLines('Not "how would you handle conflict?" — a conflict. One you\'re actually inside. The way you move through it: what you push on, what you deflect, how long you hold ambiguity. Impossible to fake consistently across twelve different contexts.');
     await w(350);
     const idx = await branchChoices([
@@ -1839,7 +1891,7 @@ window.tgInitGame = async function () {
     await w(600);
     // Supporting context — dim blue, tighter stagger, no blur (different from med)
     await reveal(line('Not the form it takes — the entire model of asking people to describe themselves. The only behavioural data that isn\'t gameable is data captured when the person is too absorbed in something else to perform.', 'tg-pl--dim'), {
-      y: 8, stagger: 0.016, duration: 0.32, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 8, stagger: 0.06, duration: 0.50, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     await pqReveal('"It felt so deeply intimate from the beginning. Terrifying. Well done." — Valentine\'s Day player.');
@@ -1875,7 +1927,6 @@ window.tgInitGame = async function () {
     await reveal(viralEl, {
       y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
-    fullScreenAssetSweep('banana.png');
     viralEl.style.position = 'relative'; viralEl.style.overflow = 'visible';
     viralEl.appendChild(decal('banana.png', 'tg-decal--bob', { right: '-26px', top: '-6px', w: 42, fromY: -28, delay: 0.15 }));
     await w(350);
@@ -1891,7 +1942,7 @@ window.tgInitGame = async function () {
     statsEl.appendChild(decal('babystar.png', 'tg-decal--bob', { right: '-18px', top: '-18px', w: 40, delay: 0.2 }));
     await w(500);
     await reveal(line('When the campaign ended —', 'tg-pl--dim'), {
-      y: 10, stagger: 0.04, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 10, stagger: 0.06, duration: 0.50, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(500);
     flash();
@@ -1966,13 +2017,17 @@ window.tgInitGame = async function () {
     await w(200);
     flash();
     // Type A — statement
-    await reveal(line('The data is the moat. Not the app.', 'tg-pl--big'), {
+    await reveal(line('The data is the moat.', 'tg-pl--big'), {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
       rotation: () => gsap.utils.random(-15, 15),
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
-    await w(600);
+    await w(320);
+    await reveal(line('Not the app.', 'tg-pl--dim'), {
+      y: 10, stagger: 0.08, duration: 0.45, ease: hasCE ? 'hesitate' : 'power2.out',
+    });
+    await w(500);
     // Type F — rlist with frog
     const rlistEl = await rlistReveal([
       { m: '01', t: 'More plays → sharper behavioural models' },
@@ -2009,15 +2064,39 @@ window.tgInitGame = async function () {
     await w(200);
     score([1,0,1,1,0]);
     flash(true);
-    // $525K — shiny investor line, then "already in." below in trace blue
-    const amountEl = line('<span class="tg-investor-word">$525K</span>', 'tg-pl');
+    // $525K — hero amount, triumphant land with sparkles
+    const amountEl = line('<span class="tg-amount-hero">$525K</span>', 'tg-pl');
     await reveal(amountEl, {
       type: 'chars', y: 0,
-      scale: () => gsap.utils.random(0.1, 0.5),
-      rotation: () => gsap.utils.random(-15, 15),
-      stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(2.5)',
+      scale: () => gsap.utils.random(0.05, 0.4),
+      rotation: () => gsap.utils.random(-20, 20),
+      stagger: 0.07, from: 'center', duration: 0.8, ease: hasCE ? 'slam' : 'back.out(2.5)',
     });
-    await w(160);
+    // triumphant land: elastic scale punch + sparkle burst
+    const heroSpan = amountEl.querySelector('.tg-amount-hero');
+    if (hasGSAP && heroSpan) {
+      gsap.fromTo(heroSpan, { scale: 1.14 }, { scale: 1, duration: 0.6, ease: 'elastic.out(1.2,0.4)' });
+      HAPTIC?.burst?.();
+      const glyphs = ['✦','✧','✦','✧','★','✦','·','✧'];
+      const rect = heroSpan.getBoundingClientRect();
+      const pitchRect = pitch.getBoundingClientRect();
+      for (let i = 0; i < 14; i++) {
+        const sp = document.createElement('span');
+        sp.className = 'tg-sparkle';
+        sp.textContent = glyphs[i % glyphs.length];
+        const angle = (i / 14) * Math.PI * 2;
+        const dist = 55 + Math.random() * 70;
+        sp.style.setProperty('--sx', `${Math.cos(angle) * dist}px`);
+        sp.style.setProperty('--sy', `${Math.sin(angle) * dist}px`);
+        sp.style.left = `${rect.left - pitchRect.left + rect.width / 2 + Math.random() * 30 - 15}px`;
+        sp.style.top  = `${rect.top  - pitchRect.top  + rect.height / 2 + pitch.scrollTop + Math.random() * 20 - 10}px`;
+        sp.style.color = i % 3 === 0 ? 'var(--trace)' : 'var(--shift)';
+        sp.style.animationDelay = `${i * 0.045}s`;
+        pitch.appendChild(sp);
+        setTimeout(() => sp.remove(), 1600);
+      }
+    }
+    await w(200);
     const alreadyEl = line('already in.', 'tg-pl--big');
     alreadyEl.style.cssText += 'color:var(--trace);margin-top:-4px;';
     await reveal(alreadyEl, {
@@ -2025,7 +2104,7 @@ window.tgInitGame = async function () {
     });
     await w(800);
     await reveal(line('Betaworks, True Ventures, Slack Fund.', 'tg-pl--dim'), {
-      y: 12, stagger: 0.04, duration: 0.38, ease: hasCE ? 'unfurl' : 'power3.out',
+      y: 12, stagger: 0.06, duration: 0.50, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
     await reveal(line('We\'re financing the next phase: <span class="tg-hl">100K active behavioural profiles,</span> 1–2 paid B2B pilots, <span class="tg-hl-b">retention across verticals</span> beyond dating.', 'tg-pl--med'), {
@@ -2125,6 +2204,7 @@ window.tgInitGame = async function () {
         </div>
         <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
         <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
+        <div class="tg-email-helen" id="tg-email-helen" style="opacity:0">Helen Huang · Founder, Trove &nbsp;·&nbsp; <a href="mailto:helen@trove.garden" class="tg-email-helen-link">helen@trove.garden</a></div>
       `;
 
       const paradeEl = emailDiv.querySelector('#tg-email-parade');
@@ -2176,6 +2256,7 @@ window.tgInitGame = async function () {
 
       if (hasGSAP) {
         const heroEl    = emailDiv.querySelector('#tg-email-hero');
+        const helenEl   = emailDiv.querySelector('#tg-email-helen');
         const subEl     = emailDiv.querySelector('#tg-email-sub');
         const lblEl     = emailDiv.querySelector('#tg-email-lbl');
         const formEl    = emailDiv.querySelector('#tg-email-form');
@@ -2202,26 +2283,28 @@ window.tgInitGame = async function () {
               onComplete: () => {
                 const anim = img.dataset.anim;
                 const d = 0.3 + Math.random() * 0.4;
-                if (anim === 'spin')   gsap.to(img, { rotation: 360,  duration: 2.2, ease: 'none',        repeat: -1, delay: d });
-                if (anim === 'spin2')  gsap.to(img, { rotation: -360, duration: 1.8, ease: 'none',        repeat: -1, delay: d });
-                if (anim === 'bounce') gsap.to(img, { y: -10, duration: 0.42, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'dance')  gsap.to(img, { x: 5, rotation: -12, duration: 0.22, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'bob')    gsap.to(img, { y: -6, rotation: 6,  duration: 1.1, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'wiggle') gsap.to(img, { rotation: 14, scaleX: -1, duration: 0.35, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                // gentle chill dancing — slow, readable, no violent flips
+                if (anim === 'spin')   gsap.to(img, { rotation: 360,  duration: 3.8, ease: 'none', repeat: -1, delay: d });
+                if (anim === 'spin2')  gsap.to(img, { rotation: -360, duration: 5.2, ease: 'none', repeat: -1, delay: d });
+                if (anim === 'bounce') gsap.to(img, { y: -10, duration: 0.6,  ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'dance')  gsap.to(img, { x: 5, rotation: 8,  duration: 0.85, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'bob')    gsap.to(img, { y: -6, duration: 1.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
+                if (anim === 'wiggle') gsap.to(img, { rotation: 12, duration: 0.6,  ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
               },
             }
           );
         });
 
-        gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4,  ease: 'power3.out', delay: 0.95 });
-        gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3,  ease: 'power2.out', delay: 1.15 });
-        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.3 });
-        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.48 });
-        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.58,
+        gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4,  ease: 'power3.out', delay: 0.88 });
+        gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3,  ease: 'power2.out', delay: 1.05 });
+        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.2 });
+        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.36 });
+        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.46,
           onComplete: () => { emailDiv.querySelector('#tg-email-in')?.focus(); },
         });
+        gsap.fromTo(helenEl, { opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', delay: 1.64 });
       } else {
-        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine']
+        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine','tg-email-helen']
           .forEach(id => { const el = emailDiv.querySelector('#' + id); if (el) el.style.opacity = '1'; });
         paradeEl.querySelectorAll('img').forEach(img => { img.style.opacity = '1'; });
         emailDiv.querySelector('#tg-email-in')?.focus();
@@ -2377,10 +2460,6 @@ window.tgInitGame = async function () {
     });
     await w(500);
 
-    // ── Email capture ─────────────────────────────────────
-    await emailCapture();
-    await w(400);
-
     // ── Profile card ──────────────────────────────────────
     const archetypeAssets = {
       cartographer: { src: 'camera.png',    opts: { right: '-28px', top: '-12px', w: 56 } },
@@ -2460,20 +2539,12 @@ window.tgInitGame = async function () {
     profileCard.appendChild(shareBtn);
     if (hasGSAP) gsap.from(shareBtn, { opacity: 0, y: 10, duration: 0.4, ease: 'power3.out', delay: 0.15 });
 
-    // ── Contact card ──────────────────────────────────────
-    const contact = document.createElement('div');
-    contact.className = 'tg-pl tg-contact-card';
-    contact.innerHTML = `
-      <div class="tg-p-tag">want to talk?</div>
-      <div style="font-family:var(--font-display);font-size:clamp(18px,6cqw,24px);font-weight:700;margin:6px 0 4px">Helen Huang · Founder, Trove</div>
-      <a href="mailto:helen@trove.garden" style="font-family:var(--font-label);font-size:13px;color:var(--trace);letter-spacing:0.04em;text-decoration:none">helen@trove.garden</a>
-    `;
-    pitch.appendChild(contact);
-    scrollPitch();
-    if (hasGSAP) gsap.from(contact, { opacity: 0, y: 18, duration: 0.48, ease: 'back.out(2)' });
+    // ── Curious / Helen contact + email CTA ───────────────
+    await w(600);
+    await emailCapture();
+    await w(400);
 
     // ── Play again ────────────────────────────────────────
-    await w(400);
     const playAgain = document.createElement('button');
     playAgain.className = 'tg-pl tg-play-again';
     playAgain.textContent = 'play again →';

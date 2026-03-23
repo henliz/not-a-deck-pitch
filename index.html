@@ -582,7 +582,7 @@
       const now = performance.now();
       holdCtx.clearRect(0, 0, 512, 1024);
 
-      const cx = 256, logoSize = 148;
+      const cx = 256, logoSize = 170;
       // Logo sits near the bottom — text at ~y=960, logo above it
       const textY = 1000;
       const cy    = textY - logoSize / 2 - 56;
@@ -1155,6 +1155,7 @@
     };
 
     window.tClose = function() {
+      window.HAPTIC?.tap?.();
       tangleOpen = false;
       clearInterval(tangleClockInterval); tangleClockInterval = null;
       tangleCamZ = tangleCamZOrigin; // lerp back to original z on close

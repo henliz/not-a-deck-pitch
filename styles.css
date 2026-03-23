@@ -359,6 +359,54 @@ canvas#webgl {
   pointer-events: none;
   mix-blend-mode: screen;
 }
+.tg-amount-hero {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(80px, 34cqw, 180px);
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  color: var(--shift);
+  position: relative;
+  text-shadow:
+    0 4px 0 rgba(120,104,30,0.8),
+    0 8px 0 rgba(90,74,10,0.4),
+    0 6px 24px rgba(0,0,0,0.22),
+    0 1px 2px rgba(255,249,200,0.5);
+  filter:
+    drop-shadow(0 0 8px rgba(219,213,156,0.5))
+    drop-shadow(0 0 28px rgba(219,213,156,0.2));
+}
+.tg-amount-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255,251,205,0.06) 43%,
+    rgba(255,249,238,0.70) 50%,
+    rgba(255,251,205,0.06) 57%,
+    transparent 62%,
+    transparent 100%
+  );
+  background-size: 300% auto;
+  animation: metalSheen 3.5s linear infinite;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+@keyframes tg-sparkle-float {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(0.3) rotate(360deg); }
+}
+.tg-sparkle {
+  position: absolute;
+  pointer-events: none;
+  font-size: clamp(12px, 4cqw, 22px);
+  animation: tg-sparkle-float 1.1s ease-out forwards;
+  z-index: 20;
+}
 .tg-pl--med    { font-family: var(--font-body); font-size: clamp(13px, 4.8cqw, 18px); font-weight: 500; line-height: 1.45; color: rgba(34,34,34,0.80); margin-bottom: 10px; }
 .tg-pl--prompt { font-family: var(--font-body); font-size: clamp(10px, 3.8cqw, 14px); font-weight: 400; line-height: 1.55; color: rgba(34,34,34,0.52); margin-bottom: 10px; }
 .tg-blockquote  { border-left: 2px solid var(--trace); padding-left: 10px; font-size: clamp(11px, 4.2cqw, 16px); line-height: 1.65; color: rgba(34,34,34,0.65); margin-bottom: 10px; }
@@ -375,6 +423,7 @@ canvas#webgl {
 }
 .tg-sine-track {
   display: flex; white-space: nowrap; will-change: transform;
+  width: max-content; min-width: max-content;
 }
 .tg-sine-char {
   display: inline-block;
@@ -407,7 +456,7 @@ canvas#webgl {
   padding: 0.04em 3px;
   animation: hlReveal 0.55s 0.25s ease forwards;
 }
-.tg-pl--dim    { font-family: var(--font-body); font-size: clamp(11px, 4.2cqw, 16px); font-weight: 400; line-height: 1.72; color: var(--trace); opacity: 0.92; margin-top: 0; margin-bottom: 12px; }
+.tg-pl--dim    { font-family: var(--font-body); font-size: clamp(13px, 5.2cqw, 19px); font-weight: 400; line-height: 1.65; color: var(--trace); opacity: 0.88; margin-top: 0; margin-bottom: 14px; border-left: 2px solid rgba(136,171,227,0.35); padding-left: 10px; margin-left: 2px; }
 .tg-pl--italic { font-style: italic; }
 .tg-pl--impact { font-family: var(--font-display); font-size: clamp(28px, 11cqw, 48px); font-weight: 700; line-height: 1.1; color: var(--text); margin-bottom: 8px; }
 .tg-pl--huge   {
@@ -468,7 +517,7 @@ canvas#webgl {
   max-width: 88%; display: inline-block;
   transition: background 180ms ease, color 180ms ease;
 }
-.tg-pitch-choice:hover { background: rgba(136,171,227,0.15); color: var(--anchor); }
+@media (hover: hover) { .tg-pitch-choice:hover { background: rgba(136,171,227,0.15); color: var(--anchor); } }
 .tg-pitch-choice:active { transform: scale(0.97); }
 .tg-pitch-choice.selected { background: var(--shift); color: var(--anchor); font-weight: 700; }
 
@@ -488,7 +537,7 @@ canvas#webgl {
 /* Pull quote */
 /* ── Inline Trove wordmark — scales to 1em, sits on baseline ── */
 .tg-trove-mark {
-  height: 0.98em;
+  height: 1.13em;
   width: auto;
   display: inline-block;
   vertical-align: -0.05em;
@@ -500,12 +549,12 @@ canvas#webgl {
 .tg-hero-logo {
   position: relative;
   display: inline-block;
-  height: 46px;
+  height: 53px;
   overflow: visible;
   margin: 12px 0 4px;
 }
 .tg-hero-word {
-  height: 41px; width: auto; display: block;
+  height: 47px; width: auto; display: block;
 }
 .tg-hero-oh {
   position: absolute;
@@ -594,9 +643,9 @@ canvas#webgl {
   transition: border-color 180ms ease, background 180ms ease;
   width: 100%;
 }
-.tg-branch-choice:hover { border-color: var(--trace); background: rgba(136,171,227,0.06); }
+@media (hover: hover) { .tg-branch-choice:hover { border-color: var(--trace); background: rgba(136,171,227,0.06); } }
 .tg-branch-choice .bc-arr { font-family: var(--font-label); font-size: 9px; color: var(--trace); flex-shrink: 0; padding-top: 3px; transition: transform 180ms ease; }
-.tg-branch-choice:hover .bc-arr { transform: translateX(3px); }
+@media (hover: hover) { .tg-branch-choice:hover .bc-arr { transform: translateX(3px); } }
 .tg-branch-choice.selected { border-color: var(--shift); background: rgba(219,213,156,0.1); }
 
 /* Continue button */
@@ -609,7 +658,7 @@ canvas#webgl {
   letter-spacing: 0.1em; text-transform: uppercase;
   cursor: pointer; transition: background 180ms ease, color 180ms ease;
 }
-.tg-cont:hover { background: var(--trace); color: var(--still); }
+@media (hover: hover) { .tg-cont:hover { background: var(--trace); color: var(--still); } }
 
 /* Email block */
 .tg-email-hero {
@@ -622,6 +671,12 @@ canvas#webgl {
   padding: 6px 0 10px; gap: 2px;
 }
 .tg-email-parade img { width: 36px; height: auto; pointer-events: none; flex-shrink: 0; }
+.tg-email-helen {
+  font-family: var(--font-label); font-size: 11px; letter-spacing: 0.04em;
+  color: rgba(34,34,34,0.55); margin-bottom: 14px; line-height: 1.5;
+}
+.tg-email-helen-link { color: var(--trace); text-decoration: none; }
+.tg-email-helen-link:hover { text-decoration: underline; }
 .tg-email-sub {
   font-family: var(--font-body); font-size: clamp(13px, 4.5cqw, 17px); line-height: 1.5;
   color: rgba(34,34,34,0.65); margin-bottom: 6px;
@@ -786,14 +841,14 @@ canvas#webgl {
   position: relative;
 }
 .tg-pq-inner {
-  background: var(--bg, #F9F9F2);
+  background: var(--bg, #F9F9F2); /* overridden inline per-card */
   border-radius: 8px;
   padding: 16px 20px;
   font-family: var(--font-display);
   font-size: 20px;
   font-style: italic;
   font-weight: 400;
-  color: rgba(34,34,34,0.82);
+  color: var(--anchor);
   line-height: 1.6;
   min-height: 1em;
 }
