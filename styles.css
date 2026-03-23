@@ -305,6 +305,17 @@ canvas#webgl {
 .tg-decal--bob    { animation: tgBob   2.8s ease-in-out infinite; }
 .tg-decal--lubdub { animation: lubDub  0.85s ease-in-out infinite; }
 .tg-decal--party  { animation: tgParty 3.2s  ease-in-out infinite; }
+@keyframes tgRing {
+  0%,100% { transform: rotate(0deg) translateY(0); }
+  8%       { transform: rotate(-12deg) translateY(-2px); }
+  16%      { transform: rotate(10deg)  translateY(-3px); }
+  24%      { transform: rotate(-8deg)  translateY(-2px); }
+  32%      { transform: rotate(7deg)   translateY(-1px); }
+  40%      { transform: rotate(-4deg)  translateY(0); }
+  48%      { transform: rotate(3deg)   translateY(0); }
+  56%      { transform: rotate(0deg)   translateY(0); }
+}
+.tg-decal--ring { animation: tgRing 2.6s ease-in-out infinite; }
 
 /* Pull quote attribution line */
 .tg-pq-attr {
@@ -348,7 +359,7 @@ canvas#webgl {
 .tg-pl--oneliner { font-family: var(--font-display); font-size: clamp(16px, 5.8cqw, 22px); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; color: var(--text); margin-bottom: 10px; }
 .tg-pl--wordpop  { font-family: var(--font-display); font-size: clamp(20px, 7cqw, 30px);  font-weight: 700; line-height: 1.2;  color: var(--text); margin-bottom: 8px; overflow: hidden; }
 /* Punchline: key insight statements — gold, display, slams in */
-.tg-pl--punch  { font-family: var(--font-display); font-size: clamp(34px, 14cqw, 60px); font-weight: 700; line-height: 1.05; color: var(--shift); margin-bottom: 10px; }
+.tg-pl--punch  { font-family: var(--font-display); font-size: clamp(30px, 12cqw, 52px); font-weight: 700; line-height: 1.05; color: var(--shift); margin-bottom: 10px; }
 /* Simple 0→100% sweep: at 0% the bright strip is off-screen right,
    at 100% it's off-screen left — wrap is invisible, no stutter.  */
 @keyframes metalSheen {
@@ -399,31 +410,10 @@ canvas#webgl {
   letter-spacing: -0.04em;
   color: var(--shift);
   position: relative;
-  text-shadow:
-    0 2px 12px rgba(0,0,0,0.12),
-    0 1px 2px rgba(255,249,200,0.4);
-  filter:
-    drop-shadow(0 0 8px rgba(219,213,156,0.5))
-    drop-shadow(0 0 28px rgba(219,213,156,0.2));
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.18));
 }
 .tg-amount-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    110deg,
-    transparent 0%,
-    transparent 38%,
-    rgba(255,251,205,0.06) 43%,
-    rgba(255,249,238,0.70) 50%,
-    rgba(255,251,205,0.06) 57%,
-    transparent 62%,
-    transparent 100%
-  );
-  background-size: 300% auto;
-  animation: metalSheen 3.5s linear infinite;
-  pointer-events: none;
-  mix-blend-mode: screen;
+  display: none; /* shine is now on the element via background-clip:text */
 }
 @keyframes tg-sparkle-float {
   0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0deg); }
@@ -641,11 +631,11 @@ canvas#webgl {
 .tg-ask-val  { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--shift); line-height: 1; }
 .tg-ask-sub  { font-family: var(--font-body); font-size: 11px; color: rgba(34,34,34,0.5); margin-top: 5px; font-style: italic; line-height: 1.4; }
 
-/* Profile card */
+/* Profile card — header block (name, sub, traits) */
 .tg-profile-card {
-  background: rgba(195,217,255,0.12);
+  background: rgba(195,217,255,0.10);
   border: 1px solid rgba(136,171,227,0.28);
-  padding: 20px 18px; margin: 18px 0;
+  padding: 22px 20px 18px; margin: 18px 0;
   position: relative;
 }
 .tg-profile-card::before, .tg-profile-card::after {
@@ -654,12 +644,40 @@ canvas#webgl {
 }
 .tg-profile-card::before { top: 7px; left: 7px; border-width: 1px 0 0 1px; }
 .tg-profile-card::after  { bottom: 7px; right: 7px; border-width: 0 1px 1px 0; }
-.tg-p-tag  { font-family: var(--font-label); font-size: 8px; letter-spacing: 0.22em; color: var(--trace); text-transform: uppercase; margin-bottom: 9px; }
-.tg-p-name { font-family: var(--font-display); font-size: 32px; font-weight: 900; color: var(--anchor); margin-bottom: 4px; line-height: 1.1; }
-.tg-p-sub  { font-family: var(--font-label); font-size: 9px; color: rgba(34,34,34,0.45); letter-spacing: 0.06em; margin-bottom: 12px; }
-.tg-p-desc { font-family: var(--font-body); font-size: 14px; font-style: italic; color: rgba(34,34,34,0.72); line-height: 1.6; margin-bottom: 14px; }
-.tg-p-together { font-family: var(--font-label); font-size: 10px; color: rgba(34,34,34,0.5); line-height: 1.65; border-top: 1px solid var(--border); padding-top: 12px; }
-.tg-p-together strong { color: var(--anchor); font-family: var(--font-display); font-size: 12px; font-style: italic; font-weight: 400; }
+.tg-pc-header { margin-bottom: 0; }
+.tg-pc-arch-img {
+  width: clamp(64px, 20cqw, 96px); height: auto;
+  display: block; margin-bottom: 12px;
+  filter: drop-shadow(0 4px 12px rgba(34,34,34,0.12));
+}
+.tg-p-tag  { font-family: var(--font-label); font-size: 8px; letter-spacing: 0.22em; color: var(--trace); text-transform: uppercase; margin-bottom: 6px; }
+.tg-p-name { font-family: var(--font-display); font-size: clamp(26px, 9cqw, 42px); font-weight: 900; color: var(--anchor); margin-bottom: 5px; line-height: 1.05; letter-spacing: -0.02em; }
+.tg-p-sub  { font-family: var(--font-label); font-size: clamp(11px, 4cqw, 13px); color: rgba(34,34,34,0.5); letter-spacing: 0.05em; margin-bottom: 14px; }
+.tg-p-traits { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.tg-p-trait-pill {
+  font-family: var(--font-label); font-size: clamp(8px, 3cqw, 10px);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  background: var(--shift); color: var(--anchor);
+  padding: 4px 10px; border-radius: 99px; display: inline-block;
+}
+
+/* Writeup card — desc + together, separate block */
+.tg-pc-writeup {
+  background: rgba(136,171,227,0.06);
+  border-left: 3px solid rgba(136,171,227,0.35);
+  padding: 16px 18px; margin: 8px 0 18px;
+}
+.tg-p-desc {
+  font-family: var(--font-body); font-size: clamp(13px, 4.5cqw, 15px);
+  font-style: normal; color: rgba(34,34,34,0.75);
+  line-height: 1.72; margin-bottom: 14px;
+}
+.tg-p-together {
+  font-family: var(--font-label); font-size: clamp(11px, 4cqw, 13px);
+  color: rgba(34,34,34,0.55); line-height: 1.65;
+  border-top: 1px solid rgba(136,171,227,0.2); padding-top: 12px;
+}
+.tg-p-together strong { color: var(--anchor); font-family: var(--font-display); font-size: clamp(13px, 4.5cqw, 15px); font-style: italic; font-weight: 400; }
 
 /* Branch choices — explorer style, different from chat bubbles */
 .tg-branch-choices { display: flex; flex-direction: column; gap: 7px; margin-top: 18px; }
@@ -701,7 +719,7 @@ canvas#webgl {
 .tg-email-parade img { position: absolute; width: 40px; height: auto; pointer-events: none; z-index: 10; }
 .tg-founder-photo-wrap {
   position: relative;
-  margin: 8px -4px 22px;
+  margin: 8px -4px 12px;
   overflow: visible;
 }
 .tg-founder-photo {
@@ -710,7 +728,7 @@ canvas#webgl {
   height: clamp(220px, 72cqw, 340px);
   border-radius: 18px;
   object-fit: cover;
-  object-position: center top;
+  object-position: center 10%;
   border: 2.5px solid var(--shift);
   box-shadow: 0 8px 28px rgba(0,0,0,0.14), 0 0 0 5px rgba(219,213,156,0.16);
 }
