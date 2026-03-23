@@ -563,6 +563,7 @@ window.tgInitGame = async function () {
       sub: 'you map before you move',
       desc: 'You don\'t back vibes — you back evidence of thinking. You want to see the model, the moat, and the reasoning behind both. You ask the questions other investors are embarrassed to ask. You\'re not slow. You\'re thorough. And the companies you back feel that difference.',
       together: 'You\'ll want the data room early. We\'ll send it. You\'ll push hard on the flywheel logic — <strong>good, that\'s exactly the right question for Trove.</strong>',
+      implication: 'You\'ll want the data room early. You\'ll push on the flywheel. Good — that\'s exactly where Trove gets interesting.',
       traits: ['Evidence-First', 'Thorough', 'Precise'],
       insight: 'You asked about the data before anything else. That\'s the right question.',
       highlights: [
@@ -576,6 +577,7 @@ window.tgInitGame = async function () {
       sub: 'you were early on something everyone else passed on',
       desc: 'You back founders who can\'t be talked out of it, because conviction is the only thing that survives a hard year. You\'ve learned to trust the feeling of "this is weird but right" more than any spreadsheet. Your best investments didn\'t make sense to the room.',
       together: 'You already see it. The question is whether Helen\'s the kind of founder who gets more stubborn under pressure. <strong>She is.</strong>',
+      implication: 'You already see it. The only question is whether the founder gets more stubborn under pressure. She does.',
       traits: ['Conviction', 'Pattern-Breaker', 'Early'],
       insight: 'You backed the founder before the product made sense to anyone else.',
       highlights: [
@@ -589,6 +591,7 @@ window.tgInitGame = async function () {
       sub: 'you think in infrastructure, not products',
       desc: 'You\'re not investing in what Trove is today. You\'re investing in what it makes inevitable — the behavioural layer that sits under hiring, dating, insurance, healthcare. You\'ve backed platforms before and you understand that the moat is the dataset, not the app.',
       together: 'You\'ll want to talk about the API strategy and B2B licensing before anyone else brings it up. <strong>We\'re ready for that conversation.</strong>',
+      implication: 'You\'ll want to talk about API strategy before anyone else brings it up. We\'re ready for that conversation.',
       traits: ['Systems', 'Infrastructure', 'Platform'],
       insight: 'You think in what this makes inevitable — not what it is today.',
       highlights: [
@@ -602,6 +605,7 @@ window.tgInitGame = async function () {
       sub: 'you\'ve built something, and it shows',
       desc: 'You read the founder before you read the deck. You know what a person looks like when they\'re building from genuine obsession versus building to exit. You add more than capital — pattern recognition, intros, the three sentences that fix the pitch. Your portfolio companies call you on hard days.',
       together: 'You\'ll probably spot something in Helen\'s approach that she hasn\'t articulated yet. <strong>Tell her. She wants to hear it.</strong>',
+      implication: 'You\'ll spot something in Helen\'s approach she hasn\'t named yet. Tell her. She wants to hear it.',
       traits: ['Builder', 'Pattern Recognition', 'Hands-On'],
       insight: 'You read founders. You knew what you were looking at before the deck ended.',
       highlights: [
@@ -615,6 +619,7 @@ window.tgInitGame = async function () {
       sub: 'you back things people will talk about',
       desc: 'You understand that the best consumer products are also cultural moments — they spread because they mean something. You\'ve backed companies before the market understood them because you could see the narrative before the numbers justified it. Trove is a story about what it means to actually know someone.',
       together: 'You\'ll have opinions on the product voice, the community, the cultural positioning. <strong>Those opinions are valuable. Bring them.</strong>',
+      implication: 'You\'ll have opinions on the voice, the community, the cultural positioning. Those opinions are valuable. Bring them.',
       traits: ['Cultural', 'Narrative', 'Contrarian'],
       insight: 'You see the story before the numbers justify it. That\'s the whole game.',
       highlights: [
@@ -1450,13 +1455,10 @@ window.tgInitGame = async function () {
       architect:    '#C3D9FF', operator:   '#E8F0FF', storyteller: '#DBD59C',
     };
     const ARCH_ASSETS = {
-      cartographer: 'camera.png',   contrarian: 'boomerand.png',
-      architect:    'house.png',    operator:   'watch.png', storyteller: 'mic.png',
-    };
-    const ARCH_TYPE_IMG = {
       cartographer: 'Cartographer.png', contrarian: 'Contrarian.png',
       architect:    'Architect.png',    operator:   'Operator.png', storyteller: 'Storyteller.png',
     };
+    const ARCH_TYPE_IMG = ARCH_ASSETS;
 
     const accentColor = ARCH_COLORS[id] || '#DBD59C';
     const BLUE  = '#88ABE3';
@@ -1595,32 +1597,36 @@ window.tgInitGame = async function () {
       await Promise.all([
         document.fonts.load('900 46px "Playfair Display"'),
         document.fonts.load('400 italic 17px "Playfair Display"'),
-        document.fonts.load('400 13px "DM Mono"'),
       ]);
     } catch(e) {}
 
     // ── Layout constants ─────────────────────────────────────────────
-    const HDR_H  = 56;                         // header: eyebrow + archetype name
-    const CONT_Y = PAD + HDR_H + GAP;          // 84 — content area start
+    const SF = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif';
+    const HDR_H  = 56;
+    const CONT_Y = PAD + HDR_H + GAP;          // 84
     const CONT_H = H - CONT_Y - PAD;           // 798
-    const LC_W   = 256;                        // left column = forced-square image
+    const LC_W   = 256;
     const RC_X   = PAD + LC_W + GAP;           // 284
     const RC_W   = IW - LC_W - GAP;            // 598
-    const TR     = 14;                         // tile border radius
-    const TP     = 16;                         // tile inner padding
-    const SP_L   = 340;                        // left half of split rows
-    const SP_R   = RC_W - SP_L - GAP;          // right half (~248)
+    const TR     = 14;
+    const TP     = 16;
+    const SP_L   = 340;
+    const SP_R   = RC_W - SP_L - GAP;          // ~248
 
-    // Right-column row Y positions & heights (sum + 4 gaps = CONT_H)
-    const T_QH  = 180;
-    const T_TH  = 96;
-    const T_MH  = 160;
-    const T_HH  = 160;
-    const T_FH  = CONT_H - T_QH - T_TH - T_MH - T_HH - GAP * 4;  // 162
+    // Left column: image tile (half height) + implication tile
+    const LT_H  = 380;                         // image tile ~half of CONT_H
+    const LB_H  = CONT_H - LT_H - GAP;        // implication tile (~408)
+
+    // Right column: quote → signals|stat → together → highlights → footer
+    const T_QH  = 234;
+    const T_MH  = 158;
+    const T_TH  = 100;
+    const T_HH  = 156;
+    const T_FH  = CONT_H - T_QH - T_MH - T_TH - T_HH - GAP * 4;
     const T_QY  = CONT_Y;
-    const T_TY  = T_QY + T_QH + GAP;
-    const T_MY  = T_TY + T_TH + GAP;
-    const T_HY  = T_MY + T_MH + GAP;
+    const T_MY  = T_QY + T_QH + GAP;
+    const T_TY  = T_MY + T_MH + GAP;
+    const T_HY  = T_TY + T_TH + GAP;
     const T_FY  = T_HY + T_HH + GAP;
 
     // ════════════════════════════════════════════════════════════════
@@ -1634,7 +1640,7 @@ window.tgInitGame = async function () {
     // ── HEADER BAR (full width, dark) — archetype name as hero ──────────
     scRoundRect(PAD, PAD, IW, HDR_H, 8, '#1A1A1A', null);
     // Eyebrow label left
-    ctx.fillStyle = BLUE; ctx.font = '400 8px "DM Mono", monospace';
+    ctx.fillStyle = BLUE; ctx.font = '400 8px SF';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.16em');
     ctx.fillText('INVESTOR ARCHETYPE · TROVE 2026', PAD + TP, PAD + 10); setLS('0');
     // Archetype name large, left-aligned below eyebrow
@@ -1648,167 +1654,209 @@ window.tgInitGame = async function () {
     }
     ctx.fillStyle = CREAM; ctx.textBaseline = 'bottom';
     ctx.fillText(arch.name, PAD + TP, PAD + HDR_H - 10); setLS('0');
-    // Sub right-aligned, vertically centered in bottom half
-    ctx.fillStyle = 'rgba(249,249,242,0.45)'; ctx.font = '400 9px "DM Mono", monospace';
-    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; setLS('0.02em');
-    ctx.fillText(arch.sub, PAD + IW - TP, PAD + HDR_H - 10); setLS('0');
+    // Sub tagline right-aligned — "//" prefix in accent, text in BLUE, larger
+    ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+    const subTagY = PAD + HDR_H - 10;
+    const subTagText = arch.sub;
+    // measure "//" width so we can position both parts right-flush
+    ctx.font = '700 13px SF'; setLS('0.04em');
+    const slashW = ctx.measureText('// ').width;
+    const subW   = ctx.measureText(subTagText).width;
+    ctx.fillStyle = hexRgba(accentColor, 0.90);
+    ctx.fillText('//', PAD + IW - TP - subW, subTagY);
+    ctx.fillStyle = BLUE; ctx.font = '400 13px SF';
+    ctx.fillText(subTagText, PAD + IW - TP, subTagY); setLS('0');
 
-    // ── LEFT COLUMN — white tile, square image + doodle + traits ────────
-    scRoundRect(PAD, CONT_Y, LC_W, CONT_H, TR, '#FFFFFF', 'rgba(34,34,34,0.08)');
-
-    // Square image (LC_W × LC_W, hard square cover-crop)
+    // ── LEFT TOP — white tile, half-height, square image ─────────────
+    scRoundRect(PAD, CONT_Y, LC_W, LT_H, TR, '#FFFFFF', 'rgba(34,34,34,0.07)');
     ctx.save();
     clipRR(PAD, CONT_Y, LC_W, LC_W, TR);
     await drawAssetCover(`./assets/${ARCH_TYPE_IMG[id] || 'Cartographer.png'}`, PAD, CONT_Y, LC_W, LC_W);
     ctx.restore();
-
-    // Gradient: image fades into white
-    const imgFade = ctx.createLinearGradient(0, CONT_Y + LC_W - 60, 0, CONT_Y + LC_W + 30);
+    // Fade image into white at bottom
+    const imgFade = ctx.createLinearGradient(0, CONT_Y + LC_W - 50, 0, CONT_Y + LC_W + 20);
     imgFade.addColorStop(0, 'rgba(255,255,255,0)');
     imgFade.addColorStop(1, '#FFFFFF');
-    ctx.fillStyle = imgFade;
-    ctx.fillRect(PAD, CONT_Y + LC_W - 60, LC_W, 90);
-
-    // Archetype doodle centered below image
-    const doodleY = CONT_Y + LC_W + 14;
-    ctx.save(); ctx.globalAlpha = 0.85;
-    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`, PAD + (LC_W - 60) / 2, doodleY, 60, 60, 6);
-    ctx.restore();
-
-    // Trait pills
-    const traitStartY = doodleY + 68;
+    ctx.fillStyle = imgFade; ctx.fillRect(PAD, CONT_Y + LC_W - 50, LC_W, 70);
+    // Trait pills in remaining space
+    const traitStartY = CONT_Y + LC_W + 14;
     (arch.traits || []).slice(0, 3).forEach((trait, i) => {
-      const py = traitStartY + i * 36;
-      scRoundRect(PAD + TP, py, LC_W - TP * 2, 26, 7, hexRgba(accentColor, 0.22), hexRgba(accentColor, 0.55));
-      ctx.fillStyle = DARK; ctx.font = '700 12px "DM Mono", monospace';
+      const py = traitStartY + i * 34;
+      scRoundRect(PAD + TP, py, LC_W - TP * 2, 24, 7, hexRgba(accentColor, 0.22), hexRgba(accentColor, 0.50));
+      ctx.fillStyle = DARK; ctx.font = '700 11px SF';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; setLS('0.10em');
-      ctx.fillText(trait.toUpperCase(), PAD + LC_W / 2, py + 13); setLS('0');
+      ctx.fillText(trait.toUpperCase(), PAD + LC_W / 2, py + 12); setLS('0');
     });
-
-    // Cute corner decal on left tile
-    ctx.save(); ctx.globalAlpha = 0.50;
-    await drawAsset('./assets/starhehe.png', PAD + LC_W - 38, CONT_Y + CONT_H - 42, 34, 34, 18);
+    // Corner decals on image tile
+    ctx.save(); ctx.globalAlpha = 0.55;
+    await drawAsset('./assets/starhehe.png',  PAD + LC_W - 36, CONT_Y + 8,  30, 30,  14);
+    await drawAsset('./assets/flower.png',    PAD + 6,          CONT_Y + 6,  26, 26, -10);
     ctx.restore();
 
-    // ── QUOTE TILE — BLUE background ──────────────────────────────────
+    // ── LEFT BOTTOM — light yellow, implication tile ──────────────────
+    const LB_Y = CONT_Y + LT_H + GAP;
+    scRoundRect(PAD, LB_Y, LC_W, LB_H, TR, '#FFFBCD', null);
+    const HL = arch.highlights || [];
+    if (HL[0]) {
+      ctx.fillStyle = DARK; ctx.font = '700 13px SF';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
+      const obsLines = wrapText(HL[0].head, PAD + TP, LB_Y + TP, LC_W - TP * 2, 18);
+      ctx.fillStyle = 'rgba(34,34,34,0.68)'; ctx.font = '400 11px SF';
+      const expLines = wrapText(HL[0].body, PAD + TP, LB_Y + TP + obsLines * 18 + 8, LC_W - TP * 2, 16);
+      // Implication — derived from actual behavior, not archetype copy
+      const togetherRaw =
+        data.wentDeepOnMoat    ? 'You stayed for the flywheel when most people don\'t. That\'s where this gets real.' :
+        data.pushedOnFounder   ? 'You pushed on the conviction. That\'s the question this company needs you to ask.' :
+        data.wentB2B           ? 'You found the B2B angle before we pointed there. That\'s the conversation we want to have.' :
+        data.wentDataset       ? 'You challenged who owns the data. That\'s the right instinct for this market.' :
+        data.pushedBackOnData  ? 'You pushed back on the signal. Good — that means you\'ll trust it when you see the system.' :
+        data.wentStraightToAsk ? 'You cut to the ask. We can work with that.' :
+        data.readerSpeed === 'fast reader'        ? 'You moved fast and still found the signal. That\'s pattern recognition.' :
+        data.readerSpeed === 'deep reader'        ? 'You took your time. The people who take their time tend to see further.' :
+        data.firstChoiceLabel === 'signal skeptic'? 'You came in skeptical. You\'re still here. That\'s the only answer that matters.' :
+        data.firstChoiceLabel === 'team reader'   ? 'You read the team first. That\'s usually right.' :
+        arch.implication || (arch.together || '').replace(/<\/?strong>/g,'').replace(/<[^>]*>/g,'');
+      const implY = LB_Y + TP + obsLines * 18 + 8 + expLines * 16 + 14;
+      ctx.fillStyle = 'rgba(34,34,34,0.52)'; ctx.font = '400 italic 11px "Playfair Display", serif';
+      wrapText(togetherRaw, PAD + TP, implY, LC_W - TP * 2, 16);
+      setLS('0');
+    }
+    // Decals scattered on implication tile
+    ctx.save(); ctx.globalAlpha = 0.40;
+    await drawAsset('./assets/turtle.png',    PAD + LC_W - 40, LB_Y + LB_H - 44, 32, 32,  12);
+    await drawAsset('./assets/caterpillar.png', PAD + 6,       LB_Y + LB_H - 36, 28, 28, -8);
+    ctx.restore();
+
+    // ── QUOTE TILE — BLUE, BIG font ───────────────────────────────────
     scRoundRect(RC_X, T_QY, RC_W, T_QH, TR, BLUE, null);
-    ctx.fillStyle = DARK; ctx.font = '700 12px "DM Mono", monospace';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.16em');
+    ctx.fillStyle = DARK; ctx.font = '700 14px SF';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.14em');
     ctx.fillText('YOUR INSIGHT', RC_X + TP, T_QY + TP); setLS('0');
-    ctx.fillStyle = DARK; ctx.font = '400 italic 22px "Playfair Display", serif';
-    setLS('-0.01em');
-    wrapText(`"${arch.insight}"`, RC_X + TP, T_QY + TP + 26, RC_W - TP * 2 - 56, 32);
+    ctx.fillStyle = DARK; ctx.font = '400 italic 38px "Playfair Display", serif';
+    setLS('-0.02em');
+    wrapText(`"${arch.insight}"`, RC_X + TP, T_QY + TP + 28, RC_W - TP * 2 - 52, 46);
     setLS('0');
-    // Decal: babystar floating in quote tile
+    // Decals: babystar + headphones
     ctx.save(); ctx.globalAlpha = 0.45;
-    await drawAsset('./assets/babystar.png', RC_X + RC_W - 60, T_QY + T_QH - 60, 48, 48, -14);
+    await drawAsset('./assets/babystar.png',   RC_X + RC_W - 54, T_QY + T_QH - 54, 44, 44, -14);
     ctx.restore();
-
-    // ── TOGETHER TILE — GOLD (accentColor) background ─────────────────
-    scRoundRect(RC_X, T_TY, RC_W, T_TH, TR, accentColor, null);
-    const togetherClean = (arch.together || '').replace(/<\/?strong>/g,'').replace(/<[^>]*>/g,'');
-    ctx.fillStyle = 'rgba(34,34,34,0.80)'; ctx.font = '400 14px "DM Mono", monospace';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
-    wrapText(togetherClean, RC_X + TP, T_TY + TP, RC_W - TP * 2, 21);
-    setLS('0');
+    ctx.save(); ctx.globalAlpha = 0.28;
+    await drawAsset('./assets/headphones.png', RC_X + RC_W - 60, T_QY + 12,        42, 42,  10);
+    ctx.restore();
 
     // ── SIGNALS TILE — DARK | STAT TILE — pale blue ───────────────────
+    const ST_X = RC_X + SP_L + GAP;
     scRoundRect(RC_X, T_MY, SP_L, T_MH, TR, DARK, null);
-    // Ghost watermark doodle
-    ctx.save(); ctx.globalAlpha = 0.08;
-    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`, RC_X + SP_L - 116, T_MY + (T_MH - 108) / 2, 108, 108, -6);
+    ctx.save(); ctx.globalAlpha = 0.07;
+    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'Cartographer.png'}`, RC_X + SP_L - 112, T_MY + (T_MH - 104) / 2, 104, 104, -6);
     ctx.globalAlpha = 1; ctx.restore();
-    ctx.fillStyle = BLUE; ctx.font = '700 12px "DM Mono", monospace';
+    ctx.fillStyle = BLUE; ctx.font = '700 11px SF';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.18em');
     ctx.fillText('YOUR SIGNALS', RC_X + TP, T_MY + TP); setLS('0');
     const allSigs = (data && data.allSignals && data.allSignals.length) ? data.allSignals : signals;
-    ctx.font = '400 14px "DM Mono", monospace';
-    ctx.fillStyle = CREAM; setLS('0.01em');
-    allSigs.slice(0, 5).forEach((sig, i) => ctx.fillText(`— ${sig}`, RC_X + TP, T_MY + TP + 26 + i * 25));
+    ctx.font = '400 13px SF'; ctx.fillStyle = CREAM; setLS('0.01em');
+    allSigs.slice(0, 5).forEach((sig, i) => ctx.fillText(`— ${sig}`, RC_X + TP, T_MY + TP + 24 + i * 24));
     setLS('0');
+    // Decal: fish watermark
+    ctx.save(); ctx.globalAlpha = 0.18;
+    await drawAsset('./assets/fish.png', RC_X + TP, T_MY + T_MH - 40, 34, 34, 8);
+    ctx.restore();
 
-    // Stat tile — pale blue (#C3D9FF)
-    const ST_X = RC_X + SP_L + GAP;
+    // Stat tile — pale blue
     scRoundRect(ST_X, T_MY, SP_R, T_MH, TR, '#C3D9FF', null);
-    ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '700 11px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '700 10px SF';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.14em');
-    ctx.fillText('OPENED AS', ST_X + 14, T_MY + 14); setLS('0');
+    ctx.fillText('you came in as', ST_X + 14, T_MY + 14); setLS('0');
     const entryVal = (data && data.firstChoiceLabel) || arch.traits[0] || '—';
-    ctx.fillStyle = DARK; ctx.font = '700 italic 20px "Playfair Display", serif';
-    wrapText(entryVal, ST_X + 14, T_MY + 30, SP_R - 28, 24);
+    ctx.fillStyle = DARK; ctx.font = '700 italic 19px "Playfair Display", serif';
+    wrapText(entryVal, ST_X + 14, T_MY + 28, SP_R - 28, 23);
     const exitY = T_MY + Math.round(T_MH / 2) + 8;
-    ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '700 11px "DM Mono", monospace';
-    setLS('0.14em'); ctx.fillText('CLOSED AS', ST_X + 14, exitY); setLS('0');
+    ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '700 10px SF';
+    setLS('0.14em'); ctx.fillText('but by the end, you', ST_X + 14, exitY); setLS('0');
     const exitVal = (data && data.exitMove) || '—';
-    ctx.fillStyle = DARK; ctx.font = '700 italic 20px "Playfair Display", serif';
-    wrapText(exitVal, ST_X + 14, exitY + 18, SP_R - 28, 24);
+    ctx.fillStyle = DARK; ctx.font = '700 italic 19px "Playfair Display", serif';
+    wrapText(exitVal, ST_X + 14, exitY + 16, SP_R - 28, 23);
+    // Decal: coin corner
+    ctx.save(); ctx.globalAlpha = 0.35;
+    await drawAsset('./assets/coin.png', ST_X + SP_R - 40, T_MY + T_MH - 42, 34, 34, -12);
+    ctx.restore();
+
+    // ── TOGETHER TILE — GOLD, now below signals ────────────────────────
+    scRoundRect(RC_X, T_TY, RC_W, T_TH, TR, accentColor, null);
+    const togetherClean = (arch.together || '').replace(/<\/?strong>/g,'').replace(/<[^>]*>/g,'');
+    ctx.fillStyle = 'rgba(34,34,34,0.78)'; ctx.font = '400 14px SF';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
+    wrapText(togetherClean, RC_X + TP, T_TY + TP, RC_W - TP * 2, 20);
+    setLS('0');
+    // Decals on together tile
+    ctx.save(); ctx.globalAlpha = 0.38;
+    await drawAsset('./assets/icecream.png', RC_X + RC_W - 46, T_TY + T_TH - 48, 38, 38, 10);
+    await drawAsset('./assets/banana.png',   RC_X + RC_W - 82, T_TY + 6,         26, 26, -8);
+    ctx.restore();
 
     // ── HIGHLIGHT 1 — gold tint | HIGHLIGHT 2 — dark ──────────────────
-    const HL = arch.highlights || [];
-    scRoundRect(RC_X, T_HY, SP_L, T_HH, TR, hexRgba(accentColor, 0.20), hexRgba(accentColor, 0.50));
+    scRoundRect(RC_X, T_HY, SP_L, T_HH, TR, hexRgba(accentColor, 0.18), hexRgba(accentColor, 0.45));
     if (HL[0]) {
-      ctx.fillStyle = DARK; ctx.font = '700 13px "DM Mono", monospace';
+      ctx.fillStyle = DARK; ctx.font = '700 13px SF';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
-      const h0l = wrapText(HL[0].head, RC_X + TP, T_HY + TP, SP_L - TP * 2, 19);
-      ctx.fillStyle = 'rgba(34,34,34,0.65)'; ctx.font = '400 12px "DM Mono", monospace';
-      wrapText(HL[0].body, RC_X + TP, T_HY + TP + h0l * 19 + 8, SP_L - TP * 2, 17);
+      const h0l = wrapText(HL[0].head, RC_X + TP, T_HY + TP, SP_L - TP * 2, 18);
+      ctx.fillStyle = 'rgba(34,34,34,0.62)'; ctx.font = '400 11px SF';
+      wrapText(HL[0].body, RC_X + TP, T_HY + TP + h0l * 18 + 8, SP_L - TP * 2, 16);
       setLS('0');
     }
-    // Decal: flower in highlight 1 corner
-    ctx.save(); ctx.globalAlpha = 0.38;
-    await drawAsset('./assets/flower.png', RC_X + SP_L - 50, T_HY + T_HH - 52, 42, 42, 22);
+    ctx.save(); ctx.globalAlpha = 0.35;
+    await drawAsset('./assets/flowerpot.png', RC_X + SP_L - 46, T_HY + T_HH - 50, 38, 38, 16);
     ctx.restore();
 
     scRoundRect(ST_X, T_HY, SP_R, T_HH, TR, DARK, null);
     if (HL[1]) {
-      ctx.fillStyle = CREAM; ctx.font = '700 13px "DM Mono", monospace';
+      ctx.fillStyle = CREAM; ctx.font = '700 13px SF';
       ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
-      const h1l = wrapText(HL[1].head, ST_X + 14, T_HY + TP, SP_R - 28, 19);
-      ctx.fillStyle = 'rgba(249,249,242,0.58)'; ctx.font = '400 12px "DM Mono", monospace';
-      wrapText(HL[1].body, ST_X + 14, T_HY + TP + h1l * 19 + 8, SP_R - 28, 17);
+      const h1l = wrapText(HL[1].head, ST_X + 14, T_HY + TP, SP_R - 28, 18);
+      ctx.fillStyle = 'rgba(249,249,242,0.55)'; ctx.font = '400 11px SF';
+      wrapText(HL[1].body, ST_X + 14, T_HY + TP + h1l * 18 + 8, SP_R - 28, 16);
       setLS('0');
     }
-    // Decal: coin in highlight 2 corner
-    ctx.save(); ctx.globalAlpha = 0.28;
-    await drawAsset('./assets/coin.png', ST_X + SP_R - 46, T_HY + T_HH - 50, 38, 38, -10);
-    ctx.restore();
-
-    // ── FOOTER TILE — DARK, Trove CTA + QR ───────────────────────────
-    scRoundRect(RC_X, T_FY, RC_W, T_FH, TR, DARK, null);
-    await drawAsset('./TroveLogo.png', RC_X + TP, T_FY + TP, 114, 32, 0);
-    ctx.fillStyle = 'rgba(249,249,242,0.65)'; ctx.font = '400 14px "DM Mono", monospace';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.04em');
-    ctx.fillText('see your type →', RC_X + TP, T_FY + TP + 40); setLS('0');
-    ctx.fillStyle = hexRgba(accentColor, 0.90); ctx.font = '400 12px "DM Mono", monospace';
-    setLS('0.02em');
-    const topSig = (data && data.allSignals && data.allSignals[0]) || arch.sub;
-    ctx.fillText(`"${topSig}"`, RC_X + TP, T_FY + TP + 60); setLS('0');
-    ctx.fillStyle = 'rgba(249,249,242,0.30)'; ctx.font = '400 11px "DM Mono", monospace';
-    setLS('0.02em');
-    ctx.fillText('henliz.github.io/not-a-deck-pitch', RC_X + TP, T_FY + TP + 78); setLS('0');
-    // Decal: babystar in footer
     ctx.save(); ctx.globalAlpha = 0.25;
-    await drawAsset('./assets/babystar.png', RC_X + Math.round(RC_W * 0.50), T_FY + TP + 4, 28, 28, 8);
+    await drawAsset('./assets/derpy.png', ST_X + SP_R - 42, T_HY + T_HH - 44, 34, 34, -14);
     ctx.restore();
 
-    // QR code
-    const QR_SZ = Math.min(T_FH - TP * 2 - 14, 110);
+    // ── FOOTER — WHITE, Trove CTA + QR ───────────────────────────────
+    scRoundRect(RC_X, T_FY, RC_W, T_FH, TR, '#FFFFFF', 'rgba(34,34,34,0.08)');
+    await drawAsset('./TroveLogo.png', RC_X + TP, T_FY + TP, 114, 30, 0);
+    ctx.fillStyle = 'rgba(34,34,34,0.60)'; ctx.font = '400 13px SF';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.04em');
+    ctx.fillText('see your type →', RC_X + TP, T_FY + TP + 36); setLS('0');
+    const topSig = (data && data.allSignals && data.allSignals[0]) || arch.sub;
+    ctx.fillStyle = hexRgba(accentColor, 1); ctx.font = '400 italic 11px "Playfair Display", serif';
+    setLS('0.01em');
+    ctx.fillText(`"${topSig}"`, RC_X + TP, T_FY + TP + 54); setLS('0');
+    ctx.fillStyle = 'rgba(34,34,34,0.28)'; ctx.font = '400 10px SF';
+    setLS('0.02em');
+    ctx.fillText('henliz.github.io/not-a-deck-pitch', RC_X + TP, T_FY + TP + 70); setLS('0');
+    // Footer decals
+    ctx.save(); ctx.globalAlpha = 0.30;
+    await drawAsset('./assets/paperwhite.png', RC_X + Math.round(RC_W * 0.46), T_FY + TP,     28, 28,  6);
+    await drawAsset('./assets/bubbleblower.png', RC_X + Math.round(RC_W * 0.52), T_FY + TP + 2, 24, 24, -8);
+    ctx.restore();
+
+    const QR_SZ = Math.min(T_FH - TP * 2 - 12, 106);
     const qrCanvas = await generateQR('https://henliz.github.io/not-a-deck-pitch/', QR_SZ);
     if (qrCanvas) {
-      const qrX = RC_X + RC_W - QR_SZ - TP - 8;
-      const qrY = T_FY + Math.round((T_FH - QR_SZ - 14) / 2);
+      const qrX = RC_X + RC_W - QR_SZ - TP - 6;
+      const qrY = T_FY + Math.round((T_FH - QR_SZ - 12) / 2);
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.30)'; ctx.shadowBlur = 10;
-      scRoundRect(qrX - 6, qrY - 6, QR_SZ + 12, QR_SZ + 22, 8, CREAM, null);
+      ctx.shadowColor = 'rgba(0,0,0,0.10)'; ctx.shadowBlur = 8;
+      scRoundRect(qrX - 5, qrY - 5, QR_SZ + 10, QR_SZ + 20, 8, CREAM, null);
       ctx.restore();
       ctx.drawImage(qrCanvas, qrX, qrY, QR_SZ, QR_SZ);
-      ctx.fillStyle = 'rgba(34,34,34,0.40)'; ctx.font = '400 10px "DM Mono", monospace';
+      ctx.fillStyle = 'rgba(34,34,34,0.35)'; ctx.font = '400 9px SF';
       ctx.textAlign = 'center'; ctx.textBaseline = 'top'; setLS('0.08em');
       ctx.fillText('scan to play', qrX + QR_SZ / 2, qrY + QR_SZ + 4); setLS('0');
     }
 
     // Outer frame
-    ctx.strokeStyle = 'rgba(34,34,34,0.06)';
+    ctx.strokeStyle = 'rgba(34,34,34,0.05)';
     ctx.lineWidth   = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
@@ -1956,13 +2004,14 @@ window.tgInitGame = async function () {
     }
     // Camera beside "watch" — with periodic flash
     watchEl.style.position = 'relative'; watchEl.style.overflow = 'visible';
-    const cameraImg = decal('camera.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 46, delay: 0.2 });
+    const cameraImg = decal('camera.png', 'tg-decal--bob', { right: '0px', top: '-4px', w: 68, delay: 0.2 });
     watchEl.appendChild(cameraImg);
     if (hasGSAP) {
       // Flash fires after decal lands (~0.9s), then pulses every ~3s
-      gsap.timeline({ delay: 0.95, repeat: -1, repeatDelay: 2.8 })
-        .to(cameraImg, { filter: 'brightness(6) saturate(0)', scale: 1.12, duration: 0.05, ease: 'none' })
-        .to(cameraImg, { filter: 'brightness(1) saturate(1)', scale: 1, duration: 0.38, ease: 'power2.out' });
+      gsap.timeline({ delay: 0.95, repeat: -1, repeatDelay: 2.4 })
+        .to(cameraImg, { filter: 'brightness(10) saturate(0)', scale: 1.22, duration: 0.04, ease: 'none' })
+        .to(cameraImg, { filter: 'brightness(2) saturate(0.4)', scale: 1.1, duration: 0.08, ease: 'power1.out' })
+        .to(cameraImg, { filter: 'brightness(1) saturate(1)', scale: 1, duration: 0.5, ease: 'power3.out' });
     }
     await w(700);
     // Type B — narration (gaming.png moved to pq card below)
@@ -2745,6 +2794,9 @@ window.tgInitGame = async function () {
   // ── EMAIL CAPTURE — envelope reveal ───────────────────
   async function emailCapture() {
     return new Promise(resolveEmail => {
+      const envWrap = document.createElement('div');
+      envWrap.className = 'tg-pl tg-env-wrap';
+
       // ── Decal layer (above cover, z-index:10) ──────────
       const decoEl = document.createElement('div');
       decoEl.className = 'tg-env-deco';
@@ -2886,9 +2938,9 @@ window.tgInitGame = async function () {
       gsap.to(coverImg, { opacity: 1, y: 0, duration: 0.55, ease: hasCE ? 'slam' : 'back.out(1.4)' });
 
       // 2. Letter slides up from behind the cover
-      gsap.set(letterWrap, { y: '90%' });
+      gsap.set(letterWrap, { yPercent: 90 });
       gsap.to(letterWrap, {
-        y: 0, duration: 1.05, ease: 'back.out(1.05)', delay: 0.28,
+        yPercent: 0, duration: 1.05, ease: 'back.out(1.05)', delay: 0.28,
         onComplete: () => {
           // Position turtle at Helen's row using real layout coords
           const envRect   = envWrap.getBoundingClientRect();
@@ -2972,215 +3024,275 @@ window.tgInitGame = async function () {
     }
     pitch.style.visibility = 'hidden';
 
-    // ── Screen 1: session summary — dark, ghosted number ─────────────
+    const ARCH_BG_COLORS = {
+      cartographer: '#DBD59C', contrarian: '#88ABE3',
+      architect:    '#C3D9FF', operator:   '#FFFBCD', storyteller: '#DBD59C',
+    };
+    const ARCH_ASSETS_MAP = {
+      cartographer: 'Cartographer.png', contrarian: 'Contrarian.png',
+      architect:    'Architect.png',    operator:   'Operator.png', storyteller: 'Storyteller.png',
+    };
+    const revealBg    = ARCH_BG_COLORS[id]  || '#DBD59C';
+    const revealAsset = ARCH_ASSETS_MAP[id] || 'Cartographer.png';
+    const revealDark  = id === 'contrarian';
+
+    // ── Screen 1: session stats — dark, colour-ring entrance ─────────
     await recapScreen(async overlay => {
       overlay.style.color = '#F9F9F2';
 
+      // Ghost number watermark
       const ghost = document.createElement('div');
-      ghost.style.cssText = `
-        position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);
-        font-family:var(--font-display);font-size:clamp(140px,38vw,200px);
-        font-weight:900;line-height:1;color:rgba(255,255,255,0.04);
-        pointer-events:none;user-select:none;white-space:nowrap;
-      `;
+      ghost.style.cssText = 'position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-family:var(--font-display);font-size:clamp(120px,34vw,180px);font-weight:900;line-height:1;color:rgba(255,255,255,0.04);pointer-events:none;user-select:none;white-space:nowrap;';
       ghost.textContent = data.pathLength;
       overlay.insertBefore(ghost, overlay.firstChild);
 
+      // Floating corner decals
+      const floatSrcs = ['id.png','camera.png','watch.png','apple.png','flower.png','starhehe.png'];
+      const floatPos  = [
+        {left:'8%',top:'12%'},{right:'10%',top:'16%'},
+        {left:'14%',bottom:'20%'},{right:'8%',bottom:'24%'},
+        {left:'6%',top:'48%'},{right:'6%',top:'52%'},
+      ];
+      floatSrcs.forEach((src, i) => {
+        const img = document.createElement('img');
+        img.src = `./assets/${src}`;
+        img.style.cssText = `position:absolute;width:${22 + (i % 3) * 8}px;height:auto;opacity:0;pointer-events:none;`;
+        Object.assign(img.style, floatPos[i]);
+        overlay.appendChild(img);
+        if (hasGSAP) {
+          gsap.to(img, { opacity: 0.28, duration: 0.4, delay: 0.3 + i * 0.08 });
+          gsap.to(img, { y: -14, rotation: i % 2 === 0 ? 10 : -10, duration: 1.8 + i * 0.35, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * 0.25 });
+        }
+      });
+
       const eyebrow = document.createElement('div');
-      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.45;margin-bottom:18px;';
+      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.45;margin-bottom:14px;';
       eyebrow.textContent = 'your session · wrapped';
 
       const big = document.createElement('div');
-      big.style.cssText = 'font-family:var(--font-display);font-size:clamp(36px,10vw,52px);font-weight:900;line-height:1.1;margin-bottom:14px;';
+      big.style.cssText = 'font-family:var(--font-display);font-size:clamp(40px,11vw,56px);font-weight:900;line-height:1.05;margin-bottom:12px;';
       big.textContent = `${data.pathLength} moves.`;
 
-      const pathLine = document.createElement('div');
-      pathLine.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:16px;line-height:1.55;opacity:0.75;max-width:260px;margin-bottom:10px;';
-      pathLine.innerHTML = `You came in as a <span style="color:#DBD59C;font-weight:700">${data.firstChoiceLabel}</span>.`;
+      const entryLine = document.createElement('div');
+      entryLine.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:15px;line-height:1.55;opacity:0.80;max-width:260px;margin-bottom:6px;';
+      entryLine.innerHTML = `You came in as a <span style="color:#DBD59C;font-weight:700">${data.firstChoiceLabel}</span>.`;
 
-      const detailLine = document.createElement('div');
-      detailLine.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:15px;opacity:0.55;max-width:240px;';
-      detailLine.textContent =
+      const exitLine = document.createElement('div');
+      exitLine.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:14px;opacity:0.55;max-width:250px;margin-bottom:16px;';
+      exitLine.textContent =
         data.wentDeepOnMoat    ? 'You stayed for the flywheel.' :
         data.wentStraightToAsk ? 'You cut to the ask.' :
         data.usedFounderPath   ? 'You needed to know the founder first.' :
                                  'You followed the signal.';
 
-      const floatSrcs = ['id.png','camera.png','watch.png','apple.png'];
-      const floatPos  = [{left:'12%',top:'18%'},{right:'14%',top:'22%'},{left:'18%',bottom:'24%'},{right:'12%',bottom:'28%'}];
-      floatSrcs.forEach((src, i) => {
-        const img = document.createElement('img');
-        img.src = `./assets/${src}`;
-        img.style.cssText = 'position:absolute;width:28px;height:auto;opacity:0;pointer-events:none;';
-        Object.assign(img.style, floatPos[i]);
-        overlay.appendChild(img);
-        if (hasGSAP) {
-          gsap.to(img, { opacity: 0.22, duration: 0.4, delay: 0.2 + i * 0.1 });
-          gsap.to(img, { y: -12, rotation: i % 2 === 0 ? 8 : -8, duration: 2 + i * 0.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * 0.3 });
-        }
+      // Stat pills row
+      const pills = document.createElement('div');
+      pills.style.cssText = 'display:flex;gap:7px;flex-wrap:wrap;max-width:270px;';
+      const pillData = [
+        data.readerSpeed ? data.readerSpeed : null,
+        data.pushedOnFounder  ? 'dug into conviction' : null,
+        data.wentB2B          ? 'went deep on B2B'   : null,
+        data.wentDataset      ? 'challenged the data': null,
+        data.wentDeepOnMoat   ? 'stayed for flywheel': null,
+      ].filter(Boolean).slice(0, 4);
+      pillData.forEach((txt, i) => {
+        const p = document.createElement('div');
+        p.style.cssText = 'background:rgba(249,249,242,0.12);border:1px solid rgba(249,249,242,0.22);border-radius:100px;padding:4px 11px;font-family:var(--font-label);font-size:10px;letter-spacing:0.06em;opacity:0;';
+        p.textContent = txt;
+        pills.appendChild(p);
+        if (hasGSAP) gsap.to(p, { opacity: 1, duration: 0.3, ease: 'power2.out', delay: 0.5 + i * 0.1 });
+        else p.style.opacity = '1';
       });
 
-      overlay.append(eyebrow, big, pathLine, detailLine);
+      overlay.append(eyebrow, big, entryLine, exitLine, pills);
       if (hasGSAP) {
-        [eyebrow, big, pathLine, detailLine].forEach((el, i) => {
-          gsap.from(el, { opacity: 0, y: 20, duration: 0.44, ease: 'power3.out', delay: 0.05 + i * 0.12 });
+        [eyebrow, big, entryLine, exitLine].forEach((el, i) => {
+          gsap.from(el, { opacity: 0, y: 22, duration: 0.44, ease: 'power3.out', delay: 0.04 + i * 0.11 });
         });
       }
     }, { bg: '#1C1C1E', entrance: 'slideUp', exit: 'slideUp' });
 
 
-    // ── Screen 2: trait signal — gold, lightbulb slam ─────────────────
+    // ── Screen 2: your signals — gold, data-driven ────────────────────
     await recapScreen(async overlay => {
       overlay.style.color = '#222222';
 
-      const bigAsset = document.createElement('img');
-      bigAsset.src = './assets/lightbulb.png';
-      bigAsset.style.cssText = 'width:clamp(72px,18vw,96px);height:auto;margin-bottom:20px;';
-      overlay.appendChild(bigAsset);
-
-      if (hasGSAP) {
-        gsap.from(bigAsset, {
-          opacity: 0, scale: 0.1, rotation: -180, y: 40,
-          duration: 0.9, ease: 'elastic.out(1,0.42)', delay: 0.05,
-          onComplete: () => {
-            gsap.to(bigAsset, { y: -8, rotation: 6, duration: 1.8, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-            orbitingTextRing(bigAsset, '\u2736 YOUR FIRST SIGNAL \u2736 PATTERN DETECTED \u2736');
-          },
-        });
-      }
+      // Scatter decals behind content
+      ['lightbulb.png','coin.png','babystar.png','flower.png'].forEach((src, i) => {
+        const img = document.createElement('img');
+        img.src = `./assets/${src}`;
+        const positions = [{top:'8%',right:'8%'},{bottom:'10%',left:'8%'},{top:'14%',left:'6%'},{bottom:'8%',right:'10%'}];
+        img.style.cssText = `position:absolute;width:${26 + i * 6}px;height:auto;opacity:0;pointer-events:none;transform:rotate(${(i%2===0?1:-1)*18}deg);`;
+        Object.assign(img.style, positions[i]);
+        overlay.insertBefore(img, overlay.firstChild);
+        if (hasGSAP) gsap.to(img, { opacity: 0.25, duration: 0.4, delay: 0.2 + i * 0.1 });
+      });
 
       const eyebrow = document.createElement('div');
-      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.5;margin-bottom:14px;';
-      eyebrow.textContent = 'pattern detected';
+      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.5;margin-bottom:10px;';
+      eyebrow.textContent = 'signals trove read';
 
       const big = document.createElement('div');
-      big.style.cssText = 'font-family:var(--font-display);font-size:clamp(22px,6vw,28px);font-weight:800;line-height:1.2;margin-bottom:12px;max-width:270px;';
+      big.style.cssText = 'font-family:var(--font-display);font-size:clamp(20px,6vw,26px);font-weight:800;line-height:1.2;margin-bottom:10px;max-width:270px;';
       big.textContent = (data.traits[0] || 'you paid attention') + '.';
 
       const sub = document.createElement('div');
-      sub.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:14px;opacity:0.65;max-width:240px;line-height:1.55;';
+      sub.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:13px;opacity:0.60;max-width:240px;line-height:1.55;margin-bottom:14px;';
       sub.textContent = data.traits[1] || '';
 
-      const hlPreview = document.createElement('div');
-      hlPreview.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:18px;width:100%;max-width:260px;';
-      (arch.highlights || []).slice(0, 3).forEach((hl, i) => {
+      // Signal list — all behavioural signals as animated rows
+      const sigList = document.createElement('div');
+      sigList.style.cssText = 'display:flex;flex-direction:column;gap:5px;width:100%;max-width:265px;';
+      (data.allSignals || []).slice(0, 5).forEach((sig, i) => {
         const row = document.createElement('div');
-        row.style.cssText = 'background:rgba(34,34,34,0.08);border-radius:8px;padding:8px 12px;font-family:var(--font-label);font-size:11px;font-weight:700;color:#222;text-align:left;opacity:0;';
-        row.textContent = hl.head;
-        hlPreview.appendChild(row);
-        if (hasGSAP) gsap.to(row, { opacity: 1, x: 0, duration: 0.35, ease: 'power3.out', delay: 0.5 + i * 0.1 });
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;background:rgba(34,34,34,0.10);border-radius:8px;padding:7px 11px;font-family:var(--font-label);font-size:11px;font-weight:600;color:#222;opacity:0;';
+        row.innerHTML = `<span style="color:#88ABE3;font-size:14px;">—</span> ${sig}`;
+        sigList.appendChild(row);
+        if (hasGSAP) gsap.to(row, { opacity: 1, x: 0, duration: 0.32, ease: 'power3.out', delay: 0.45 + i * 0.09 });
         else row.style.opacity = '1';
       });
 
-      overlay.append(eyebrow, big, sub, hlPreview);
+      overlay.append(eyebrow, big, sub, sigList);
       if (hasGSAP) {
         [eyebrow, big, sub].forEach((el, i) => {
-          gsap.from(el, { opacity: 0, y: 18, duration: 0.42, ease: 'power3.out', delay: 0.3 + i * 0.13 });
+          gsap.from(el, { opacity: 0, y: 18, duration: 0.40, ease: 'power3.out', delay: 0.08 + i * 0.12 });
         });
       }
     }, { bg: '#DBD59C', entrance: 'slideRight', exit: 'slideLeft' });
 
 
-    // ── Screen 3: archetype reveal — coloured bg, elastic asset slam ──
-    const ARCH_BG_COLORS = {
-      cartographer: '#DBD59C', contrarian: '#88ABE3',
-      architect: '#C3D9FF',   operator: '#FFFBCD', storyteller: '#DBD59C',
-    };
-    const ARCH_ASSETS_MAP = {
-      cartographer: 'camera.png', contrarian: 'boomerand.png',
-      architect: 'house.png',    operator: 'watch.png', storyteller: 'mic.png',
-    };
-    const revealBg    = ARCH_BG_COLORS[id]  || '#DBD59C';
-    const revealAsset = ARCH_ASSETS_MAP[id] || 'camera.png';
-    const revealDark  = id === 'contrarian';
-
+    // ── Screen 3: archetype reveal — type image framed with decals ────
     await recapScreen(async overlay => {
       overlay.style.color = revealDark ? '#F9F9F2' : '#222222';
+      overlay.style.justifyContent = 'flex-start';
+      overlay.style.paddingTop = 'clamp(40px, 10vh, 72px)';
 
-      const bgSrcs = ['babystar.png','starhehe.png','flower.png','coin.png','apple.png','socks.png'];
-      bgSrcs.forEach((src, i) => {
+      // Scattered bg decals
+      ['babystar.png','starhehe.png','coin.png','apple.png'].forEach((src, i) => {
         const img = document.createElement('img');
         img.src = `./assets/${src}`;
-        const sz = 18 + Math.random() * 16;
-        img.style.cssText = `position:absolute;width:${sz}px;height:auto;opacity:0;pointer-events:none;
-          left:${6 + Math.random() * 88}%;top:${4 + Math.random() * 92}%;
-          transform:rotate(${(Math.random() - 0.5) * 40}deg);`;
+        const sz = 16 + Math.random() * 14;
+        img.style.cssText = `position:absolute;width:${sz}px;height:auto;opacity:0;pointer-events:none;left:${5+Math.random()*90}%;top:${4+Math.random()*92}%;transform:rotate(${(Math.random()-0.5)*38}deg);`;
         overlay.insertBefore(img, overlay.firstChild);
-        if (hasGSAP) gsap.to(img, { opacity: 0.14 + Math.random() * 0.1, duration: 0.35, delay: 0.1 + i * 0.06 });
+        if (hasGSAP) gsap.to(img, { opacity: 0.12 + Math.random() * 0.10, duration: 0.35, delay: 0.1 + i * 0.07 });
       });
 
       const eyebrow = document.createElement('div');
-      eyebrow.style.cssText = `font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:${revealDark ? '0.6' : '0.45'};margin-bottom:12px;`;
+      eyebrow.style.cssText = `font-family:var(--font-label);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;opacity:${revealDark?'0.60':'0.45'};margin-bottom:12px;`;
       eyebrow.textContent = 'your investor archetype';
 
-      const bigAsset = document.createElement('img');
-      bigAsset.src = `./assets/${revealAsset}`;
-      bigAsset.style.cssText = 'width:clamp(88px,22vw,116px);height:auto;margin-bottom:16px;filter:drop-shadow(0 8px 20px rgba(0,0,0,0.15));';
+      // Framed type image with border decals
+      const frameSz = 'clamp(130px,38vw,170px)';
+      const frame = document.createElement('div');
+      frame.style.cssText = `position:relative;width:${frameSz};height:${frameSz};margin-bottom:18px;flex-shrink:0;`;
+
+      const frameBg = document.createElement('div');
+      frameBg.style.cssText = `position:absolute;inset:-10px;background:#FFFFFF;border-radius:18px;box-shadow:0 10px 36px rgba(0,0,0,0.18);`;
+
+      const typeImg = document.createElement('img');
+      typeImg.src = `./assets/${ARCH_ASSETS_MAP[id] || revealAsset}`;
+      typeImg.style.cssText = `position:relative;z-index:1;width:100%;height:100%;object-fit:cover;border-radius:14px;display:block;`;
+
+      frame.appendChild(frameBg);
+      frame.appendChild(typeImg);
+
+      // Border sticker decals
+      const stickerSrcs = ['babystar.png','flower.png','starhehe.png','coin.png','lightbulb.png','socks.png'];
+      const stickerPos  = [
+        { top:'-17px', left:'-17px',  rot:-18, sz:28 },
+        { top:'-15px', right:'-13px', rot: 14, sz:26 },
+        { bottom:'-16px', left:'-15px', rot: 22, sz:24 },
+        { bottom:'-18px', right:'-17px', rot:-16, sz:28 },
+        { top:'32%',  left:'-20px',  rot:-10, sz:22 },
+        { top:'28%',  right:'-19px', rot: 12, sz:22 },
+      ];
+      stickerSrcs.forEach((src, i) => {
+        const d = document.createElement('img');
+        d.src = `./assets/${src}`;
+        const p = stickerPos[i];
+        let posStr = '';
+        if (p.top    !== undefined) posStr += `top:${p.top};`;
+        if (p.bottom !== undefined) posStr += `bottom:${p.bottom};`;
+        if (p.left   !== undefined) posStr += `left:${p.left};`;
+        if (p.right  !== undefined) posStr += `right:${p.right};`;
+        d.style.cssText = `position:absolute;width:${p.sz}px;height:auto;transform:rotate(${p.rot}deg) scale(0);z-index:12;pointer-events:none;${posStr}`;
+        frame.appendChild(d);
+        if (hasGSAP) gsap.to(d, { scale: 1, duration: 0.35, ease: 'back.out(2.5)', delay: 0.7 + i * 0.08 });
+        else d.style.transform = `rotate(${p.rot}deg) scale(1)`;
+      });
 
       const nameEl = document.createElement('div');
-      nameEl.style.cssText = `font-family:var(--font-display);font-size:clamp(30px,9vw,44px);font-weight:900;line-height:1.05;margin-bottom:10px;letter-spacing:-0.02em;`;
+      nameEl.style.cssText = `font-family:var(--font-display);font-size:clamp(28px,8.5vw,40px);font-weight:900;line-height:1.05;margin-bottom:8px;letter-spacing:-0.02em;`;
       nameEl.textContent = arch.name;
 
       const subEl = document.createElement('div');
-      subEl.style.cssText = `font-family:var(--font-label);font-size:13px;opacity:${revealDark ? '0.65' : '0.5'};letter-spacing:0.04em;`;
+      subEl.style.cssText = `font-family:var(--font-label);font-size:13px;opacity:${revealDark?'0.65':'0.50'};letter-spacing:0.04em;`;
       subEl.textContent = arch.sub;
 
-      overlay.append(eyebrow, bigAsset, nameEl, subEl);
+      overlay.append(eyebrow, frame, nameEl, subEl);
 
       if (hasGSAP) {
         gsap.from(eyebrow, { opacity: 0, y: 12, duration: 0.35, ease: 'power3.out', delay: 0.05 });
-        gsap.from(bigAsset, {
-          opacity: 0, scale: 0.05, rotation: -200, y: 60,
-          duration: 1.1, ease: 'elastic.out(1,0.38)', delay: 0.1,
+        gsap.from(frame, {
+          scale: 0.08, rotation: -160, opacity: 0, duration: 1.0, ease: 'elastic.out(1,0.40)', delay: 0.1,
           onComplete: () => {
-            gsap.to(bigAsset, { y: -10, rotation: 5, duration: 1.9, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-            orbitingTextRing(bigAsset, `\u2736 ${arch.name.toUpperCase()} \u2736 TROVE \u2736`);
-            assetBurst(bigAsset, 'celebrate', 10);
+            gsap.to(frame, { y: -8, rotation: 2, duration: 2.2, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+            orbitingTextRing(frame, `\u2736 ${arch.name.toUpperCase()} \u2736 TROVE \u2736`);
+            assetBurst(frame, 'celebrate', 8);
           },
         });
         if (hasScrTx) {
           gsap.set(nameEl, { opacity: 1 });
           gsap.to(nameEl, {
-            duration: 1.2, delay: 0.45,
+            duration: 1.1, delay: 0.5,
             scrambleText: { text: arch.name, chars: '!<>-_\\/[]{}—=+*^?#░▒▓ABCDEFGHIJKLMNOPQRSTUVWXYZ', revealDelay: 0.28, speed: 0.5 },
             ease: 'none',
           });
         } else {
-          const split = new SplitText(nameEl, { type: 'chars' });
-          gsap.from(split.chars, {
-            opacity: 0, y: 40, scale: 0.2, rotation: i => Math.sin(i * 1.4) * 22,
-            duration: 0.65, ease: 'back.out(2.5)',
-            stagger: { each: 0.07, ease: 'power2.out' },
-            delay: 0.38,
-          });
+          gsap.from(nameEl, { opacity: 0, y: 30, duration: 0.55, ease: 'back.out(2)', delay: 0.45 });
         }
-        gsap.from(subEl, { opacity: 0, y: 10, duration: 0.38, ease: 'power3.out', delay: 1.3 });
+        gsap.from(subEl, { opacity: 0, y: 10, duration: 0.38, ease: 'power3.out', delay: 1.2 });
       }
     }, { bg: revealBg, entrance: 'scale', exit: 'slideUp' });
 
 
-    // ── Screen 4: what this means — blue, desc + together, last screen ─
+    // ── Screen 4: what this means — blue, tighter text + data callouts ─
     await recapScreen(async overlay => {
       overlay.style.color = '#F9F9F2';
 
       const eyebrow = document.createElement('div');
-      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.6;margin-bottom:16px;';
+      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.55;margin-bottom:12px;';
       eyebrow.textContent = arch.name;
 
       const desc = document.createElement('div');
-      desc.style.cssText = 'font-family:var(--font-display);font-size:clamp(16px,5.5vw,22px);font-weight:700;line-height:1.35;margin-bottom:18px;max-width:290px;';
+      desc.style.cssText = 'font-family:var(--font-display);font-size:clamp(13px,4vw,17px);font-weight:700;line-height:1.4;margin-bottom:12px;max-width:280px;opacity:0.90;';
       desc.textContent = arch.desc;
 
       const together = document.createElement('div');
-      together.style.cssText = 'font-family:var(--font-label);font-size:13px;opacity:0.65;max-width:260px;line-height:1.55;';
+      together.style.cssText = 'font-family:var(--font-label);font-size:12px;opacity:0.60;max-width:260px;line-height:1.55;margin-bottom:14px;';
       together.innerHTML = arch.together;
 
-      overlay.append(eyebrow, desc, together);
+      // Data callout specific to their path
+      const calloutText =
+        data.pushedOnFounder  ? `you dug into the conviction. that's ${arch.traits[0] ? arch.traits[0].toLowerCase() : 'signal'}.` :
+        data.wentB2B          ? 'you got to the B2B model before we pointed there.' :
+        data.wentDataset      ? 'you challenged data ownership. the right question.' :
+        data.wentDeepOnMoat   ? 'you stayed for the flywheel. that\'s the whole game.' :
+        data.readerSpeed      ? `you moved through this as a ${data.readerSpeed}.` :
+        `trove tracked ${data.pathLength} moves. every one was signal.`;
+
+      const callout = document.createElement('div');
+      callout.style.cssText = 'background:rgba(34,34,34,0.22);border-radius:10px;padding:10px 14px;font-family:var(--font-label);font-size:11px;letter-spacing:0.02em;max-width:265px;line-height:1.5;opacity:0;';
+      callout.textContent = `✦ ${calloutText}`;
+      callout.style.opacity = '0';
+
+      overlay.append(eyebrow, desc, together, callout);
       if (hasGSAP) {
         [eyebrow, desc, together].forEach((el, i) => {
-          gsap.from(el, { opacity: 0, y: 16, duration: 0.44, ease: 'power3.out', delay: 0.08 + i * 0.16 });
+          gsap.from(el, { opacity: 0, y: 16, duration: 0.42, ease: 'power3.out', delay: 0.06 + i * 0.15 });
         });
-      }
+        gsap.to(callout, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 0.55 });
+      } else { callout.style.opacity = '1'; }
     }, { bg: '#88ABE3', entrance: 'slideUp', exit: 'fade' });
 
     // ── Teardown: remove backdrop, restore pitch ──────────
@@ -3192,30 +3304,7 @@ window.tgInitGame = async function () {
     _atBottom = true; // force scroll tracking so post-recap reveals scroll into view
     pitch.scrollTop = pitch.scrollHeight;
 
-    // ── Award pop — type image slams in as fixed overlay for ~1.5s ────
-    if (hasGSAP && scene) {
-      const AWARD_TYPE_MAP = {
-        cartographer: 'Cartographer.png', contrarian: 'Contrarian.png',
-        architect: 'Architect.png', operator: 'Operator.png', storyteller: 'Storyteller.png',
-      };
-      const awardImg = document.createElement('img');
-      awardImg.src = `./assets/types/${AWARD_TYPE_MAP[id] || id + '.png'}`;
-      awardImg.onerror = () => { awardImg.src = `./assets/${ARCH_ASSETS_MAP[id] || 'camera.png'}`; };
-      awardImg.style.cssText = 'position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:clamp(120px,38vw,180px);height:auto;pointer-events:none;z-index:200;filter:drop-shadow(0 16px 32px rgba(0,0,0,0.25));';
-      const awardLbl = document.createElement('div');
-      awardLbl.style.cssText = 'position:absolute;left:50%;top:calc(42% + clamp(65px,20vw,95px));transform:translateX(-50%);font-family:var(--font-label);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#F9F9F2;background:rgba(34,34,34,0.72);padding:4px 14px;border-radius:100px;pointer-events:none;z-index:201;white-space:nowrap;opacity:0;';
-      awardLbl.textContent = `\u2736 ${arch.name} \u2736`;
-      scene.appendChild(awardImg); scene.appendChild(awardLbl);
-      await new Promise(r => gsap.timeline({ onComplete: r })
-        .from(awardImg, { scale: 0.05, rotation: -180, opacity: 0, duration: 0.8, ease: 'elastic.out(1,0.42)' })
-        .to(awardLbl, { opacity: 1, duration: 0.3, ease: 'power2.out' }, '-=0.2')
-        .to({}, { duration: 1.4 })
-        .to([awardImg, awardLbl], { opacity: 0, scale: 1.1, duration: 0.35, ease: 'power2.in' })
-        .call(() => { awardImg.remove(); awardLbl.remove(); })
-      );
-      HAPTIC.burst();
-      assetBurst(scene, 'celebrate', 8);
-    }
+    HAPTIC.burst();
     await w(200);
 
     // ── Blue flash back to pitch ──────────────────────────

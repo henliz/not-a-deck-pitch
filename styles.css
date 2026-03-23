@@ -435,7 +435,7 @@ canvas#webgl {
   position: relative;
   overflow: hidden;
   margin: 6px -18px 10px; /* full-bleed past pitch padding */
-  padding: 10px 0 42px; /* room for descenders + sine dip */
+  padding: 14px 0 80px; /* generous — font descenders + sine dip */
   /* soft fade at left/right edges */
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%);
           mask-image: linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%);
@@ -479,7 +479,7 @@ canvas#webgl {
 
 /* ── Scrapbook cards (dimLines with >3 sentences) ── */
 .tg-scrapbook-card {
-  padding: 14px 16px 8px;
+  padding: 14px 16px 8px 26px;
   border-radius: 3px;
   margin: 6px 0 14px;
   background-size: cover;
@@ -493,6 +493,10 @@ canvas#webgl {
   margin-left: 0 !important;
   padding-left: 0 !important;
   margin-bottom: 8px;
+  color: #5a85c8 !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.55);
 }
 .tg-pl--italic { font-style: italic; }
 .tg-pl--impact { font-family: var(--font-display); font-size: clamp(28px, 11cqw, 48px); font-weight: 700; line-height: 1.1; color: var(--text); margin-bottom: 8px; }
@@ -739,8 +743,7 @@ canvas#webgl {
 /* Letter sits centered, bottom edge above the cover */
 .tg-env-letter-wrap {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 10%; /* (100% - 80%) / 2 — avoids CSS transform that GSAP would clobber */
   width: 80%;
   bottom: clamp(68px, 24cqw, 110px);
   z-index: 2;
