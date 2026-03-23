@@ -347,6 +347,14 @@ window.tgInitGame = async function () {
     _atBottom = true;
     pitch.scrollTop = pitch.scrollHeight - pitch.clientHeight;
   }
+  function pageBreak() {
+    // Visual "new page" — inserts a full-viewport blank spacer then snaps scroll to it.
+    // Old content is still above; scrolling up reveals it.
+    const spacer = document.createElement('div');
+    spacer.style.cssText = `height:${pitch.clientHeight}px;flex-shrink:0;pointer-events:none;`;
+    pitch.appendChild(spacer);
+    scrollPitchSnap();
+  }
 
   const TMARK = '<img src="./TroveLogo.png" class="tg-trove-mark" alt="Trove">';
   const tmark = s => s.replace(/\bTrove\b/g, TMARK);
@@ -549,30 +557,40 @@ window.tgInitGame = async function () {
       sub: 'you map before you move',
       desc: 'You don\'t back vibes — you back evidence of thinking. You want to see the model, the moat, and the reasoning behind both. You ask the questions other investors are embarrassed to ask. You\'re not slow. You\'re thorough. And the companies you back feel that difference.',
       together: 'You\'ll want the data room early. We\'ll send it. You\'ll push hard on the flywheel logic — <strong>good, that\'s exactly the right question for Trove.</strong>',
+      traits: ['Evidence-First', 'Thorough', 'Precise'],
+      insight: 'You asked about the data before anything else. That\'s the right question.',
     },
     contrarian: {
       name: 'The Contrarian',
       sub: 'you were early on something everyone else passed on',
       desc: 'You back founders who can\'t be talked out of it, because conviction is the only thing that survives a hard year. You\'ve learned to trust the feeling of "this is weird but right" more than any spreadsheet. Your best investments didn\'t make sense to the room.',
       together: 'You already see it. The question is whether Helen\'s the kind of founder who gets more stubborn under pressure. <strong>She is.</strong>',
+      traits: ['Conviction', 'Pattern-Breaker', 'Early'],
+      insight: 'You backed the founder before the product made sense to anyone else.',
     },
     architect: {
       name: 'The Architect',
       sub: 'you think in infrastructure, not products',
       desc: 'You\'re not investing in what Trove is today. You\'re investing in what it makes inevitable — the behavioural layer that sits under hiring, dating, insurance, healthcare. You\'ve backed platforms before and you understand that the moat is the dataset, not the app.',
       together: 'You\'ll want to talk about the API strategy and B2B licensing before anyone else brings it up. <strong>We\'re ready for that conversation.</strong>',
+      traits: ['Systems', 'Infrastructure', 'Platform'],
+      insight: 'You think in what this makes inevitable — not what it is today.',
     },
     operator: {
       name: 'The Operator',
       sub: 'you\'ve built something, and it shows',
       desc: 'You read the founder before you read the deck. You know what a person looks like when they\'re building from genuine obsession versus building to exit. You add more than capital — pattern recognition, intros, the three sentences that fix the pitch. Your portfolio companies call you on hard days.',
       together: 'You\'ll probably spot something in Helen\'s approach that she hasn\'t articulated yet. <strong>Tell her. She wants to hear it.</strong>',
+      traits: ['Builder', 'Pattern Recognition', 'Hands-On'],
+      insight: 'You read founders. You knew what you were looking at before the deck ended.',
     },
     storyteller: {
       name: 'The Storyteller',
       sub: 'you back things people will talk about',
       desc: 'You understand that the best consumer products are also cultural moments — they spread because they mean something. You\'ve backed companies before the market understood them because you could see the narrative before the numbers justified it. Trove is a story about what it means to actually know someone.',
       together: 'You\'ll have opinions on the product voice, the community, the cultural positioning. <strong>Those opinions are valuable. Bring them.</strong>',
+      traits: ['Cultural', 'Narrative', 'Contrarian'],
+      insight: 'You see the story before the numbers justify it. That\'s the whole game.',
     },
   };
 
@@ -585,18 +603,15 @@ window.tgInitGame = async function () {
     const img = document.createElement('img');
     img.src = `./assets/${src}`;
     img.className = `tg-inline-decal ${cls}`;
-    img.style.cssText = `
-      width: ${opts.w || 52}px; height: auto;
-      position: absolute;
-      ${opts.right !== undefined ? `right: ${opts.right}` : `left: ${opts.left || '-16px'}`};
-      ${opts.top  !== undefined ? `top: ${opts.top}`    : 'top: -8px'};
-      opacity: 0; pointer-events: none;
-    `;
+    const hPos = opts.right !== undefined ? `right:${opts.right}` : `left:${opts.left || '-16px'}`;
+    const vPos = opts.bottom !== undefined ? `bottom:${opts.bottom}` : (opts.top !== undefined ? `top:${opts.top}` : 'top:-8px');
+    img.style.cssText = `width:${opts.w || 52}px;height:auto;position:absolute;${hPos};${vPos};opacity:0;pointer-events:none;`;
     if (hasGSAP) {
       gsap.fromTo(img,
         { opacity: 0, y: opts.fromY ?? -20, scale: opts.fromScale ?? 0.5, rotation: opts.fromRot ?? 0 },
         { opacity: 1, y: 0, scale: 1, rotation: opts.toRot ?? 0,
           duration: 0.65, ease: 'elastic.out(1, 0.48)', delay: opts.delay ?? 0.1,
+          clearProps: 'transform',
           onComplete: () => img.classList.add(cls) }
       );
     } else { img.style.opacity = '1'; }
@@ -1034,8 +1049,9 @@ window.tgInitGame = async function () {
       const img = document.createElement('img');
       img.src = `./assets/${stat.asset}`;
       img.style.cssText =
-        'position:absolute;right:18px;top:50%;transform:translateY(-50%);' +
-        'width:68px;height:auto;opacity:0;pointer-events:none;';
+        'position:absolute;right:14px;top:50%;transform:translateY(-50%);' +
+        'width:120px;height:auto;opacity:0;pointer-events:none;';
+      card.style.paddingRight = '140px';
       card.appendChild(img);
     }
     container.appendChild(card);
@@ -1163,7 +1179,7 @@ window.tgInitGame = async function () {
   async function pqReveal(text, assetSrc = null, assetOpts = {}, assetCls = 'tg-decal--bob') {
     await w(300);
     HAPTIC.begin();
-    const pqFills = ['#C3D9FF', '#FFFBCD']; // echo blue, light yellow — alternate each card
+    const pqFills = ['#EEF4FF', '#FDFBEE']; // very pale blue, very pale cream — alternate each card
     const pqBg = pqFills[pqColorIdx++ % pqFills.length];
     const shimmer = document.createElement('div');
     shimmer.className = 'tg-pl tg-pq-shimmer';
@@ -1260,24 +1276,13 @@ window.tgInitGame = async function () {
         { opacity: 0, y: 6 },
         { opacity: 1, y: 0, duration: 0.35, ease: 'power2.out', clearProps: 'y', onComplete: r },
       ));
-      // text fades in word by word
-      if (window.SplitText) {
-        const split = new SplitText(textEl, { type: 'words' });
-        await new Promise(r => {
-          gsap.timeline({ onComplete: r })
-            .fromTo(split.words,
-              { opacity: 0, y: 8 },
-              { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', stagger: 0.05, clearProps: 'y,opacity' }
-            );
-        });
-        split.revert();
-        textEl.style.opacity = ''; // clear rlist()'s opacity:0 — split.revert() restores content but not parent inline styles
-      } else {
-        await new Promise(r => gsap.fromTo(textEl,
-          { opacity: 0, y: 8 },
-          { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', clearProps: 'y,opacity', onComplete: r },
-        ));
-      }
+      // text: soft blur-up fade
+      await new Promise(r => gsap.fromTo(textEl,
+        { opacity: 0, y: 10, filter: 'blur(3px)' },
+        { opacity: 1, y: 0,  filter: 'blur(0px)',
+          duration: 0.44, ease: hasCE ? 'unfurl' : 'power3.out',
+          clearProps: 'filter,y', onComplete: r },
+      ));
       HAPTIC.tap();
       await w(140);
     }
@@ -1376,124 +1381,210 @@ window.tgInitGame = async function () {
       architect: '#C3D9FF',   operator:   '#FFFBCD', storyteller: '#DBD59C',
     };
     const ARCH_ASSETS = {
-      cartographer: 'camera.png',   contrarian: 'boomerang.png',
+      cartographer: 'camera.png',   contrarian: 'boomerand.png',
       architect:    'house.png',    operator:   'watch.png', storyteller: 'mic.png',
+    };
+    // Capitalised archetype portrait PNGs — 3/5 exist, rest fall back to investor.png
+    const ARCH_TYPE_IMG = {
+      cartographer: 'Cartographer.png',
+      contrarian:   'Contrarian.png',
+      architect:    'Architect.png',
+      operator:     'investor.png',
+      storyteller:  'investor.png',
+    };
+    const ARCH_COLLECTED = {
+      cartographer: ['id.png',        'camera.png',    'lightbulb.png'],
+      contrarian:   ['heartbreak.png', 'boomerand.png', 'starhehe.png'],
+      architect:    ['house.png',      'frog.png',      'coin.png'],
+      operator:     ['watch.png',      'waller.png',    'apple.png'],
+      storyteller:  ['mic.png',        'flower.png',    'babystar.png'],
     };
 
     const accentColor = ARCH_COLORS[id] || '#DBD59C';
-    const headerH = 460;
 
-    // White base
+    // ── helpers ──────────────────────────────────────────────────────
+    function scRoundRect(x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+      if (fill)   { ctx.fillStyle   = fill;   ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
+    }
+
+    async function drawAsset(src, x, y, w, h, rotDeg = 0) {
+      return new Promise(res => {
+        const img = new Image();
+        img.onload = () => {
+          if (rotDeg !== 0) {
+            ctx.save();
+            ctx.translate(x + w / 2, y + h / 2);
+            ctx.rotate(rotDeg * Math.PI / 180);
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            ctx.restore();
+          } else {
+            ctx.drawImage(img, x, y, w, h);
+          }
+          res();
+        };
+        img.onerror = res;
+        img.src = src;
+      });
+    }
+
+    async function generateQR(url, size) {
+      if (typeof QRCode === 'undefined') return null;
+      return new Promise(resolve => {
+        const div = document.createElement('div');
+        div.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+        document.body.appendChild(div);
+        new QRCode(div, {
+          text: url, width: size, height: size,
+          colorDark: '#222222', colorLight: '#F9F9F2',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+        setTimeout(() => {
+          const qrCanvas = div.querySelector('canvas');
+          const qrImg    = div.querySelector('img');
+          if (qrCanvas) { div.remove(); resolve(qrCanvas); }
+          else if (qrImg) {
+            const c = document.createElement('canvas');
+            c.width = size; c.height = size;
+            const x = c.getContext('2d');
+            const i = new Image();
+            i.onload = () => { x.drawImage(i, 0, 0, size, size); div.remove(); resolve(c); };
+            i.src = qrImg.src;
+          } else { div.remove(); resolve(null); }
+        }, 300);
+      });
+    }
+
+    try {
+      await Promise.all([
+        document.fonts.load('900 72px "Playfair Display"'),
+        document.fonts.load('700 22px "Syne"'),
+        document.fonts.load('400 13px "DM Mono"'),
+      ]);
+    } catch(e) {}
+
+    // ── 1. Background ────────────────────────────────────────────────
     ctx.fillStyle = '#F9F9F2';
     ctx.fillRect(0, 0, W, H);
 
-    // Coloured header block (Wrapped-style)
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(0, 0, W, headerH);
-
-    // Subtle large circle in header
-    ctx.fillStyle = 'rgba(34,34,34,0.05)';
-    ctx.beginPath(); ctx.arc(W / 2, headerH / 2, 280, 0, Math.PI * 2); ctx.fill();
-
-    // Scattered decorative dots in header
-    ctx.fillStyle = 'rgba(34,34,34,0.08)';
-    [[80,55,22],[830,38,16],[145,390,20],[755,330,14],
-     [455,28,18],[685,430,10],[115,205,12],[805,195,18],
-     [345,415,14],[610,75,10]].forEach(([x,y,r]) => {
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    });
-
-    // Sparkle dots
-    ctx.fillStyle = 'rgba(34,34,34,0.22)';
-    [[145,348,5],[762,130,4],[498,445,6],[198,108,3.5],[708,395,4.5]].forEach(([x,y,r]) => {
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    });
-
-    // Character asset — centred in the coloured header
-    const assetSrc = ARCH_ASSETS[id] || 'investor.png';
-    await new Promise(res => {
-      const img = new Image();
-      img.onload = () => {
-        const sz = 230;
-        ctx.drawImage(img, W / 2 - sz / 2, headerH / 2 - sz / 2, sz, sz);
-        res();
-      };
-      img.onerror = res;
-      img.src = `./assets/${assetSrc}`;
-    });
-
-    try { await document.fonts.load('900 74px "Playfair Display"'); } catch(e) {}
-
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-
-    // Tag — spaced letters
-    ctx.fillStyle = '#88ABE3';
-    ctx.font = '400 13px system-ui';
-    const tagStr = 'YOUR INVESTOR ARCHETYPE';
-    let tx = W / 2 - ctx.measureText(tagStr).width / 2 - tagStr.length * 1.5;
-    tagStr.split('').forEach(ch => { ctx.fillText(ch, tx, headerH + 26); tx += ctx.measureText(ch).width + 3; });
-
-    // Name
+    // ── 2. Title row ─────────────────────────────────────────────────
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = '#222222';
-    ctx.font = '900 74px "Playfair Display", serif';
-    ctx.fillText(arch.name, W / 2, headerH + 58);
+    ctx.font = '900 72px "Playfair Display", serif';
+    const titleParts = arch.name.split(' ');
+    ctx.fillText(titleParts[0], 52, 52);
+    ctx.fillText(titleParts.slice(1).join(' '), 52, 132);
 
-    // Blue underline under name
-    const nameW = ctx.measureText(arch.name).width;
-    ctx.strokeStyle = '#88ABE3'; ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(W / 2 - nameW / 2, headerH + 142);
-    ctx.lineTo(W / 2 + nameW / 2, headerH + 142);
-    ctx.stroke();
+    // Asset — top right, rotated
+    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'investor.png'}`, W - 160, 40, 110, 110, 8);
 
-    // Sub
-    ctx.fillStyle = 'rgba(34,34,34,0.42)';
-    ctx.font = '400 18px system-ui';
-    ctx.fillText(arch.sub, W / 2, headerH + 158);
+    // ── 3. Two-column grid ───────────────────────────────────────────
+    const boxPad = 52, gap = 20;
+    const col1W  = Math.floor((W - boxPad * 2 - gap) * 0.42);
+    const col2W  = W - boxPad * 2 - gap - col1W;
+    const row1Y  = 280, row1H = 290;
 
-    // Divider + gold accent
-    ctx.strokeStyle = 'rgba(34,34,34,0.1)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(80, headerH + 206); ctx.lineTo(W - 80, headerH + 206); ctx.stroke();
-    ctx.strokeStyle = '#DBD59C'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(W / 2 - 42, headerH + 210); ctx.lineTo(W / 2 + 42, headerH + 210); ctx.stroke();
-
-    // Description
-    ctx.fillStyle = 'rgba(34,34,34,0.72)';
-    ctx.font = '500 22px system-ui';
-    const descBottom = wrapTextCanvas(ctx, arch.desc, W / 2, headerH + 236, W - 160, 34);
-
-    // Together line
-    const togetherText = arch.together.replace(/<\/?strong>/g, '');
-    ctx.fillStyle = 'rgba(34,34,34,0.45)';
-    ctx.font = '400 16px system-ui';
-    wrapTextCanvas(ctx, togetherText, W / 2, Math.max(descBottom + 22, headerH + 580), W - 200, 26);
-
-    // Corner brackets
-    ctx.strokeStyle = 'rgba(34,34,34,0.14)'; ctx.lineWidth = 1.5;
-    const cm = 38;
-    [[24,24,1,1],[W-24,24,-1,1],[24,H-24,1,-1],[W-24,H-24,-1,-1]].forEach(([x,y,sx,sy]) => {
-      ctx.beginPath();
-      ctx.moveTo(x, y); ctx.lineTo(x + cm * sx, y);
-      ctx.moveTo(x, y); ctx.lineTo(x, y + cm * sy);
-      ctx.stroke();
+    // Traits box (top-left, accent colour)
+    scRoundRect(boxPad, row1Y, col1W, row1H, 20, accentColor, null);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#222222';
+    (arch.traits || []).forEach((trait, i) => {
+      ctx.font = `900 ${i === 0 ? 38 : 32}px "Playfair Display", serif`;
+      ctx.fillText(trait, boxPad + 24, row1Y + 32 + i * 82);
     });
 
-    // trove.garden
-    ctx.fillStyle = '#DBD59C';
-    ctx.font = '400 16px system-ui';
-    ctx.fillText('trove.garden', W / 2, H - 48);
+    // Insight box (top-right) — archetype portrait PNG, fallback to investor.png
+    scRoundRect(boxPad + col1W + gap, row1Y, col2W, row1H, 20, '#FFFFFF', 'rgba(34,34,34,0.1)');
+    {
+      const pad = 20;
+      const imgSrc = `./assets/${ARCH_TYPE_IMG[id] || 'investor.png'}`;
+      await drawAsset(imgSrc, boxPad + col1W + gap + pad, row1Y + pad, col2W - pad * 2, row1H - pad * 2, 0);
+    }
+
+    // Archetype name box (full width, dark)
+    const row2Y = row1Y + row1H + gap, row2H = 210;
+    scRoundRect(boxPad, row2Y, W - boxPad * 2, row2H, 20, '#222222', null);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#88ABE3';
+    ctx.font = '400 13px "DM Mono", monospace';
+    ctx.textBaseline = 'top';
+    ctx.fillText('your investor type', W / 2, row2Y + 22);
+
+    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'investor.png'}`, boxPad + 28, row2Y + 30, 130, 130, -5);
+
+    const nameX = boxPad + 28 + 130 + 24;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#F9F9F2';
+    ctx.font = '900 42px "Playfair Display", serif';
+    ctx.fillText(arch.name.replace('The ', ''), nameX, row2Y + 58);
+    ctx.font = '400 16px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(249,249,242,0.55)';
+    ctx.fillText(arch.sub, nameX, row2Y + 118);
+
+    // ── 4. Three collected-item boxes ───────────────────────────────
+    const collected = ARCH_COLLECTED[id] || ['apple.png', 'flower.png', 'coin.png'];
+    const row3Y = row2Y + row2H + gap, row3H = 160;
+    const cellW = Math.floor((W - boxPad * 2 - gap * 2) / 3);
+
+    const drawCells = collected.map((src, i) => {
+      const cellX = boxPad + i * (cellW + gap);
+      const hex   = accentColor.replace('#', '');
+      const r     = parseInt(hex.slice(0,2), 16);
+      const g     = parseInt(hex.slice(2,4), 16);
+      const b     = parseInt(hex.slice(4,6), 16);
+      scRoundRect(cellX, row3Y, cellW, row3H, 16,
+        `rgba(${r},${g},${b},0.33)`, `rgba(${r},${g},${b},0.55)`);
+      return drawAsset(`./assets/${src}`,
+        cellX + cellW / 2 - 44, row3Y + row3H / 2 - 44, 88, 88, (i - 1) * 6);
+    });
+    await Promise.all(drawCells);
+
+    // ── 5. Footer ────────────────────────────────────────────────────
+    const footerY = row3Y + row3H + 36;
+
+    await drawAsset('./TroveLogo.png', boxPad, footerY, 120, 36, 0);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(34,34,34,0.35)';
+    ctx.font = '400 13px "DM Mono", monospace';
+    ctx.fillText('trove.garden · 2026', W / 2, footerY + 12);
+
+    const qrSize = 90;
+    const qrCanvas = await generateQR('https://henliz.github.io/not-a-deck-pitch/', qrSize);
+    if (qrCanvas) {
+      const qrX = W - boxPad - qrSize - 8;
+      const qrY = footerY - 8;
+      scRoundRect(qrX - 8, qrY - 8, qrSize + 16, qrSize + 16, 8, '#FFFFFF', 'rgba(34,34,34,0.1)');
+      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+    }
 
     return cvs;
   }
 
   function contBtn(label) {
     return new Promise(resolve => {
+      const wrap = document.createElement('div');
+      wrap.className = 'tg-pl tg-pitch-choices';
       const btn = document.createElement('button');
-      btn.className = 'tg-pl tg-cont';
+      btn.className = 'tg-pitch-choice';
       btn.textContent = label;
-      btn.onclick = () => { HAPTIC.tap(); btn.disabled = true; disintegrate(btn); setTimeout(resolve, 350); };
-      btn.style.opacity = '0'; // pre-invisible: no flash, no accidental tap on touchscreen
-      pitch.appendChild(btn);
+      btn.style.opacity = '0';
+      btn.onclick = () => { HAPTIC.tap(); btn.disabled = true; disintegrate(wrap); setTimeout(resolve, 350); };
+      wrap.appendChild(btn);
+      pitch.appendChild(wrap);
       scrollPitch();
       if (hasGSAP) gsap.fromTo(btn, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.42, ease: 'power3.out', clearProps: 'all' });
       else btn.style.opacity = '';
@@ -1519,7 +1610,7 @@ window.tgInitGame = async function () {
       y: 18, stagger: 0.05, duration: 0.44, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(200);
-    const questionEl = line('<span class="tg-hl">what they actually did when it mattered.</span>', 'tg-pl--big');
+    const questionEl = line('<span class="tg-hl">what they actually did<br>when it mattered.</span>', 'tg-pl--big');
     await reveal(questionEl, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
@@ -1689,7 +1780,7 @@ window.tgInitGame = async function () {
     await w(350);
     // Type C — pull quote + phone decal
     await pqReveal(
-      '"This game read me for absolute filth." — a Valentine\'s Day player. Completely unprompted.',
+      '"This game read me for absolute filth."<span class="tg-pq-attr">— a Valentine\'s Day player. Completely unprompted.</span>',
       'phone.png', { right: '-20px', top: '-4px', w: 42, delay: 0.5 }
     );
     const idx = await branchChoices([
@@ -1715,19 +1806,78 @@ window.tgInitGame = async function () {
       y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
-    // Type A — statement
+    // ── "Trove is" with TroveOh spin animation ──
     flash();
-    const infraEl = line('Trove is infrastructure.', 'tg-pl--big');
-    await reveal(infraEl, {
+    const troveIsWrap = document.createElement('div');
+    troveIsWrap.className = 'tg-pl';
+    troveIsWrap.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:4px;';
+
+    const logoWrap = document.createElement('span');
+    logoWrap.className = 'tg-hero-logo';
+    logoWrap.style.marginTop = '18px'; // move logo down a bit
+
+    const wordImg = document.createElement('img');
+    wordImg.src = './TroveLogo.png'; wordImg.className = 'tg-hero-word'; wordImg.style.opacity = '0';
+    const ohImg  = document.createElement('img');
+    ohImg.src  = './TroveOh.png';   ohImg.className  = 'tg-hero-oh';
+    logoWrap.append(wordImg, ohImg);
+
+    const isSpan = document.createElement('span');
+    isSpan.style.cssText = 'font-family:var(--font-display);font-size:clamp(30px,12cqw,52px);font-weight:700;line-height:1.15;color:var(--text);opacity:0;';
+    isSpan.textContent = 'is';
+
+    troveIsWrap.append(logoWrap, isSpan);
+    pitch.appendChild(troveIsWrap);
+    scrollPitch();
+
+    await new Promise(resolve => {
+      let loaded = 0;
+      const onLoad = () => { if (++loaded < 2) return; go(); };
+      wordImg.onload = onLoad; ohImg.onload = onLoad;
+      if (wordImg.complete) onLoad();
+      if (ohImg.complete)   onLoad();
+
+      function go() {
+        const W    = wordImg.offsetWidth || 88;
+        const ohW  = ohImg.offsetWidth   || 24;
+        const startX = W + 14;
+        const endX   = Math.round(W * 0.48 - ohW / 2);
+        // Fade "is" in shortly after the Oh starts spinning
+        setTimeout(() => {
+          if (hasGSAP) gsap.fromTo(isSpan, { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.4, ease: 'power3.out', clearProps: 'all' });
+          else isSpan.style.opacity = '1';
+        }, 420);
+        ohImg.style.transform = `translateX(${startX}px)`;
+        const ease = p => p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2,2)/2;
+        let t0 = null;
+        function frame(ts) {
+          if (!t0) t0 = ts;
+          const elapsed = ts - t0;
+          const p  = Math.min(1, elapsed / 2100);
+          const e  = ease(p);
+          ohImg.style.transform  = `translateX(${startX + (endX - startX) * e}px) rotate(${e * 720}deg)`;
+          const cp = Math.max(0, Math.min(1, (elapsed - 2100 * 0.62) / 620));
+          ohImg.style.opacity  = String(1 - cp);
+          wordImg.style.opacity = String(cp);
+          if (p < 1) requestAnimationFrame(frame);
+          else { ohImg.remove(); HAPTIC.burst(); resolve(); }
+        }
+        requestAnimationFrame(frame);
+      }
+    });
+    await w(200);
+
+    // ── "infrastructure." on its own line ──
+    const infraLine = line('infrastructure.', 'tg-pl--punch');
+    await reveal(infraLine, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
       rotation: () => gsap.utils.random(-15, 15),
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
-    infraEl.style.position = 'relative'; infraEl.style.overflow = 'visible';
+    infraLine.style.position = 'relative'; infraLine.style.overflow = 'visible';
     const houseDecal = decal('house.png', 'tg-decal--bob', { right: '-26px', top: '-14px', w: 54, fromY: -30, delay: 0.3 });
-    infraEl.appendChild(houseDecal);
-    // Fix 4: curve text arc around house decal
+    infraLine.appendChild(houseDecal);
     setTimeout(() => curveText(houseDecal, '\u2736 BEHAVIORAL LAYER \u2736 INFRASTRUCTURE \u2736 MOAT \u2736',
       { above: false, radius: 44, arc: 200, fontSize: 7.5, delay: 0 }), 500);
     await w(600);
@@ -1819,7 +1969,37 @@ window.tgInitGame = async function () {
     branchPath.push('C1'); usedFounderPath = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Helen Huang');
-    await w(200);
+    await w(180);
+    // ── Helen photo reveal ────────────────────────────────────────────────
+    const photoWrap = document.createElement('div');
+    photoWrap.className = 'tg-pl tg-founder-photo-wrap';
+    const helenImg = document.createElement('img');
+    helenImg.src = './helenfounder.jpg';
+    helenImg.className = 'tg-founder-photo';
+    helenImg.alt = 'Helen Huang';
+    photoWrap.appendChild(helenImg);
+    pitch.appendChild(photoWrap);
+    scrollPitch();
+
+    if (hasGSAP) {
+      await new Promise(r => gsap.from(helenImg, {
+        scale: 0.88, opacity: 0, y: 18, duration: 0.65,
+        ease: hasCE ? 'unfurl' : 'back.out(1.6)',
+        onComplete: r,
+      }));
+      HAPTIC?.card?.();
+      // Fun decals scattered around the photo
+      const photoDecals = [
+        { src: 'mic.png',      right: '-18px', top:    '-16px', w: 48, delay: 0.05, fromRot: -30, toRot: 8  },
+        { src: 'starhehe.png', right: '-14px', bottom: '-12px', w: 38, delay: 0.12, fromRot:  20, toRot: -5 },
+        { src: 'flower.png',   left:  '-16px', top:    '-14px', w: 42, delay: 0.18, fromRot: -20, toRot: 12 },
+        { src: 'babystar.png', left:  '-10px', bottom: '-10px', w: 68, delay: 0.24, fromRot:  15, toRot: -8 },
+      ];
+      photoDecals.forEach(({ src, w: dw, delay, fromRot, toRot, ...pos }) => {
+        photoWrap.appendChild(decal(src, 'tg-decal--bob', { ...pos, w: dw, delay, fromRot, toRot }));
+      });
+    }
+    await w(280);
     // ── Gap 5: Helen credentials as rlist ─────────────────────────────────
     const credList = await rlistReveal([
       { m: '01', t: 'Second-time founder' },
@@ -1837,24 +2017,44 @@ window.tgInitGame = async function () {
     });
     await w(500); // hold — next line is the answer
     flash();
-    // Type A — the answer
-    const livedEl = line('She started it because she lived the problem.', 'tg-pl--big');
-    await reveal(livedEl, {
+    // Line 1
+    const startedEl = line('She started it', 'tg-pl--big');
+    startedEl.style.marginBottom = '2px';
+    await reveal(startedEl, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
       rotation: () => gsap.utils.random(-15, 15),
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
+    // Line 2
+    const becauseEl = line('because she', 'tg-pl--big');
+    becauseEl.style.marginTop = '-2px';
+    becauseEl.style.marginBottom = '8px';
+    await reveal(becauseEl, {
+      type: 'chars', y: 0,
+      scale: () => gsap.utils.random(0.1, 0.5),
+      rotation: () => gsap.utils.random(-15, 15),
+      stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
+    });
+    // Line 3 — smaller, words bloom in from huge + blur
+    const livedEl = line('she lived the problem.', 'tg-pl--impact');
+    livedEl.style.cssText += 'color:var(--shift);margin-top:0;';
+    await reveal(livedEl, {
+      type: 'words', y: 0,
+      scale: () => gsap.utils.random(2.0, 2.6),
+      blur: true,
+      duration: 0.75, ease: hasCE ? 'hesitate' : 'power3.out', stagger: 0.18,
+    });
     livedEl.style.position = 'relative'; livedEl.style.overflow = 'visible';
-    livedEl.appendChild(decal('heartbreak.png', 'tg-decal--bob', { right: '-26px', top: '-4px', w: 50, fromY: -20, delay: 0.4 }));
+    livedEl.appendChild(decal('heartbreak.png', 'tg-decal--lubdub', { right: '-32px', top: '-8px', w: 80, fromY: -24, delay: 0.4 }));
     await w(400);
     // Type C — the quote that proves it
     await pqReveal(
-      '"You\'re working on something important, you know? More importantly, you are doing it the right way." — unsolicited message from a player after launch.',
-      'babystar.png', { right: '-20px', top: '-8px', w: 38, delay: 0.5 }
+      '"You\'re working on something important, you know? More importantly, you are doing it the right way."<span class="tg-pq-attr">— unsolicited message from a player after launch.</span>',
+      'babystar.png', { right: '-18px', bottom: '-18px', w: 120, delay: 0.5 }, 'tg-decal--party'
     );
     // The 30K context
-    await dimLines('She also built a 30,000-person tech audience before she needed it. That\'s not a vanity metric. That\'s a launch list.', 180);
+    await dimLines('that\'s not a vanity metric, but a launch list to the moon', 180);
     await w(600);
     const idx = await branchChoices([
       "What does she know that nobody else in this space has figured out?",
@@ -1881,12 +2081,43 @@ window.tgInitGame = async function () {
       y: 6, stagger: 0.04, duration: 0.28, ease: hasCE ? 'unfurl' : 'power2.out',
     });
     await w(80);
-    // Punchline: gold slam — short enough to never wrap mid-word
-    await reveal(line('The questionnaire is the problem.', 'tg-pl--punch'), {
-      type: 'chars', y: 0,
-      scale: () => gsap.utils.random(0.1, 0.5),
-      rotation: () => gsap.utils.random(-12, 12),
-      stagger: 0.045, from: 'center', duration: 0.6, ease: hasCE ? 'slam' : 'back.out(3)',
+    // "the / questionnaire / is the problem." — three-line xray glitch reveal
+    const doGlitch = async (el, text) => {
+      if (hasGSAP && hasScrTx) {
+        el.textContent = '';
+        await new Promise(r => gsap.to(el, {
+          duration: 1.1,
+          scrambleText: { text, chars: '!<>-_\\/[]{}—=+*^?#@░▒▓', revealDelay: 0.28, speed: 0.45 },
+          ease: 'none', onComplete: r,
+        }));
+        const r2 = el.cloneNode(true), b2 = el.cloneNode(true);
+        r2.style.cssText = 'position:absolute;top:0;left:0;color:var(--shift);mix-blend-mode:multiply;pointer-events:none;';
+        b2.style.cssText = 'position:absolute;top:0;left:0;color:var(--trace);mix-blend-mode:multiply;pointer-events:none;';
+        el.style.position = 'relative';
+        el.appendChild(r2); el.appendChild(b2);
+        await new Promise(r => gsap.timeline({ onComplete: r })
+          .to(r2, { x: () => (Math.random()-0.5)*14, duration: 0.05, ease: 'steps(1)', repeat: 6, yoyo: true })
+          .to(b2, { x: () => (Math.random()-0.5)*14, duration: 0.05, ease: 'steps(1)', repeat: 6, yoyo: true }, '<')
+          .to(el, { skewX: () => (Math.random()-0.5)*3, duration: 0.08, ease: 'steps(1)', repeat: 3, yoyo: true }, '<')
+          .call(() => { r2.remove(); b2.remove(); el.style.position = ''; })
+        );
+      } else if (hasGSAP) {
+        const split = new SplitText(el, { type: 'chars' });
+        await new Promise(r => gsap.from(split.chars, {
+          opacity: 0, scale: () => gsap.utils.random(0.1, 0.5),
+          rotation: () => gsap.utils.random(-12, 12),
+          stagger: 0.05, from: 'center', duration: 0.6,
+          ease: hasCE ? 'slam' : 'back.out(3)', clearProps: 'all', onComplete: r,
+        }));
+      }
+    };
+    flash();
+    await doGlitch(line('the', 'tg-pl--huge'), 'the');
+    await w(100);
+    await doGlitch(line('questionnaire', 'tg-pl--huge'), 'questionnaire');
+    await w(220);
+    await reveal(line('is the problem.', 'tg-pl--wordpop'), {
+      y: 10, stagger: 0.04, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(600);
     // Supporting context — dim blue, tighter stagger, no blur (different from med)
@@ -1894,7 +2125,7 @@ window.tgInitGame = async function () {
       y: 8, stagger: 0.06, duration: 0.50, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(350);
-    await pqReveal('"It felt so deeply intimate from the beginning. Terrifying. Well done." — Valentine\'s Day player.');
+    await pqReveal('"It felt so deeply intimate from the beginning. Terrifying. Well done."<span class="tg-pq-attr">— Valentine\'s Day player.</span>');
     const idx = await branchChoices([
       "Show me what the first real launch looked like.",
       "What makes this defensible long-term?",
@@ -1939,7 +2170,7 @@ window.tgInitGame = async function () {
     ]);
     // babystar pops in top-right after stats land
     statsEl.style.position = 'relative'; statsEl.style.overflow = 'visible';
-    statsEl.appendChild(decal('babystar.png', 'tg-decal--bob', { right: '-18px', top: '-18px', w: 40, delay: 0.2 }));
+    statsEl.appendChild(decal('babystar.png', 'tg-decal--bob', { right: '-24px', top: '-24px', w: 80, delay: 0.2 }));
     await w(500);
     await reveal(line('When the campaign ended —', 'tg-pl--dim'), {
       y: 10, stagger: 0.06, duration: 0.50, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -1954,7 +2185,7 @@ window.tgInitGame = async function () {
       stagger: 0.045, from: 'center', duration: 0.6, ease: hasCE ? 'slam' : 'back.out(3)',
     });
     discordEl.style.position = 'relative'; discordEl.style.overflow = 'visible';
-    discordEl.appendChild(decal('bubblublower.png', 'tg-decal--bob', { right: '-24px', top: '-8px', w: 44, fromY: -22, delay: 0.2 }));
+    discordEl.appendChild(decal('gaming.png', 'tg-decal--bob', { left: '-22px', top: '-12px', w: 88, fromY: -28, delay: 0.2 }));
     await w(350);
     await dimLines('Nobody asked them to. No push notifications. No referral loop. They just didn\'t want it to end.', 150);
     await w(400);
@@ -2134,37 +2365,77 @@ window.tgInitGame = async function () {
   }
 
   // ── RECAP SCREEN PRIMITIVE ────────────────────────────
-  function recapScreen(buildFn) {
-    return new Promise(resolve => {
-      const overlay = document.createElement('div');
-      overlay.className = 'tg-recap-overlay';
-      scene.appendChild(overlay);
-      buildFn(overlay);
+  async function recapScreen(buildFn, opts = {}) {
+    if (!scene) return;
 
-      const hint = document.createElement('div');
-      hint.className = 'tg-recap-hint';
-      hint.textContent = 'tap to continue';
-      overlay.appendChild(hint);
+    const overlay = document.createElement('div');
+    overlay.className = 'tg-recap-overlay';
+    overlay.style.background = opts.bg || '#F9F9F2';
+    scene.appendChild(overlay);
 
-      HAPTIC.begin();
-      if (hasGSAP) {
-        gsap.from(overlay, { y: '100%', duration: 0.55, ease: hasCE ? 'slam' : 'back.out(1.5)', clearProps: 'transform' });
-      }
+    const hint = document.createElement('div');
+    hint.style.cssText = `
+      position:absolute;bottom:22px;left:0;right:0;
+      font-family:var(--font-label);font-size:10px;
+      letter-spacing:0.14em;text-transform:uppercase;
+      opacity:0;color:inherit;pointer-events:none;text-align:center;
+    `;
+    hint.textContent = 'tap to continue';
+    overlay.appendChild(hint);
 
-      const advance = () => {
+    // Entrance
+    if (hasGSAP) {
+      const fromVars = {
+        slideUp:    { y: '100%' },
+        slideLeft:  { x: '-100%' },
+        slideRight: { x: '100%' },
+        scale:      { scale: 0.82, opacity: 0 },
+        fade:       { opacity: 0 },
+      }[opts.entrance || 'slideUp'] || { y: '100%' };
+      await new Promise(r => gsap.from(overlay, {
+        ...fromVars, duration: 0.52, ease: hasCE ? 'slam' : 'back.out(1.4)',
+        clearProps: 'transform,opacity', onComplete: r,
+      }));
+    }
+
+    // Build content AFTER slide-in (fixes GSAP firing invisible)
+    await buildFn(overlay);
+
+    if (hasGSAP) gsap.to(hint, { opacity: 0.38, duration: 0.4, delay: 0.6 });
+    HAPTIC.card();
+
+    await new Promise(resolve => {
+      const dismiss = (e) => {
+        e.preventDefault();
+        overlay.removeEventListener('click', dismiss);
+        overlay.removeEventListener('touchend', dismiss);
         HAPTIC.tap();
-        overlay.removeEventListener('click', advance);
+
+        const toVars = {
+          slideUp:    { y: '-105%' },
+          slideLeft:  { x: '105%' },
+          slideRight: { x: '-105%' },
+          scale:      { scale: 1.1, opacity: 0 },
+          fade:       { opacity: 0 },
+        }[opts.exit || 'slideUp'] || { y: '-105%' };
+
         if (hasGSAP) {
           gsap.to(overlay, {
-            y: '-100%', duration: 0.42, ease: hasCE ? 'unfurl' : 'power3.in',
-            onComplete: () => { overlay.remove(); resolve(); },
+            ...toVars, duration: 0.38, ease: 'power2.in',
+            onComplete: () => {
+              overlay.remove();
+              resolve();
+            },
           });
         } else {
           overlay.remove();
           resolve();
         }
       };
-      setTimeout(() => overlay.addEventListener('click', advance), 800);
+      setTimeout(() => {
+        overlay.addEventListener('click', dismiss);
+        overlay.addEventListener('touchend', dismiss, { passive: false });
+      }, opts.minHold || 900);
     });
   }
 
@@ -2193,33 +2464,35 @@ window.tgInitGame = async function () {
     return new Promise(resolveEmail => {
       const emailDiv = document.createElement('div');
       emailDiv.className = 'tg-pl';
+      emailDiv.style.cssText = 'position:relative;padding:8px 0 20px;overflow:visible;';
       emailDiv.innerHTML = `
-        <div class="tg-email-hero" id="tg-email-hero" style="opacity:0">curious?</div>
         <div class="tg-email-parade" id="tg-email-parade"></div>
+        <div class="tg-email-hero" id="tg-email-hero" style="opacity:0">curious?</div>
         <div class="tg-email-sub" id="tg-email-sub" style="opacity:0">stay up to date with upcoming drops</div>
         <div class="tg-email-list-lbl" id="tg-email-lbl" style="opacity:0">first-look list — one note when it's real</div>
         <div class="tg-email-form" id="tg-email-form" style="opacity:0">
           <input class="tg-email-in" id="tg-email-in" type="email" placeholder="you@somewhere.com" autocomplete="email">
-          <button class="tg-email-send" id="tg-email-send">→</button>
+          <button class="tg-email-send" id="tg-email-send">join →</button>
         </div>
-        <button class="tg-e-no" id="tg-email-skip" style="opacity:0">skip →</button>
         <span class="tg-email-fine" id="tg-email-fine" style="opacity:0">no spam. just signal — you'll hear first when trove is ready.</span>
         <div class="tg-email-helen" id="tg-email-helen" style="opacity:0">Helen Huang · Founder, Trove &nbsp;·&nbsp; <a href="mailto:helen@trove.garden" class="tg-email-helen-link">helen@trove.garden</a></div>
       `;
 
       const paradeEl = emailDiv.querySelector('#tg-email-parade');
-      [
-        { src: 'starhehe.png',    anim: 'spin'   },
-        { src: 'frog.png',        anim: 'bounce' },
-        { src: 'derpy.png',       anim: 'dance'  },
-        { src: 'turtle.png',      anim: 'bob'    },
-        { src: 'caterpillar.png', anim: 'wiggle' },
-        { src: 'babystar.png',    anim: 'spin2'  },
-      ].forEach(a => {
+      // scattered around the container: top corners, mid sides, bottom corners
+      const paradeSpots = [
+        { src: 'starhehe.png',    anim: 'spin',   css: 'top:6px;left:4px'        },
+        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:4px'       },
+        { src: 'frog.png',        anim: 'bounce', css: 'top:40%;left:2px'        },
+        { src: 'derpy.png',       anim: 'dance',  css: 'top:40%;right:2px'       },
+        { src: 'turtle.png',      anim: 'bob',    css: 'bottom:30px;left:4px'    },
+        { src: 'caterpillar.png', anim: 'wiggle', css: 'bottom:30px;right:4px'   },
+      ];
+      paradeSpots.forEach(a => {
         const img = document.createElement('img');
         img.src = `./assets/${a.src}`;
         img.dataset.anim = a.anim;
-        img.style.opacity = '0';
+        img.style.cssText = a.css + ';opacity:0;';
         paradeEl.appendChild(img);
       });
 
@@ -2241,7 +2514,7 @@ window.tgInitGame = async function () {
           localStorage.setItem('tg-leads', JSON.stringify(leads));
         } catch (e) {}
         if (hasGSAP) {
-          gsap.to([emailDiv.querySelector('#tg-email-form'), emailDiv.querySelector('#tg-email-skip'), emailDiv.querySelector('#tg-email-fine')],
+          gsap.to([emailDiv.querySelector('#tg-email-form'), emailDiv.querySelector('#tg-email-fine')],
             { opacity: 0, y: -6, duration: 0.25, stagger: 0.06 });
           setTimeout(() => {
             emailDiv.innerHTML = `<div style="font-family:var(--font-label);font-size:12px;color:var(--trace);letter-spacing:0.08em;padding:6px 0;opacity:0" id="tg-email-ok">you're on the list ✓</div>`;
@@ -2260,7 +2533,6 @@ window.tgInitGame = async function () {
         const subEl     = emailDiv.querySelector('#tg-email-sub');
         const lblEl     = emailDiv.querySelector('#tg-email-lbl');
         const formEl    = emailDiv.querySelector('#tg-email-form');
-        const skipEl    = emailDiv.querySelector('#tg-email-skip');
         const fineEl    = emailDiv.querySelector('#tg-email-fine');
         const paradeImgs = paradeEl.querySelectorAll('img');
 
@@ -2297,14 +2569,13 @@ window.tgInitGame = async function () {
 
         gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4,  ease: 'power3.out', delay: 0.88 });
         gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3,  ease: 'power2.out', delay: 1.05 });
-        gsap.fromTo(formEl, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.2 });
-        gsap.fromTo(skipEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.36 });
-        gsap.fromTo(fineEl, { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.46,
+        gsap.fromTo(formEl,  { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 1.2 });
+        gsap.fromTo(fineEl,  { opacity: 0 },         { opacity: 1,       duration: 0.25, delay: 1.36,
           onComplete: () => { emailDiv.querySelector('#tg-email-in')?.focus(); },
         });
-        gsap.fromTo(helenEl, { opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', delay: 1.64 });
+        gsap.fromTo(helenEl, { opacity: 0, y: 8 },  { opacity: 1, y: 0, duration: 0.35, ease: 'power3.out', delay: 1.5 });
       } else {
-        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-skip','tg-email-fine','tg-email-helen']
+        ['tg-email-hero','tg-email-sub','tg-email-lbl','tg-email-form','tg-email-fine','tg-email-helen']
           .forEach(id => { const el = emailDiv.querySelector('#' + id); if (el) el.style.opacity = '1'; });
         paradeEl.querySelectorAll('img').forEach(img => { img.style.opacity = '1'; });
         emailDiv.querySelector('#tg-email-in')?.focus();
@@ -2313,7 +2584,6 @@ window.tgInitGame = async function () {
       setTimeout(() => {
         emailDiv.querySelector('#tg-email-in')?.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
         emailDiv.querySelector('#tg-email-send')?.addEventListener('click', submit);
-        emailDiv.querySelector('#tg-email-skip')?.addEventListener('click', () => { HAPTIC.tap(); resolveEmail(); });
       }, 80);
     });
   }
@@ -2326,70 +2596,226 @@ window.tgInitGame = async function () {
     const data = buildRecapData(id);
     const arch = data.arch;
 
-    // ── Screen 1: path summary ────────────────────────────
-    await recapScreen(el => {
-      const badges = [];
-      if (data.pushedBackOnData)   badges.push('skeptic');
-      if (data.usedFounderPath)    badges.push('team-first');
-      if (data.wentDeepOnMoat)     badges.push('systems thinker');
-      if (data.wentStraightToAsk)  badges.push('decisive');
-      el.innerHTML = `
-        <div class="tg-recap-eyebrow">your session · wrapped</div>
-        <div class="tg-recap-big">${data.pathLength} moves.</div>
-        <div class="tg-recap-body">You came in as a <span class="tg-recap-hl">${data.firstChoiceLabel}</span>.</div>
-        <div class="tg-recap-body">${
-          data.wentDeepOnMoat     ? 'You stayed for the flywheel.' :
-          data.wentStraightToAsk  ? 'You cut to the ask.' :
-          data.usedFounderPath    ? 'You needed to know the founder first.' :
-                                    'You followed the signal.'
-        }</div>
-        ${badges.length ? `<div class="tg-recap-fine">${badges.join(' · ')}</div>` : '<div class="tg-recap-fine"></div>'}
-      `;
-    });
+    // ── Persistent backdrop — covers scene between overlay transitions ─
+    // Without this, the gap between overlay.remove() and the next overlay
+    // being appended shows the raw pitch-scene background (or pitch content).
+    const wrapBackdrop = scene ? document.createElement('div') : null;
+    if (wrapBackdrop) {
+      wrapBackdrop.style.cssText = 'position:absolute;inset:0;z-index:498;background:#1C1C1E;pointer-events:none;opacity:0;';
+      scene.appendChild(wrapBackdrop);
+      if (hasGSAP) await new Promise(r => gsap.to(wrapBackdrop, { opacity: 1, duration: 0.22, onComplete: r }));
+      else wrapBackdrop.style.opacity = '1';
+    }
+    pitch.style.visibility = 'hidden';
 
-    // ── Screen 2: trait signal ────────────────────────────
-    await recapScreen(el => {
-      el.style.background = 'var(--shift)';
-      el.innerHTML = `
-        <div class="tg-recap-eyebrow" style="color:var(--anchor)">pattern detected</div>
-        <div class="tg-recap-big" style="color:var(--anchor)">${data.traits[0] || 'you paid attention'}.</div>
-        <div class="tg-recap-body" style="color:var(--anchor);opacity:0.72">${data.traits[1] || ''}</div>
-      `;
-    });
+    // ── Screen 1: session summary — dark, ghosted number ─────────────
+    await recapScreen(async overlay => {
+      overlay.style.color = '#F9F9F2';
 
-    // ── Screen 3: archetype name ──────────────────────────
-    await recapScreen(el => {
-      el.style.background = 'var(--anchor)';
-      el.innerHTML = `
-        <div class="tg-recap-eyebrow" style="color:var(--trace)">your investor archetype</div>
-        <div class="tg-recap-arch-name" id="tg-recap-arch-name" style="color:var(--shift)">${arch.name}</div>
-        <div class="tg-recap-body" style="color:rgba(255,255,255,0.68)">${arch.sub}</div>
+      const ghost = document.createElement('div');
+      ghost.style.cssText = `
+        position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);
+        font-family:var(--font-display);font-size:clamp(140px,38vw,200px);
+        font-weight:900;line-height:1;color:rgba(255,255,255,0.04);
+        pointer-events:none;user-select:none;white-space:nowrap;
       `;
+      ghost.textContent = data.pathLength;
+      overlay.insertBefore(ghost, overlay.firstChild);
+
+      const eyebrow = document.createElement('div');
+      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.45;margin-bottom:18px;';
+      eyebrow.textContent = 'your session · wrapped';
+
+      const big = document.createElement('div');
+      big.style.cssText = 'font-family:var(--font-display);font-size:clamp(36px,10vw,52px);font-weight:900;line-height:1.1;margin-bottom:14px;';
+      big.textContent = `${data.pathLength} moves.`;
+
+      const pathLine = document.createElement('div');
+      pathLine.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:16px;line-height:1.55;opacity:0.75;max-width:260px;margin-bottom:10px;';
+      pathLine.innerHTML = `You came in as a <span style="color:#DBD59C;font-weight:700">${data.firstChoiceLabel}</span>.`;
+
+      const detailLine = document.createElement('div');
+      detailLine.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:15px;opacity:0.55;max-width:240px;';
+      detailLine.textContent =
+        data.wentDeepOnMoat    ? 'You stayed for the flywheel.' :
+        data.wentStraightToAsk ? 'You cut to the ask.' :
+        data.usedFounderPath   ? 'You needed to know the founder first.' :
+                                 'You followed the signal.';
+
+      const floatSrcs = ['id.png','camera.png','watch.png','apple.png'];
+      const floatPos  = [{left:'12%',top:'18%'},{right:'14%',top:'22%'},{left:'18%',bottom:'24%'},{right:'12%',bottom:'28%'}];
+      floatSrcs.forEach((src, i) => {
+        const img = document.createElement('img');
+        img.src = `./assets/${src}`;
+        img.style.cssText = 'position:absolute;width:28px;height:auto;opacity:0;pointer-events:none;';
+        Object.assign(img.style, floatPos[i]);
+        overlay.appendChild(img);
+        if (hasGSAP) {
+          gsap.to(img, { opacity: 0.22, duration: 0.4, delay: 0.2 + i * 0.1 });
+          gsap.to(img, { y: -12, rotation: i % 2 === 0 ? 8 : -8, duration: 2 + i * 0.4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: i * 0.3 });
+        }
+      });
+
+      overlay.append(eyebrow, big, pathLine, detailLine);
       if (hasGSAP) {
-        const nameEl = el.querySelector('#tg-recap-arch-name');
-        if (nameEl) {
+        [eyebrow, big, pathLine, detailLine].forEach((el, i) => {
+          gsap.from(el, { opacity: 0, y: 20, duration: 0.44, ease: 'power3.out', delay: 0.05 + i * 0.12 });
+        });
+      }
+    }, { bg: '#1C1C1E', entrance: 'slideUp', exit: 'slideUp' });
+
+
+    // ── Screen 2: trait signal — gold, lightbulb slam ─────────────────
+    await recapScreen(async overlay => {
+      overlay.style.color = '#222222';
+
+      const bigAsset = document.createElement('img');
+      bigAsset.src = './assets/lightbulb.png';
+      bigAsset.style.cssText = 'width:clamp(72px,18vw,96px);height:auto;margin-bottom:20px;';
+      overlay.appendChild(bigAsset);
+
+      if (hasGSAP) {
+        gsap.from(bigAsset, {
+          opacity: 0, scale: 0.1, rotation: -180, y: 40,
+          duration: 0.9, ease: 'elastic.out(1,0.42)', delay: 0.05,
+          onComplete: () => {
+            gsap.to(bigAsset, { y: -8, rotation: 6, duration: 1.8, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+            orbitingTextRing(bigAsset, '\u2736 YOUR FIRST SIGNAL \u2736 PATTERN DETECTED \u2736');
+          },
+        });
+      }
+
+      const eyebrow = document.createElement('div');
+      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.5;margin-bottom:14px;';
+      eyebrow.textContent = 'pattern detected';
+
+      const big = document.createElement('div');
+      big.style.cssText = 'font-family:var(--font-display);font-size:clamp(22px,6vw,28px);font-weight:800;line-height:1.2;margin-bottom:12px;max-width:270px;';
+      big.textContent = (data.traits[0] || 'you paid attention') + '.';
+
+      const sub = document.createElement('div');
+      sub.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:14px;opacity:0.65;max-width:240px;line-height:1.55;';
+      sub.textContent = data.traits[1] || '';
+
+      overlay.append(eyebrow, big, sub);
+      if (hasGSAP) {
+        [eyebrow, big, sub].forEach((el, i) => {
+          gsap.from(el, { opacity: 0, y: 18, duration: 0.42, ease: 'power3.out', delay: 0.3 + i * 0.13 });
+        });
+      }
+    }, { bg: '#DBD59C', entrance: 'slideRight', exit: 'slideLeft' });
+
+
+    // ── Screen 3: archetype reveal — coloured bg, elastic asset slam ──
+    const ARCH_BG_COLORS = {
+      cartographer: '#DBD59C', contrarian: '#88ABE3',
+      architect: '#C3D9FF',   operator: '#FFFBCD', storyteller: '#DBD59C',
+    };
+    const ARCH_ASSETS_MAP = {
+      cartographer: 'camera.png', contrarian: 'boomerand.png',
+      architect: 'house.png',    operator: 'watch.png', storyteller: 'mic.png',
+    };
+    const revealBg    = ARCH_BG_COLORS[id]  || '#DBD59C';
+    const revealAsset = ARCH_ASSETS_MAP[id] || 'camera.png';
+    const revealDark  = id === 'contrarian';
+
+    await recapScreen(async overlay => {
+      overlay.style.color = revealDark ? '#F9F9F2' : '#222222';
+
+      const bgSrcs = ['babystar.png','starhehe.png','flower.png','coin.png','apple.png','socks.png'];
+      bgSrcs.forEach((src, i) => {
+        const img = document.createElement('img');
+        img.src = `./assets/${src}`;
+        const sz = 18 + Math.random() * 16;
+        img.style.cssText = `position:absolute;width:${sz}px;height:auto;opacity:0;pointer-events:none;
+          left:${6 + Math.random() * 88}%;top:${4 + Math.random() * 92}%;
+          transform:rotate(${(Math.random() - 0.5) * 40}deg);`;
+        overlay.insertBefore(img, overlay.firstChild);
+        if (hasGSAP) gsap.to(img, { opacity: 0.14 + Math.random() * 0.1, duration: 0.35, delay: 0.1 + i * 0.06 });
+      });
+
+      const eyebrow = document.createElement('div');
+      eyebrow.style.cssText = `font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:${revealDark ? '0.6' : '0.45'};margin-bottom:12px;`;
+      eyebrow.textContent = 'your investor archetype';
+
+      const bigAsset = document.createElement('img');
+      bigAsset.src = `./assets/${revealAsset}`;
+      bigAsset.style.cssText = 'width:clamp(88px,22vw,116px);height:auto;margin-bottom:16px;filter:drop-shadow(0 8px 20px rgba(0,0,0,0.15));';
+
+      const nameEl = document.createElement('div');
+      nameEl.style.cssText = `font-family:var(--font-display);font-size:clamp(30px,9vw,44px);font-weight:900;line-height:1.05;margin-bottom:10px;letter-spacing:-0.02em;`;
+      nameEl.textContent = arch.name;
+
+      const subEl = document.createElement('div');
+      subEl.style.cssText = `font-family:var(--font-label);font-size:13px;opacity:${revealDark ? '0.65' : '0.5'};letter-spacing:0.04em;`;
+      subEl.textContent = arch.sub;
+
+      overlay.append(eyebrow, bigAsset, nameEl, subEl);
+
+      if (hasGSAP) {
+        gsap.from(eyebrow, { opacity: 0, y: 12, duration: 0.35, ease: 'power3.out', delay: 0.05 });
+        gsap.from(bigAsset, {
+          opacity: 0, scale: 0.05, rotation: -200, y: 60,
+          duration: 1.1, ease: 'elastic.out(1,0.38)', delay: 0.1,
+          onComplete: () => {
+            gsap.to(bigAsset, { y: -10, rotation: 5, duration: 1.9, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+            orbitingTextRing(bigAsset, `\u2736 ${arch.name.toUpperCase()} \u2736 TROVE \u2736`);
+            assetBurst(bigAsset, 'celebrate', 10);
+          },
+        });
+        if (hasScrTx) {
+          gsap.set(nameEl, { opacity: 1 });
+          gsap.to(nameEl, {
+            duration: 1.2, delay: 0.45,
+            scrambleText: { text: arch.name, chars: '!<>-_\\/[]{}—=+*^?#░▒▓ABCDEFGHIJKLMNOPQRSTUVWXYZ', revealDelay: 0.28, speed: 0.5 },
+            ease: 'none',
+          });
+        } else {
           const split = new SplitText(nameEl, { type: 'chars' });
           gsap.from(split.chars, {
-            opacity: 0, y: 44, scale: 0.25,
-            rotation: i => Math.sin(i * 1.4) * 22,
-            duration: 0.68, ease: hasCE ? 'slam' : 'back.out(2.5)',
+            opacity: 0, y: 40, scale: 0.2, rotation: i => Math.sin(i * 1.4) * 22,
+            duration: 0.65, ease: 'back.out(2.5)',
             stagger: { each: 0.07, ease: 'power2.out' },
-            delay: 0.18,
+            delay: 0.38,
           });
         }
+        gsap.from(subEl, { opacity: 0, y: 10, duration: 0.38, ease: 'power3.out', delay: 1.3 });
       }
-      HAPTIC.notif();
-    });
+    }, { bg: revealBg, entrance: 'scale', exit: 'slideUp' });
 
-    // ── Screen 4: archetype description ──────────────────
-    await recapScreen(el => {
-      el.style.background = 'var(--trace)';
-      el.innerHTML = `
-        <div class="tg-recap-eyebrow" style="color:var(--anchor)">${arch.name}</div>
-        <div class="tg-recap-big" style="color:var(--anchor);font-size:clamp(18px,6.5cqw,28px);line-height:1.25">${arch.desc}</div>
-        <div class="tg-recap-body" style="color:var(--anchor);opacity:0.72;margin-top:18px">${arch.together}</div>
-      `;
-    });
+
+    // ── Screen 4: what this means — blue, desc + together, last screen ─
+    await recapScreen(async overlay => {
+      overlay.style.color = '#F9F9F2';
+
+      const eyebrow = document.createElement('div');
+      eyebrow.style.cssText = 'font-family:var(--font-label);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.6;margin-bottom:16px;';
+      eyebrow.textContent = arch.name;
+
+      const desc = document.createElement('div');
+      desc.style.cssText = 'font-family:var(--font-display);font-size:clamp(16px,5.5vw,22px);font-weight:700;line-height:1.35;margin-bottom:18px;max-width:290px;';
+      desc.textContent = arch.desc;
+
+      const together = document.createElement('div');
+      together.style.cssText = 'font-family:var(--font-label);font-size:13px;opacity:0.65;max-width:260px;line-height:1.55;';
+      together.innerHTML = arch.together;
+
+      overlay.append(eyebrow, desc, together);
+      if (hasGSAP) {
+        [eyebrow, desc, together].forEach((el, i) => {
+          gsap.from(el, { opacity: 0, y: 16, duration: 0.44, ease: 'power3.out', delay: 0.08 + i * 0.16 });
+        });
+      }
+    }, { bg: '#88ABE3', entrance: 'slideUp', exit: 'fade' });
+
+    // ── Teardown: remove backdrop, restore pitch ──────────
+    if (wrapBackdrop) {
+      if (hasGSAP) await new Promise(r => gsap.to(wrapBackdrop, { opacity: 0, duration: 0.25, onComplete: r }));
+      wrapBackdrop.remove();
+    }
+    pitch.style.visibility = '';
+    _atBottom = true; // force scroll tracking so post-recap reveals scroll into view
+    pitch.scrollTop = pitch.scrollHeight;
 
     await w(300);
 
@@ -2460,7 +2886,7 @@ window.tgInitGame = async function () {
     });
     await w(500);
 
-    // ── Profile card ──────────────────────────────────────
+    // ── Generate share card first, then build profile card ──
     const archetypeAssets = {
       cartographer: { src: 'camera.png',    opts: { right: '-28px', top: '-12px', w: 56 } },
       contrarian:   { src: 'boomerand.png', opts: { right: '-24px', top: '-8px',  w: 52, fromRot: -45, toRot: 8 } },
@@ -2469,20 +2895,55 @@ window.tgInitGame = async function () {
       storyteller:  { src: 'mic.png',       opts: { right: '-24px', top: '-10px', w: 52 } },
     };
 
+    let cvs = null;
+    let cardDataUrl = null;
+    try {
+      cvs = await generateShareCard(arch, id);
+      cardDataUrl = cvs.toDataURL('image/png');
+    } catch(e) {
+      console.warn('[Trove] Share card generation failed:', e);
+    }
+
+    // ── Profile card — tag + share card image + export buttons ─
     const profileCard = document.createElement('div');
     profileCard.className = 'tg-pl tg-profile-card';
-    profileCard.innerHTML = `
-      <div class="tg-p-tag">your investor archetype</div>
-      <div class="tg-p-name" id="tg-arch-name">${arch.name}</div>
-      <div class="tg-p-sub">${arch.sub}</div>
-      <div class="tg-p-desc">${arch.desc}</div>
-      <div class="tg-p-together">${arch.together}</div>
-    `;
+
+    const tagEl = document.createElement('div');
+    tagEl.className = 'tg-p-tag';
+    tagEl.textContent = 'your investor archetype';
+    profileCard.appendChild(tagEl);
+
+    if (cardDataUrl) {
+      const cardImg = document.createElement('img');
+      cardImg.src = cardDataUrl;
+      cardImg.style.cssText = 'width:100%;border-radius:12px;display:block;margin:10px 0 12px;box-shadow:0 4px 18px rgba(34,34,34,0.10);';
+      profileCard.appendChild(cardImg);
+      if (hasGSAP) {
+        gsap.fromTo(cardImg,
+          { filter: 'saturate(0) blur(8px)' },
+          { filter: 'saturate(1) blur(0px)', duration: 1.6, ease: 'power2.out', delay: 0.65, clearProps: 'filter' }
+        );
+      }
+    }
+
+    if (cvs) {
+      const btnRow = document.createElement('div');
+      btnRow.className = 'tg-card-btns';
+      btnRow.innerHTML = `
+        <button class="tg-share-btn-main" id="tg-share-btn">share this →</button>
+        <button class="tg-save-btn" id="tg-save-btn">save image</button>
+      `;
+      profileCard.appendChild(btnRow);
+    }
+
     pitch.appendChild(profileCard);
     scrollPitch();
     HAPTIC.card();
     if (hasGSAP) {
-      await new Promise(r => gsap.from(profileCard, { opacity: 0, y: 26, scale: 0.96, duration: 0.55, ease: 'back.out(2)', clearProps: 'all', onComplete: r }));
+      await new Promise(r => gsap.fromTo(profileCard,
+        { opacity: 0, y: 26, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'back.out(2)', clearProps: 'all', onComplete: r }
+      ));
     }
 
     assetBurst(profileCard, 'celebrate', 18);
@@ -2494,50 +2955,33 @@ window.tgInitGame = async function () {
     setTimeout(() => orbitingTextRing(profileCard,
       `\u2736 ${arch.name.toUpperCase()} \u2736 TROVE INVESTOR \u2736 `), 700);
 
-    await w(300);
-
-    const nameEl = document.getElementById('tg-arch-name');
-    if (nameEl) {
-      const originalName = nameEl.textContent;
-      await wordPop(nameEl, originalName, ['#DBD59C', '#88ABE3', '#DBD59C', '#88ABE3', '#DBD59C']);
-      nameEl.style.textDecoration = 'underline';
-      nameEl.style.textDecorationColor = 'var(--trace)';
-      nameEl.style.textDecorationThickness = '2px';
-      nameEl.style.textUnderlineOffset = '4px';
+    if (cvs) {
+      document.getElementById('tg-share-btn').onclick = async () => {
+        const btn = document.getElementById('tg-share-btn');
+        btn.textContent = 'sharing…'; btn.disabled = true;
+        HAPTIC.tap();
+        try {
+          const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
+          const file = new File([blob], `trove-${id}.png`, { type: 'image/png' });
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}\n\ntrove.garden`, files: [file] });
+          } else if (navigator.share) {
+            await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}`, url: 'https://trove.garden' });
+          } else {
+            document.getElementById('tg-save-btn').click();
+          }
+        } catch(e) {}
+        btn.textContent = 'share this →'; btn.disabled = false;
+      };
+      document.getElementById('tg-save-btn').onclick = () => {
+        HAPTIC.tap();
+        const link = document.createElement('a');
+        link.download = `trove-${id}.png`;
+        link.href = cardDataUrl;
+        link.click();
+      };
     }
-    await w(700);
-
-    // Share button
-    const shareBtn = document.createElement('button');
-    shareBtn.className = 'tg-share-btn-main';
-    shareBtn.textContent = 'share this →';
-    shareBtn.onclick = async () => {
-      HAPTIC.tap();
-      shareBtn.textContent = 'generating…';
-      shareBtn.disabled = true;
-      try {
-        const cvs = await generateShareCard(arch, id);
-        const blob = await new Promise(r => cvs.toBlob(r, 'image/png'));
-        const file = new File([blob], `trove-${id}.png`, { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}\n\ntrove.garden`, files: [file] });
-        } else if (navigator.share) {
-          await navigator.share({ title: arch.name, text: `${arch.name} — ${arch.sub}`, url: 'https://trove.garden' });
-        } else {
-          const link = document.createElement('a');
-          link.download = `trove-${id}.png`;
-          link.href = cvs.toDataURL('image/png');
-          link.click();
-          shareBtn.textContent = 'saved ✓';
-          setTimeout(() => { shareBtn.textContent = 'share this →'; shareBtn.disabled = false; }, 2200);
-          return;
-        }
-      } catch (e) { /* cancelled */ }
-      shareBtn.textContent = 'share this →';
-      shareBtn.disabled = false;
-    };
-    profileCard.appendChild(shareBtn);
-    if (hasGSAP) gsap.from(shareBtn, { opacity: 0, y: 10, duration: 0.4, ease: 'power3.out', delay: 0.15 });
+    await w(600);
 
     // ── Curious / Helen contact + email CTA ───────────────
     await w(600);

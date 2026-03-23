@@ -128,6 +128,10 @@
     const troveWordmark = new Image();
     troveWordmark.src = './TroveLogo.png';
 
+    /* ── Helen founder photo (priority card avatar + pitch reveal) ── */
+    const _helenImg = new Image();
+    _helenImg.src = './helenfounder.jpg';
+
     /* ── Avatar images for notification cards ── */
     const avatarImgs = Array.from({ length: 13 }, (_, i) => {
       const img = new Image();
@@ -719,22 +723,22 @@
       // ── Body: avatar + text ──
       const bodyY = cardY + 68;
       const aR = 24, aCX = CARD_X + 18 + aR, aCY = bodyY + aR;
-      const ag  = qctx.createRadialGradient(aCX - 6, aCY - 6, 2, aCX, aCY, aR);
-      ag.addColorStop(0, '#a8c8f0');
-      ag.addColorStop(1, '#5a8bc7');
+      qctx.save();
       qctx.beginPath();
       qctx.arc(aCX, aCY, aR, 0, Math.PI * 2);
-      qctx.fillStyle = ag;
+      qctx.fillStyle = '#5a8bc7'; // fallback ring colour
       qctx.fill();
-      qctx.shadowColor  = 'rgba(0,0,0,0.25)';
-      qctx.shadowBlur   = 5;
-      qctx.fillStyle    = '#ffffff';
-      qctx.font         = `700 18px ${SYS_FONT}`;
-      qctx.textAlign    = 'center';
-      qctx.textBaseline = 'middle';
-      qctx.fillText('T', aCX, aCY);
-      qctx.shadowColor  = 'transparent';
-      qctx.shadowBlur   = 0;
+      qctx.clip();
+      if (_helenImg.complete && _helenImg.naturalWidth > 0) {
+        qctx.drawImage(_helenImg, aCX - aR, aCY - aR, aR * 2, aR * 2);
+      } else {
+        qctx.fillStyle    = '#ffffff';
+        qctx.font         = `700 18px ${SYS_FONT}`;
+        qctx.textAlign    = 'center';
+        qctx.textBaseline = 'middle';
+        qctx.fillText('H', aCX, aCY);
+      }
+      qctx.restore();
 
       // Text — 2 wide lines, Nunito
       const tX = CARD_X + 18 + aR * 2 + 14;
@@ -1390,6 +1394,7 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrambleTextPlugin.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script type="module" src="./game.js"></script>
 </body>
 </html>

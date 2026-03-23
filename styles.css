@@ -282,6 +282,37 @@ canvas#webgl {
 .tg-decal-investor {
   width: 148px;
 }
+/* ── Decal CSS animations (CSS takes over after GSAP landing via clearProps:'transform') ── */
+@keyframes tgBob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-7px) rotate(2deg); }
+}
+@keyframes lubDub {
+  0%   { transform: scale(1); }
+  10%  { transform: scale(1.24); }
+  22%  { transform: scale(1); }
+  32%  { transform: scale(1.14); }
+  44%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+@keyframes tgParty {
+  0%   { transform: rotate(0deg)  scale(1);    }
+  20%  { transform: rotate(7deg)  scale(1.07); }
+  50%  { transform: rotate(-5deg) scale(0.97); }
+  75%  { transform: rotate(8deg)  scale(1.05); }
+  100% { transform: rotate(0deg)  scale(1);    }
+}
+.tg-decal--bob    { animation: tgBob   2.8s ease-in-out infinite; }
+.tg-decal--lubdub { animation: lubDub  0.85s ease-in-out infinite; }
+.tg-decal--party  { animation: tgParty 3.2s  ease-in-out infinite; }
+
+/* Pull quote attribution line */
+.tg-pq-attr {
+  font-family: var(--font-label); font-style: normal;
+  font-size: clamp(9px, 3.2cqw, 11px); color: rgba(34,34,34,0.45);
+  display: block; margin-top: 10px; letter-spacing: 0.05em;
+}
+
 /* Coin that lands inline beside the word "someone." and stays */
 .tg-inline-coin {
   display: inline-block;
@@ -326,7 +357,7 @@ canvas#webgl {
 }
 .tg-investor-word {
   display: block;
-  font-size: clamp(44px, 18cqw, 96px);
+  font-size: clamp(38px, 15cqw, 78px);
   line-height: 1.05;
   color: var(--shift);
   position: relative;
@@ -362,17 +393,15 @@ canvas#webgl {
 .tg-amount-hero {
   display: block;
   font-family: var(--font-display);
-  font-size: clamp(80px, 34cqw, 180px);
+  font-size: clamp(58px, 25cqw, 120px);
   font-weight: 900;
   line-height: 0.92;
   letter-spacing: -0.04em;
   color: var(--shift);
   position: relative;
   text-shadow:
-    0 4px 0 rgba(120,104,30,0.8),
-    0 8px 0 rgba(90,74,10,0.4),
-    0 6px 24px rgba(0,0,0,0.22),
-    0 1px 2px rgba(255,249,200,0.5);
+    0 2px 12px rgba(0,0,0,0.12),
+    0 1px 2px rgba(255,249,200,0.4);
   filter:
     drop-shadow(0 0 8px rgba(219,213,156,0.5))
     drop-shadow(0 0 28px rgba(219,213,156,0.2));
@@ -667,10 +696,24 @@ canvas#webgl {
   color: var(--anchor); margin-bottom: 10px; display: block;
 }
 .tg-email-parade {
-  display: flex; justify-content: space-around; align-items: flex-end;
-  padding: 6px 0 10px; gap: 2px;
+  position: absolute; inset: 0; pointer-events: none; z-index: 10;
 }
-.tg-email-parade img { width: 36px; height: auto; pointer-events: none; flex-shrink: 0; }
+.tg-email-parade img { position: absolute; width: 40px; height: auto; pointer-events: none; z-index: 10; }
+.tg-founder-photo-wrap {
+  position: relative;
+  margin: 8px -4px 22px;
+  overflow: visible;
+}
+.tg-founder-photo {
+  display: block;
+  width: 100%;
+  height: clamp(220px, 72cqw, 340px);
+  border-radius: 18px;
+  object-fit: cover;
+  object-position: center top;
+  border: 2.5px solid var(--shift);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.14), 0 0 0 5px rgba(219,213,156,0.16);
+}
 .tg-email-helen {
   font-family: var(--font-label); font-size: 11px; letter-spacing: 0.04em;
   color: rgba(34,34,34,0.55); margin-bottom: 14px; line-height: 1.5;
@@ -678,12 +721,12 @@ canvas#webgl {
 .tg-email-helen-link { color: var(--trace); text-decoration: none; }
 .tg-email-helen-link:hover { text-decoration: underline; }
 .tg-email-sub {
-  font-family: var(--font-body); font-size: clamp(13px, 4.5cqw, 17px); line-height: 1.5;
-  color: rgba(34,34,34,0.65); margin-bottom: 6px;
+  font-family: var(--font-body); font-size: clamp(15px, 5.5cqw, 20px); line-height: 1.5;
+  color: rgba(34,34,34,0.72); margin-bottom: 10px;
 }
 .tg-email-list-lbl {
-  font-family: var(--font-label); font-size: 8px; letter-spacing: 0.18em;
-  color: var(--trace); text-transform: uppercase; margin-bottom: 14px;
+  font-family: var(--font-label); font-size: clamp(10px, 3.5cqw, 12px); letter-spacing: 0.14em;
+  color: var(--trace); text-transform: uppercase; margin-bottom: 16px;
 }
 .tg-email-q   { font-family: var(--font-label); font-size: 10px; letter-spacing: 0.06em; color: rgba(34,34,34,0.5); margin-bottom: 14px; }
 .tg-e-no {
@@ -692,10 +735,10 @@ canvas#webgl {
   cursor: pointer; transition: color 180ms; padding: 9px 0; display: block; margin-top: 4px;
 }
 .tg-e-no:hover { color: var(--anchor); }
-.tg-email-form { display: flex; border: 1px solid var(--border); margin-bottom: 7px; }
-.tg-email-in { flex: 1; background: transparent; border: none; outline: none; font-family: var(--font-label); font-size: 12px; padding: 10px 12px; color: var(--anchor); min-width: 0; }
+.tg-email-form { display: flex; border: 1px solid rgba(136,171,227,0.45); margin-bottom: 10px; }
+.tg-email-in { flex: 1; background: transparent; border: none; outline: none; font-family: var(--font-label); font-size: 13px; padding: 12px 14px; color: var(--anchor); min-width: 0; }
 .tg-email-in::placeholder { color: rgba(34,34,34,0.22); }
-.tg-email-send { background: var(--trace); color: var(--still); border: none; font-family: var(--font-label); font-size: 12px; padding: 10px 14px; cursor: pointer; transition: opacity 0.15s; }
+.tg-email-send { background: var(--trace); color: var(--still); border: none; font-family: var(--font-label); font-size: 12px; padding: 12px 16px; cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.06em; }
 .tg-email-send:hover { opacity: 0.82; }
 .tg-email-fine { font-family: var(--font-label); font-size: 8px; color: rgba(34,34,34,0.32); letter-spacing: 0.06em; margin-top: 8px; display: block; }
 
@@ -716,11 +759,12 @@ canvas#webgl {
 .tg-share-url  { font-family: var(--font-label); font-size: 7px; color: rgba(34,34,34,0.22); }
 .tg-share-actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .tg-share-btn-main {
-  display: block; width: 100%; margin-top: 12px;
+  display: inline-block;
   background: var(--anchor); color: var(--still);
-  border: none; font-family: var(--font-label); font-size: 10px;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  padding: 15px 20px; cursor: pointer;
+  border: none; border-radius: 100px;
+  font-family: var(--font-label); font-size: 11px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 13px 22px; cursor: pointer;
   transition: opacity 180ms;
 }
 .tg-share-btn-main:hover { opacity: 0.78; }
@@ -787,7 +831,7 @@ canvas#webgl {
 /* Stat card — full-bleed Wrapped style */
 .tg-stat-card {
   width: calc(100% + 36px);
-  min-height: 140px;
+  min-height: 160px;
   border-radius: 0;
   display: flex;
   flex-direction: column;
@@ -955,15 +999,17 @@ canvas#webgl {
 .tg-recap-overlay {
   position: absolute;
   inset: 0;
-  z-index: 200;
-  background: var(--still);
+  z-index: 500;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 32px 24px;
+  padding: 36px 28px;
+  text-align: center;
   cursor: pointer;
-  container-type: inline-size;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform, opacity;
 }
 .tg-recap-eyebrow {
   font-family: var(--font-label);
@@ -1028,6 +1074,33 @@ canvas#webgl {
   50% { opacity: 0.85; }
 }
 
+/* ── Share card preview + buttons ─────────────────── */
+.tg-card-preview {
+  margin: 12px 0 4px;
+}
+.tg-card-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  width: 100%;
+}
+.tg-save-btn {
+  flex: 1;
+  padding: 13px 16px;
+  border: 1.5px solid rgba(136,171,227,0.3);
+  border-radius: 100px;
+  background: transparent;
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--trace);
+  cursor: pointer;
+}
+.tg-share-btn-main {
+  flex: 2;
+}
+
 /* ── Contact card ──────────────────────────────────── */
 .tg-contact-card {
   border: 1px solid var(--border);
@@ -1046,8 +1119,8 @@ canvas#webgl {
   color: var(--muted);
   background: none;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 10px 18px;
+  border-radius: 100px;
+  padding: 11px 22px;
   margin: 12px 0 32px;
   cursor: pointer;
   transition: color 0.2s, border-color 0.2s;
