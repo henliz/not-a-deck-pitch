@@ -434,8 +434,8 @@ canvas#webgl {
 .tg-sine-ticker {
   position: relative;
   overflow: hidden;
-  margin: 20px -18px 14px; /* full-bleed past pitch padding */
-  padding: 36px 0 52px; /* extra bottom room for sine dip */
+  margin: 6px -18px 10px; /* full-bleed past pitch padding */
+  padding: 10px 0 24px; /* tighter — sine dip only needs ~24px */
   /* soft fade at left/right edges */
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%);
           mask-image: linear-gradient(90deg, transparent 0%, black 6%, black 94%, transparent 100%);
@@ -448,7 +448,7 @@ canvas#webgl {
   display: inline-block;
   will-change: transform;
   font-family: var(--font-display);
-  font-size: clamp(32px, 11cqw, 52px);
+  font-size: clamp(52px, 18cqw, 84px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -1126,7 +1126,7 @@ canvas#webgl {
 /* ── Section break ─────────────────────────────────── */
 .tg-section-break {
   display: flex; align-items: center; gap: 12px;
-  padding: 28px 0 8px; opacity: 0;
+  padding: 28px 0 8px;
 }
 .tg-sb-rule {
   flex: 1; height: 1px;
@@ -1137,7 +1137,7 @@ canvas#webgl {
 /* ── Play again ────────────────────────────────────── */
 .tg-play-again-wrap {
   display: flex; flex-direction: column; align-items: flex-start;
-  gap: 8px; padding: 4px 0 32px;
+  gap: 8px; padding: 4px 0 16px; align-items: center;
 }
 .tg-play-again {
   font-family: var(--font-label);

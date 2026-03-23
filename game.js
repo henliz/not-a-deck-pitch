@@ -538,6 +538,12 @@ window.tgInitGame = async function () {
   let pushedBackOnData = false;
   let wentDeepOnMoat = false;
   let wentStraightToAsk = false;
+  let pushedOnFounder = false;
+  let wentB2B = false;
+  let wentDataset = false;
+  let firstBranchTimestamp = null;
+  let choiceTimings = [];
+  let lastChoiceTime = null;
   function score(wts) {
     const keys = ['cartographer','contrarian','architect','operator','storyteller'];
     const mult = moveCount === 0 ? 1.5 : 1;
@@ -559,6 +565,11 @@ window.tgInitGame = async function () {
       together: 'You\'ll want the data room early. We\'ll send it. You\'ll push hard on the flywheel logic — <strong>good, that\'s exactly the right question for Trove.</strong>',
       traits: ['Evidence-First', 'Thorough', 'Precise'],
       insight: 'You asked about the data before anything else. That\'s the right question.',
+      highlights: [
+        { head: 'You went to the data first.', body: 'Most investors open with founder or market. You asked whether the signal could exist. That\'s evidence-first thinking.' },
+        { head: 'You map before you commit.', body: 'You needed to understand the mechanism before you could trust the conclusion. That\'s thoroughness, not slowness.' },
+        { head: 'You pushed on the moat.', body: 'The flywheel question is the right question. You found it before anyone pointed you there.' },
+      ],
     },
     contrarian: {
       name: 'The Contrarian',
@@ -567,6 +578,11 @@ window.tgInitGame = async function () {
       together: 'You already see it. The question is whether Helen\'s the kind of founder who gets more stubborn under pressure. <strong>She is.</strong>',
       traits: ['Conviction', 'Pattern-Breaker', 'Early'],
       insight: 'You backed the founder before the product made sense to anyone else.',
+      highlights: [
+        { head: 'You bet on the builder first.', body: 'Before the product, before the market — you needed to know if Helen was the kind of founder who gets more stubborn under pressure.' },
+        { head: 'You\'ve been early before.', body: 'You recognized something before the room did. That pattern is what makes you interesting to Trove.' },
+        { head: 'You trust the weird feeling.', body: '"This is strange but right" is a data point for you, not a red flag. Your best investments didn\'t make sense to the room.' },
+      ],
     },
     architect: {
       name: 'The Architect',
@@ -575,6 +591,11 @@ window.tgInitGame = async function () {
       together: 'You\'ll want to talk about the API strategy and B2B licensing before anyone else brings it up. <strong>We\'re ready for that conversation.</strong>',
       traits: ['Systems', 'Infrastructure', 'Platform'],
       insight: 'You think in what this makes inevitable — not what it is today.',
+      highlights: [
+        { head: 'You think in infrastructure.', body: 'You\'re not investing in Trove today. You\'re investing in what it makes inevitable — the behavioral layer under hiring, dating, healthcare.' },
+        { head: 'You saw the dataset is the moat.', body: 'Not the app. Not the UX. The compounding behavioral data that a competitor can\'t shortcut with GPUs.' },
+        { head: 'You asked about B2B before anyone mentioned it.', body: 'The API licensing question. You got there yourself. That\'s systems thinking.' },
+      ],
     },
     operator: {
       name: 'The Operator',
@@ -583,6 +604,11 @@ window.tgInitGame = async function () {
       together: 'You\'ll probably spot something in Helen\'s approach that she hasn\'t articulated yet. <strong>Tell her. She wants to hear it.</strong>',
       traits: ['Builder', 'Pattern Recognition', 'Hands-On'],
       insight: 'You read founders. You knew what you were looking at before the deck ended.',
+      highlights: [
+        { head: 'You read the founder before the deck.', body: 'You know what obsession looks like vs. what exit-planning looks like. You spotted which one this was early.' },
+        { head: 'You add more than capital.', body: 'Pattern recognition, intros, the three sentences that fix the pitch. Your portfolio companies call you on hard days.' },
+        { head: 'You\'ll spot something Helen hasn\'t named yet.', body: 'And she wants to hear it. That\'s not flattery — it\'s how this kind of operator relationship works.' },
+      ],
     },
     storyteller: {
       name: 'The Storyteller',
@@ -591,6 +617,11 @@ window.tgInitGame = async function () {
       together: 'You\'ll have opinions on the product voice, the community, the cultural positioning. <strong>Those opinions are valuable. Bring them.</strong>',
       traits: ['Cultural', 'Narrative', 'Contrarian'],
       insight: 'You see the story before the numbers justify it. That\'s the whole game.',
+      highlights: [
+        { head: 'You saw the cultural moment.', body: 'Before the numbers justified it, you could see the narrative. That\'s what makes you interesting to Trove.' },
+        { head: 'You back things people talk about.', body: 'The best consumer products are also cultural events. You\'ve seen that before. You\'re seeing it again.' },
+        { head: 'You have opinions on the voice.', body: 'The product copy, the community tone, the positioning. Those opinions are valuable. Bring them.' },
+      ],
     },
   };
 
@@ -1350,6 +1381,10 @@ window.tgInitGame = async function () {
         // 3 branch choices per playthrough: 25%→50%→75%. sRevealArchetype sets 100%.
         choiceCount++;
         window.tgAPI.setProgress(25 + Math.min(choiceCount, 3) * 25);
+        const _now = Date.now();
+        if (!firstBranchTimestamp) firstBranchTimestamp = _now;
+        if (lastChoiceTime) choiceTimings.push(_now - lastChoiceTime);
+        lastChoiceTime = _now;
         setTimeout(() => resolve(idx), 600);
       };
     });
@@ -1371,7 +1406,7 @@ window.tgInitGame = async function () {
   }
 
   async function generateShareCard(arch, id, data) {
-    const W = 900, H = 1200;
+    const W = 900, H = 1125;
     const cvs = document.createElement('canvas');
     cvs.width = W; cvs.height = H;
     const ctx = cvs.getContext('2d');
@@ -1532,19 +1567,28 @@ window.tgInitGame = async function () {
     } catch(e) {}
 
     // ── Layout constants ─────────────────────────────────────────────
-    const COL_L  = 340;              // title text column width (in top tile)
-    const TILE_Y = 44;               // first tile top-y
-    const R1_H   = 322;              // top tile height (title + portrait)
-    const R2_Y   = TILE_Y + R1_H + GAP;   // 376
-    const R2_H   = 160;              // quote + traits row
-    const R3_Y   = R2_Y + R2_H + GAP;    // 546
-    const R3_H   = 200;              // signals row
-    const R4_Y   = R3_Y + R3_H + GAP;    // 756
-    const R4_H   = 100;              // stats mini-row
-    const R5_Y   = R4_Y + R4_H + GAP;    // 866
-    const R5_H   = H - R5_Y - PAD;       // 316
-    const TR     = 16;               // tile border radius
-    const TP     = 20;               // tile inner padding
+    const HDR_H  = 36;                         // header bar height
+    const CONT_Y = PAD + HDR_H + GAP;          // 64 — content area start
+    const CONT_H = H - CONT_Y - PAD;           // 1043
+    const LC_W   = 290;                        // left column = forced-square image
+    const RC_X   = PAD + LC_W + GAP;           // 318
+    const RC_W   = IW - LC_W - GAP;            // 574
+    const TR     = 14;                         // tile border radius
+    const TP     = 18;                         // tile inner padding
+    const SP_L   = 330;                        // left half of split rows
+    const SP_R   = RC_W - SP_L - GAP;          // right half (~234)
+
+    // Right-column row Y positions & heights
+    const T_QH  = 215;
+    const T_TH  = 120;
+    const T_MH  = 190;
+    const T_HH  = 190;
+    const T_FH  = CONT_H - T_QH - T_TH - T_MH - T_HH - GAP * 4;
+    const T_QY  = CONT_Y;
+    const T_TY  = T_QY + T_QH + GAP;
+    const T_MY  = T_TY + T_TH + GAP;
+    const T_HY  = T_MY + T_MH + GAP;
+    const T_FY  = T_HY + T_HH + GAP;
 
     // ════════════════════════════════════════════════════════════════
     // DRAW
@@ -1554,204 +1598,155 @@ window.tgInitGame = async function () {
     ctx.fillStyle = CREAM;
     ctx.fillRect(0, 0, W, H);
 
-    // Accent bar at top
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(0, 0, W, 3);
-
-    // Eyebrow
-    ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    // ── HEADER BAR (full width, dark) ─────────────────────────────────
+    scRoundRect(PAD, PAD, IW, HDR_H, 8, '#1A1A1A', null);
     ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
-    setLS('0.16em'); ctx.fillText('INVESTOR ARCHETYPE · TROVE', PAD, 16);
-    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(34,34,34,0.30)';
-    setLS('0.04em'); ctx.fillText('2026', W - PAD, 16); setLS('0');
-
-    // ── TILE 1: Title + Portrait (full-width, white) ──────────────────
-    const T1X = PAD, T1Y = TILE_Y, T1W = IW, T1H = R1_H;
-    scRoundRect(T1X, T1Y, T1W, T1H, TR, '#FFFFFF', 'rgba(34,34,34,0.07)');
-
-    // Title text (left column)
-    ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    setLS('0.16em'); ctx.fillText('YOUR TYPE', T1X + TP, T1Y + TP); setLS('0');
-
-    ctx.fillStyle = 'rgba(34,34,34,0.42)'; ctx.font = '400 15px "DM Mono", monospace';
-    setLS('0.06em'); ctx.fillText('The', T1X + TP, T1Y + TP + 26); setLS('0');
-
-    // Archetype word — auto-fit font
-    const archWord = arch.name.replace(/^The\s+/, '');
-    let nfs = 48;
-    ctx.font = `900 ${nfs}px "Playfair Display", serif`;
-    setLS('-0.02em');
-    const nameMaxW = COL_L - TP * 2;
-    if (ctx.measureText(archWord).width > nameMaxW) {
-      nfs = Math.floor(nfs * nameMaxW / ctx.measureText(archWord).width);
-      ctx.font = `900 ${nfs}px "Playfair Display", serif`;
-    }
-    ctx.fillStyle = DARK;
-    ctx.fillText(archWord, T1X + TP, T1Y + TP + 50);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    setLS('0.16em');
+    ctx.fillText('INVESTOR ARCHETYPE · TROVE 2026', PAD + TP, PAD + HDR_H / 2);
+    setLS('0');
+    ctx.fillStyle = 'rgba(249,249,242,0.28)'; ctx.font = '400 9px "DM Mono", monospace';
+    ctx.textAlign = 'right'; setLS('0.04em');
+    ctx.fillText('2026', PAD + IW - TP, PAD + HDR_H / 2);
     setLS('0');
 
-    // Tagline
-    const taglineY = T1Y + TP + 50 + Math.round(nfs * 1.2);
-    ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '400 12px "DM Mono", monospace';
-    setLS('0.02em'); ctx.fillText(arch.sub, T1X + TP, taglineY); setLS('0');
+    // ── LEFT COLUMN — full-height accent tile ─────────────────────────
+    scRoundRect(PAD, CONT_Y, LC_W, CONT_H, TR, accentColor, null);
 
-    // Archetype doodle — bottom-left of title column
-    const DSZ = 52;
-    await drawAsset(
-      `./assets/${ARCH_ASSETS[id] || 'camera.png'}`,
-      T1X + TP, T1Y + T1H - DSZ - TP, DSZ, DSZ, 8
-    );
-
-    // Portrait — right side, square cover-crop
-    const IMG_X  = T1X + COL_L + GAP;
-    const IMG_W  = T1W - COL_L - GAP;              // 514px
-    const IMG_SQ = Math.min(IMG_W, T1H);            // 322px square
-    const IMG_OX = IMG_X + Math.round((IMG_W - IMG_SQ) / 2);
+    // Forced-square image (LC_W × LC_W cover crop)
     ctx.save();
-    clipRR(IMG_OX, T1Y, IMG_SQ, T1H, TR);
-    await drawAssetCover(`./assets/${ARCH_TYPE_IMG[id] || 'Cartographer.png'}`, IMG_OX, T1Y, IMG_SQ, T1H);
+    clipRR(PAD, CONT_Y, LC_W, LC_W, TR);
+    await drawAssetCover(`./assets/${ARCH_TYPE_IMG[id] || 'Cartographer.png'}`, PAD, CONT_Y, LC_W, LC_W);
     ctx.restore();
 
-    // ── TILE 3: Quote (middle-left) ───────────────────────────────────
-    const T3X = PAD, T3Y = R2_Y, T3W = 380, T3H = R2_H;
-    scRoundRect(T3X, T3Y, T3W, T3H, TR, hexRgba(BLUE, 0.18), null);
+    // Gradient: image fades into accent background
+    const imgFade = ctx.createLinearGradient(0, CONT_Y + LC_W - 70, 0, CONT_Y + LC_W + 30);
+    imgFade.addColorStop(0, 'rgba(0,0,0,0)');
+    imgFade.addColorStop(1, accentColor);
+    ctx.fillStyle = imgFade;
+    ctx.fillRect(PAD, CONT_Y + LC_W - 70, LC_W, 100);
 
-    ctx.fillStyle = DARK; ctx.font = '400 italic 15px "Playfair Display", serif';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    wrapText(`"${arch.insight}"`, T3X + TP, T3Y + TP, T3W - TP * 2, 24);
-
-    // ── TILE 4: Traits (middle-right) ────────────────────────────────
-    const T4X = PAD + 380 + GAP, T4Y = R2_Y, T4W = IW - 380 - GAP, T4H = R2_H;
-    scRoundRect(T4X, T4Y, T4W, T4H, TR, CREAM, 'rgba(34,34,34,0.07)');
-
-    ctx.fillStyle = 'rgba(34,34,34,0.38)'; ctx.font = '400 9px "DM Mono", monospace';
-    ctx.textBaseline = 'top'; setLS('0.16em');
-    ctx.fillText('TRAITS', T4X + TP, T4Y + TP); setLS('0');
-
-    const pW = T4W - TP * 2, pH = 30, pGap = 8, pStart = T4Y + TP + 22;
-    (arch.traits || []).slice(0, 3).forEach((trait, i) => {
-      const py = pStart + i * (pH + pGap);
-      scRoundRect(T4X + TP, py, pW, pH, 8, hexRgba(accentColor, 0.22), hexRgba(accentColor, 0.50));
-      ctx.fillStyle = DARK; ctx.font = '400 11px "DM Mono", monospace';
-      ctx.textBaseline = 'middle'; setLS('0.08em');
-      ctx.fillText(trait.toUpperCase(), T4X + TP + 12, py + pH / 2);
-      setLS('0');
-    });
-
-    // ── TILE 5: Your Signals (full-width, dark) ──────────────────────
-    const T5X = PAD, T5Y = R3_Y, T5W = IW, T5H = R3_H;
-    scRoundRect(T5X, T5Y, T5W, T5H, TR, DARK, null);
-
-    // Ghost archetype doodle watermark
-    ctx.save(); ctx.globalAlpha = 0.07;
-    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`, T5X + T5W - 152, T5Y + (T5H - 140) / 2, 140, 140, -6);
-    ctx.globalAlpha = 1; ctx.restore();
-
-    // Ghost move count number
-    if (moveCount > 0) {
-      ctx.save();
-      ctx.font = `900 120px "Playfair Display", serif`;
-      ctx.fillStyle = 'rgba(249,249,242,0.04)';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(moveCount), T5X + T5W - 160, T5Y + T5H / 2);
-      ctx.restore();
+    // Archetype name + sub at bottom of left tile
+    const LB_BOT = CONT_Y + CONT_H - TP;
+    ctx.fillStyle = 'rgba(34,34,34,0.50)'; ctx.font = '400 9px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; setLS('0.14em');
+    ctx.fillText('THE', PAD + TP, LB_BOT - 54); setLS('0');
+    const archWord = arch.name.replace(/^The\s+/, '');
+    let nfs = 40;
+    ctx.font = `900 ${nfs}px "Playfair Display", serif`;
+    setLS('-0.02em');
+    if (ctx.measureText(archWord).width > LC_W - TP * 2) {
+      nfs = Math.floor(nfs * (LC_W - TP * 2) / ctx.measureText(archWord).width);
+      ctx.font = `900 ${nfs}px "Playfair Display", serif`;
     }
+    ctx.fillStyle = DARK; ctx.fillText(archWord, PAD + TP, LB_BOT - 26); setLS('0');
+    ctx.fillStyle = 'rgba(34,34,34,0.60)'; ctx.font = '400 10px "DM Mono", monospace';
+    ctx.textBaseline = 'bottom'; setLS('0.02em');
+    ctx.fillText(arch.sub, PAD + TP, LB_BOT); setLS('0');
 
-    // "YOUR SIGNALS" label
+    // ── QUOTE TILE (near-black) ───────────────────────────────────────
+    scRoundRect(RC_X, T_QY, RC_W, T_QH, TR, '#1A1A1A', null);
     ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    setLS('0.18em'); ctx.fillText('YOUR SIGNALS', T5X + TP, T5Y + TP); setLS('0');
-
-    // All behavioral signals
-    const allSigs = (data && data.allSignals && data.allSignals.length) ? data.allSignals : signals;
-    ctx.font = '400 13px "DM Mono", monospace';
-    ctx.fillStyle = 'rgba(249,249,242,0.88)'; setLS('0.01em');
-    allSigs.slice(0, 5).forEach((sig, i) => ctx.fillText(`— ${sig}`, T5X + TP, T5Y + TP + 24 + i * 27));
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.16em');
+    ctx.fillText('YOUR INSIGHT', RC_X + TP, T_QY + TP); setLS('0');
+    ctx.fillStyle = CREAM; ctx.font = '400 italic 18px "Playfair Display", serif';
+    setLS('-0.01em');
+    wrapText(`"${arch.insight}"`, RC_X + TP, T_QY + TP + 24, RC_W - TP * 2, 30);
     setLS('0');
 
-    // Move count right-aligned
-    if (moveCount > 0) {
-      ctx.fillStyle = hexRgba(BLUE, 0.65);
-      ctx.font = '400 11px "DM Mono", monospace';
-      ctx.textAlign = 'right'; setLS('0.06em');
-      ctx.fillText(`${moveCount} scenes`, T5X + T5W - TP, T5Y + T5H - TP - 2);
+    // ── TOGETHER TILE (charcoal) ──────────────────────────────────────
+    scRoundRect(RC_X, T_TY, RC_W, T_TH, TR, '#252525', null);
+    const togetherClean = (arch.together || '').replace(/<\/?strong>/g,'').replace(/<[^>]*>/g,'');
+    ctx.fillStyle = 'rgba(249,249,242,0.62)'; ctx.font = '400 11px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
+    wrapText(togetherClean, RC_X + TP, T_TY + TP, RC_W - TP * 2, 18);
+    setLS('0');
+
+    // ── SIGNALS TILE (dark) | STAT TILE (accent) ─────────────────────
+    scRoundRect(RC_X, T_MY, SP_L, T_MH, TR, '#1A1A1A', null);
+    ctx.save(); ctx.globalAlpha = 0.06;
+    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`, RC_X + SP_L - 118, T_MY + (T_MH - 110) / 2, 110, 110, -6);
+    ctx.globalAlpha = 1; ctx.restore();
+    ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.18em');
+    ctx.fillText('YOUR SIGNALS', RC_X + TP, T_MY + TP); setLS('0');
+    const allSigs = (data && data.allSignals && data.allSignals.length) ? data.allSignals : signals;
+    ctx.font = '400 11px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(249,249,242,0.88)'; setLS('0.01em');
+    allSigs.slice(0, 5).forEach((sig, i) => ctx.fillText(`— ${sig}`, RC_X + TP, T_MY + TP + 22 + i * 25));
+    setLS('0');
+
+    // Stat tile (accent-tinted, right of signals)
+    const ST_X = RC_X + SP_L + GAP;
+    scRoundRect(ST_X, T_MY, SP_R, T_MH, TR, hexRgba(accentColor, 0.88), null);
+    ctx.fillStyle = 'rgba(34,34,34,0.48)'; ctx.font = '400 8px "DM Mono", monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.14em');
+    ctx.fillText('OPENED AS', ST_X + 14, T_MY + 16); setLS('0');
+    ctx.fillStyle = DARK; ctx.font = '700 italic 15px "Playfair Display", serif';
+    const entryVal = (data && data.firstChoiceLabel) || arch.traits[0] || '—';
+    wrapText(entryVal, ST_X + 14, T_MY + 32, SP_R - 28, 21);
+    const exitVal  = (data && data.exitMove) || '—';
+    const exitY    = T_MY + Math.round(T_MH / 2) + 8;
+    ctx.fillStyle = 'rgba(34,34,34,0.48)'; ctx.font = '400 8px "DM Mono", monospace';
+    setLS('0.14em'); ctx.fillText('CLOSED AS', ST_X + 14, exitY); setLS('0');
+    ctx.fillStyle = DARK; ctx.font = '700 italic 15px "Playfair Display", serif';
+    wrapText(exitVal, ST_X + 14, exitY + 16, SP_R - 28, 21);
+
+    // ── HIGHLIGHT 1 (blue-tint) | HIGHLIGHT 2 (warm dark) ────────────
+    const HL = arch.highlights || [];
+    scRoundRect(RC_X, T_HY, SP_L, T_HH, TR, hexRgba(BLUE, 0.14), hexRgba(BLUE, 0.22));
+    if (HL[0]) {
+      ctx.fillStyle = DARK; ctx.font = '700 11px "DM Mono", monospace';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
+      const h0l = wrapText(HL[0].head, RC_X + TP, T_HY + TP, SP_L - TP * 2, 17);
+      ctx.fillStyle = 'rgba(34,34,34,0.60)'; ctx.font = '400 10px "DM Mono", monospace';
+      wrapText(HL[0].body, RC_X + TP, T_HY + TP + h0l * 17 + 8, SP_L - TP * 2, 15);
+      setLS('0');
+    }
+    scRoundRect(ST_X, T_HY, SP_R, T_HH, TR, '#2E2E2E', null);
+    if (HL[1]) {
+      ctx.fillStyle = 'rgba(249,249,242,0.90)'; ctx.font = '700 11px "DM Mono", monospace';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.01em');
+      const h1l = wrapText(HL[1].head, ST_X + 14, T_HY + TP, SP_R - 28, 17);
+      ctx.fillStyle = 'rgba(249,249,242,0.55)'; ctx.font = '400 10px "DM Mono", monospace';
+      wrapText(HL[1].body, ST_X + 14, T_HY + TP + h1l * 17 + 8, SP_R - 28, 15);
       setLS('0');
     }
 
-    // ── Stats mini-row (3 tiles) ─────────────────────────────────────
-    const ST_Y = R4_Y, ST_H = R4_H;
-    const ST_W = Math.floor((IW - GAP * 2) / 3);
-    const ST_W3 = IW - ST_W * 2 - GAP * 2;
-    [
-      { x: PAD,                    w: ST_W,  label: 'SCENES EXPLORED', val: String(data ? data.pathLength : moveCount) },
-      { x: PAD + ST_W + GAP,       w: ST_W,  label: 'ENTRY ANGLE',     val: (data && data.firstChoiceLabel) || '—' },
-      { x: PAD + (ST_W + GAP) * 2, w: ST_W3, label: 'EXIT MOVE',       val: (data && data.exitMove) || '—' },
-    ].forEach(({ x, w, label, val }) => {
-      scRoundRect(x, ST_Y, w, ST_H, 12, hexRgba(BLUE, 0.10), hexRgba(BLUE, 0.22));
-      ctx.fillStyle = BLUE; ctx.font = '400 8px "DM Mono", monospace';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      setLS('0.14em'); ctx.fillText(label, x + 14, ST_Y + 14); setLS('0');
-      ctx.fillStyle = DARK; ctx.font = '700 13px "DM Mono", monospace';
-      ctx.textBaseline = 'bottom'; setLS('0.02em');
-      const vMaxW = w - 28;
-      if (ctx.measureText(val).width > vMaxW) {
-        const words = val.split(' '), half = Math.ceil(words.length / 2);
-        ctx.fillText(words.slice(0, half).join(' '), x + 14, ST_Y + ST_H - 22);
-        ctx.fillText(words.slice(half).join(' '),    x + 14, ST_Y + ST_H - 8);
-      } else {
-        ctx.fillText(val, x + 14, ST_Y + ST_H - 8);
-      }
-      setLS('0');
-    });
-
-    // ── TILE 7: Trove CTA + QR (full-width) ──────────────────────────
-    const T7X = PAD, T7Y = R5_Y, T7W = IW, T7H = R5_H;
-    scRoundRect(T7X, T7Y, T7W, T7H, TR, hexRgba(accentColor, 1), null);
-
-    // Scattered decorative assets (left section, semi-transparent)
-    ctx.save(); ctx.globalAlpha = 0.25;
-    await drawAsset('./assets/starhehe.png',                         T7X + 12,         T7Y + 14,         40, 40, -14);
-    await drawAsset('./assets/coin.png',                             T7X + T7W * 0.30, T7Y + T7H - 50,   34, 34,  10);
-    await drawAsset('./assets/flower.png',                           T7X + T7W * 0.16, T7Y + T7H * 0.45, 30, 30,  20);
-    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`,  T7X + T7W * 0.32, T7Y + 14,         38, 38,  -8);
-    await drawAsset('./assets/babystar.png',                         T7X + 14,         T7Y + T7H - 50,   28, 28,   6);
-    ctx.globalAlpha = 1; ctx.restore();
-
-    // Logo
-    await drawAsset('./TroveLogo.png', T7X + TP, T7Y + TP + 4, 114, 34, 0);
-
-    // CTA text
-    ctx.fillStyle = 'rgba(34,34,34,0.72)'; ctx.font = '400 12px "DM Mono", monospace';
+    // ── FOOTER TILE (darkest) ─────────────────────────────────────────
+    scRoundRect(RC_X, T_FY, RC_W, T_FH, TR, '#111111', null);
+    await drawAsset('./TroveLogo.png', RC_X + TP, T_FY + TP + 2, 114, 34, 0);
+    ctx.fillStyle = 'rgba(249,249,242,0.58)'; ctx.font = '400 11px "DM Mono", monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.04em');
-    ctx.fillText('see your type →', T7X + TP, T7Y + TP + 4 + 34 + 16);
+    ctx.fillText('see your type →', RC_X + TP, T_FY + TP + 42);
     setLS('0');
-
-    // URL
-    ctx.fillStyle = 'rgba(34,34,34,0.40)'; ctx.font = '400 10px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(249,249,242,0.26)'; ctx.font = '400 9px "DM Mono", monospace';
     setLS('0.02em');
-    ctx.fillText('henliz.github.io/not-a-deck-pitch', T7X + TP, T7Y + TP + 4 + 34 + 38);
+    ctx.fillText('henliz.github.io/not-a-deck-pitch', RC_X + TP, T_FY + TP + 60);
     setLS('0');
-
-    // QR code with white inset tile
-    const QR_SZ = Math.min(T7H - TP * 2 - 22, 240);
+    const topSig = (data && data.allSignals && data.allSignals[0]) || arch.sub;
+    ctx.fillStyle = hexRgba(accentColor, 0.80); ctx.font = '400 10px "DM Mono", monospace';
+    setLS('0.02em');
+    ctx.fillText(`"${topSig}"`, RC_X + TP, T_FY + TP + 80);
+    setLS('0');
+    const QR_SZ = Math.min(T_FH - TP * 2 - 16, 110);
     const qrCanvas = await generateQR('https://henliz.github.io/not-a-deck-pitch/', QR_SZ);
     if (qrCanvas) {
-      const qrX = T7X + T7W - QR_SZ - TP - 10;
-      const qrY = T7Y + Math.round((T7H - QR_SZ - 20) / 2);
+      const qrX = RC_X + RC_W - QR_SZ - TP - 8;
+      const qrY = T_FY + Math.round((T_FH - QR_SZ - 16) / 2);
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.14)'; ctx.shadowBlur = 14;
-      scRoundRect(qrX - 10, qrY - 10, QR_SZ + 20, QR_SZ + 30, 12, '#FFFFFF', null);
+      ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 12;
+      scRoundRect(qrX - 8, qrY - 8, QR_SZ + 16, QR_SZ + 26, 10, '#F9F9F2', null);
       ctx.restore();
       ctx.drawImage(qrCanvas, qrX, qrY, QR_SZ, QR_SZ);
-      ctx.fillStyle = 'rgba(34,34,34,0.35)'; ctx.font = '400 10px "DM Mono", monospace';
+      ctx.fillStyle = 'rgba(34,34,34,0.38)'; ctx.font = '400 9px "DM Mono", monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'top'; setLS('0.08em');
-      ctx.fillText('scan to play', qrX + QR_SZ / 2, qrY + QR_SZ + 6);
+      ctx.fillText('scan to play', qrX + QR_SZ / 2, qrY + QR_SZ + 5);
       setLS('0');
     }
 
     // Outer frame
-    ctx.strokeStyle = 'rgba(34,34,34,0.07)';
+    ctx.strokeStyle = 'rgba(34,34,34,0.06)';
     ctx.lineWidth   = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
@@ -2096,7 +2091,7 @@ window.tgInitGame = async function () {
   }
 
   async function sB2_b2b() {
-    branchPath.push('B2b');
+    branchPath.push('B2b'); wentB2B = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The B2B Model');
     await w(200);
@@ -2121,7 +2116,7 @@ window.tgInitGame = async function () {
   }
 
   async function sB2_dataset() {
-    branchPath.push('B2d');
+    branchPath.push('B2d'); wentDataset = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('Who Owns the Data');
     await w(200);
@@ -2259,7 +2254,7 @@ window.tgInitGame = async function () {
   }
 
   async function sC2_conviction() {
-    branchPath.push('C2');
+    branchPath.push('C2'); pushedOnFounder = true;
     await w(900); line('', 'tg-pl', 16);
     await ringWipeChapter('The Insight');
     await w(200);
@@ -2309,7 +2304,9 @@ window.tgInitGame = async function () {
     await w(100);
     await doGlitch(line('questionnaire', 'tg-pl--huge'), 'questionnaire');
     await w(220);
-    await reveal(line('is the problem.', 'tg-pl--wordpop'), {
+    const isProblemEl = line('is the problem.', 'tg-pl--oneliner');
+    isProblemEl.style.cssText += 'color:var(--anchor);font-weight:600;margin-top:-2px;';
+    await reveal(isProblemEl, {
       y: 10, stagger: 0.04, duration: 0.38, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     await w(600);
@@ -2378,7 +2375,7 @@ window.tgInitGame = async function () {
       stagger: 0.045, from: 'center', duration: 0.6, ease: hasCE ? 'slam' : 'back.out(3)',
     });
     discordEl.style.position = 'relative'; discordEl.style.overflow = 'visible';
-    discordEl.appendChild(decal('gaming.png', 'tg-decal--bob', { right: '-22px', top: '-12px', w: 88, fromY: -28, delay: 0.2 }));
+    discordEl.appendChild(decal('gaming.png', 'tg-decal--bob', { right: '-60px', top: '-24px', w: 88, fromY: -28, delay: 0.2 }));
     await w(350);
     await dimLines('Nobody asked them to. No push notifications. No referral loop. They just didn\'t want it to end.', 150);
     await w(400);
@@ -2643,6 +2640,13 @@ window.tgInitGame = async function () {
       operator:     ['you needed to know who built it', 'for you, the team is the thesis'],
       storyteller:  ['you followed the narrative thread', 'you understand that the product is the proof'],
     };
+    const avgChoiceGap = choiceTimings.length
+      ? Math.round(choiceTimings.reduce((a, b) => a + b, 0) / choiceTimings.length / 1000)
+      : null;
+    const readerSpeed = choiceTimings.length && choiceTimings[0] > 0
+      ? (choiceTimings[0] < 8000 ? 'fast reader' : choiceTimings[0] < 20000 ? 'deliberate reader' : 'deep reader')
+      : null;
+
     // All truthy behavioral signals (full list, not just one)
     const allSignals = [];
     if (firstChoice !== null) allSignals.push(`came in as a ${firstChoiceLabels[firstChoice]}`);
@@ -2650,6 +2654,10 @@ window.tgInitGame = async function () {
     if (wentStraightToAsk) allSignals.push('cut straight to the ask');
     if (usedFounderPath)   allSignals.push('led with the founder');
     if (pushedBackOnData)  allSignals.push('pushed back on the data');
+    if (pushedOnFounder)   allSignals.push('dug into the conviction');
+    if (wentB2B)           allSignals.push('went deep on B2B model');
+    if (wentDataset)       allSignals.push('challenged data ownership');
+    if (readerSpeed)       allSignals.push(readerSpeed);
 
     const exitMove =
       wentDeepOnMoat    ? 'stayed for the flywheel' :
@@ -2664,8 +2672,11 @@ window.tgInitGame = async function () {
       firstChoiceLabel: firstChoice !== null ? firstChoiceLabels[firstChoice] : 'curious',
       traits: traitLines[id] || [],
       wentDeepOnMoat, wentStraightToAsk, usedFounderPath, pushedBackOnData,
+      pushedOnFounder, wentB2B, wentDataset,
       allSignals,
       exitMove,
+      avgChoiceGap,
+      readerSpeed,
     };
   }
 
@@ -2689,14 +2700,12 @@ window.tgInitGame = async function () {
       `;
 
       const paradeEl = emailDiv.querySelector('#tg-email-parade');
-      // scattered around the container: top corners, mid sides, bottom corners
+      // scattered around the container — turtle handled separately with walk animation
       const paradeSpots = [
-        { src: 'starhehe.png',    anim: 'spin',   css: 'top:6px;left:-18px'      },
-        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:4px'       },
+        { src: 'starhehe.png',    anim: 'spin',   css: 'top:6px;right:8px'       },
+        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:36px'      },
         { src: 'frog.png',        anim: 'bounce', css: 'top:40%;left:2px'        },
         { src: 'derpy.png',       anim: 'dance',  css: 'top:40%;right:2px'       },
-        { src: 'turtle.png',      anim: 'bob',    css: 'bottom:30px;left:4px'    },
-        { src: 'caterpillar.png', anim: 'wiggle', css: 'bottom:30px;right:4px'   },
       ];
       paradeSpots.forEach(a => {
         const img = document.createElement('img');
@@ -2705,6 +2714,12 @@ window.tgInitGame = async function () {
         img.style.cssText = a.css + ';opacity:0;';
         paradeEl.appendChild(img);
       });
+
+      // Turtle — walks back and forth across Helen's name like Mario
+      const turtleImg = document.createElement('img');
+      turtleImg.src = './assets/turtle.png';
+      turtleImg.style.cssText = 'position:absolute;bottom:10px;left:0;width:28px;height:auto;opacity:0;pointer-events:none;z-index:10;';
+      paradeEl.appendChild(turtleImg);
 
       pitch.appendChild(emailDiv);
       scrollPitch();
@@ -2744,7 +2759,7 @@ window.tgInitGame = async function () {
         const lblEl     = emailDiv.querySelector('#tg-email-lbl');
         const formEl    = emailDiv.querySelector('#tg-email-form');
         const fineEl    = emailDiv.querySelector('#tg-email-fine');
-        const paradeImgs = paradeEl.querySelectorAll('img');
+        const paradeImgs = paradeEl.querySelectorAll('img:not([src*="turtle"])');
 
         const split = new SplitText(heroEl, { type: 'chars' });
         gsap.set(heroEl, { opacity: 1 });
@@ -2765,17 +2780,38 @@ window.tgInitGame = async function () {
               onComplete: () => {
                 const anim = img.dataset.anim;
                 const d = 0.3 + Math.random() * 0.4;
-                // gentle chill dancing — slow, readable, no violent flips
                 if (anim === 'spin')   gsap.to(img, { rotation: 360,  duration: 3.8, ease: 'none', repeat: -1, delay: d });
                 if (anim === 'spin2')  gsap.to(img, { rotation: -360, duration: 5.2, ease: 'none', repeat: -1, delay: d });
                 if (anim === 'bounce') gsap.to(img, { y: -10, duration: 0.6,  ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
                 if (anim === 'dance')  gsap.to(img, { x: 5, rotation: 8,  duration: 0.85, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
-                if (anim === 'bob')    gsap.to(img, { y: -6, duration: 1.5, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
                 if (anim === 'wiggle') gsap.to(img, { rotation: 12, duration: 0.6,  ease: 'sine.inOut', yoyo: true, repeat: -1, delay: d });
               },
             }
           );
         });
+
+        // Turtle: pop in, then walk across Helen's name and back — Mario-style
+        gsap.fromTo(turtleImg,
+          { opacity: 0, scale: 0.1, rotation: -20 },
+          { opacity: 1, scale: 1,   rotation: 0, duration: 0.5, ease: 'elastic.out(1, 0.45)', delay: 1.6,
+            onComplete: () => {
+              const walkPx = Math.max(80, (paradeEl.offsetWidth || 260) - 44);
+              const stepDur = walkPx / 38; // ~38px per second
+              const walkTl = gsap.timeline({ repeat: -1, repeatDelay: 1.0 });
+              walkTl
+                .to(turtleImg, {
+                  x: walkPx, duration: stepDur, ease: 'none',
+                  modifiers: { y: () => (Math.sin(gsap.getProperty(turtleImg, 'x') * 0.22) * 2.5) + 'px' },
+                })
+                .to(turtleImg, { scaleX: -1, duration: 0.12, ease: 'power2.inOut' })
+                .to(turtleImg, {
+                  x: 0, duration: stepDur, ease: 'none',
+                  modifiers: { y: () => (Math.sin(gsap.getProperty(turtleImg, 'x') * 0.22) * 2.5) + 'px' },
+                })
+                .to(turtleImg, { scaleX: 1, duration: 0.12, ease: 'power2.inOut' });
+            },
+          }
+        );
 
         gsap.fromTo(subEl,  { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4,  ease: 'power3.out', delay: 0.88 });
         gsap.fromTo(lblEl,  { opacity: 0 },         { opacity: 1,       duration: 0.3,  ease: 'power2.out', delay: 1.05 });
@@ -2907,7 +2943,18 @@ window.tgInitGame = async function () {
       sub.style.cssText = 'font-family:var(--font-body,sans-serif);font-size:14px;opacity:0.65;max-width:240px;line-height:1.55;';
       sub.textContent = data.traits[1] || '';
 
-      overlay.append(eyebrow, big, sub);
+      const hlPreview = document.createElement('div');
+      hlPreview.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:18px;width:100%;max-width:260px;';
+      (arch.highlights || []).slice(0, 3).forEach((hl, i) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'background:rgba(34,34,34,0.08);border-radius:8px;padding:8px 12px;font-family:var(--font-label);font-size:11px;font-weight:700;color:#222;text-align:left;opacity:0;';
+        row.textContent = hl.head;
+        hlPreview.appendChild(row);
+        if (hasGSAP) gsap.to(row, { opacity: 1, x: 0, duration: 0.35, ease: 'power3.out', delay: 0.5 + i * 0.1 });
+        else row.style.opacity = '1';
+      });
+
+      overlay.append(eyebrow, big, sub, hlPreview);
       if (hasGSAP) {
         [eyebrow, big, sub].forEach((el, i) => {
           gsap.from(el, { opacity: 0, y: 18, duration: 0.42, ease: 'power3.out', delay: 0.3 + i * 0.13 });
@@ -3027,7 +3074,31 @@ window.tgInitGame = async function () {
     _atBottom = true; // force scroll tracking so post-recap reveals scroll into view
     pitch.scrollTop = pitch.scrollHeight;
 
-    await w(300);
+    // ── Award pop — type image slams in as fixed overlay for ~1.5s ────
+    if (hasGSAP && scene) {
+      const AWARD_TYPE_MAP = {
+        cartographer: 'Cartographer.png', contrarian: 'Contrarian.png',
+        architect: 'Architect.png', operator: 'Operator.png', storyteller: 'Storyteller.png',
+      };
+      const awardImg = document.createElement('img');
+      awardImg.src = `./assets/types/${AWARD_TYPE_MAP[id] || id + '.png'}`;
+      awardImg.onerror = () => { awardImg.src = `./assets/${ARCH_ASSETS_MAP[id] || 'camera.png'}`; };
+      awardImg.style.cssText = 'position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:clamp(120px,38vw,180px);height:auto;pointer-events:none;z-index:200;filter:drop-shadow(0 16px 32px rgba(0,0,0,0.25));';
+      const awardLbl = document.createElement('div');
+      awardLbl.style.cssText = 'position:absolute;left:50%;top:calc(42% + clamp(65px,20vw,95px));transform:translateX(-50%);font-family:var(--font-label);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#F9F9F2;background:rgba(34,34,34,0.72);padding:4px 14px;border-radius:100px;pointer-events:none;z-index:201;white-space:nowrap;opacity:0;';
+      awardLbl.textContent = `\u2736 ${arch.name} \u2736`;
+      scene.appendChild(awardImg); scene.appendChild(awardLbl);
+      await new Promise(r => gsap.timeline({ onComplete: r })
+        .from(awardImg, { scale: 0.05, rotation: -180, opacity: 0, duration: 0.8, ease: 'elastic.out(1,0.42)' })
+        .to(awardLbl, { opacity: 1, duration: 0.3, ease: 'power2.out' }, '-=0.2')
+        .to({}, { duration: 1.4 })
+        .to([awardImg, awardLbl], { opacity: 0, scale: 1.1, duration: 0.35, ease: 'power2.in' })
+        .call(() => { awardImg.remove(); awardLbl.remove(); })
+      );
+      HAPTIC.burst();
+      assetBurst(scene, 'celebrate', 8);
+    }
+    await w(200);
 
     // ── Blue flash back to pitch ──────────────────────────
     if (hasGSAP && scene) {
@@ -3233,15 +3304,16 @@ window.tgInitGame = async function () {
     const sectionBreak = document.createElement('div');
     sectionBreak.className = 'tg-pl tg-section-break';
     sectionBreak.innerHTML = `<span class="tg-sb-rule"></span><img src="./TroveLogo.png" class="tg-sb-logo" alt="Trove"><span class="tg-sb-rule"></span>`;
+    if (hasGSAP) gsap.set(sectionBreak, { opacity: 0 });
     pitch.appendChild(sectionBreak);
     scrollPitch();
-    if (hasGSAP) gsap.fromTo(sectionBreak, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out', delay: 0.1 });
+    if (hasGSAP) gsap.to(sectionBreak, { opacity: 1, duration: 0.5, ease: 'power2.out', delay: 0.1 });
     else sectionBreak.style.opacity = '1';
 
     // ── Curious / Helen contact + email CTA ───────────────
     await w(600);
     emailCapture(); // non-blocking — email is optional, play-again always follows
-    await w(2200);  // let email section animate in before section break appears
+    await w(2200);  // let email section animate in before play-again appears
 
     // ── Play again ────────────────────────────────────────
     const playAgainWrap = document.createElement('div');
@@ -3258,9 +3330,10 @@ window.tgInitGame = async function () {
       if (hasGSAP) gsap.to(pitch, { opacity: 0, duration: 0.35, onComplete: () => window.tgInitGame?.() });
       else window.tgInitGame?.();
     };
+    if (hasGSAP) gsap.set(playAgainWrap, { opacity: 0, y: 14 });
     pitch.appendChild(playAgainWrap);
     scrollPitch();
-    if (hasGSAP) gsap.from(playAgainWrap, { opacity: 0, y: 14, duration: 0.38, ease: 'power3.out', delay: 0.2 });
+    if (hasGSAP) gsap.to(playAgainWrap, { opacity: 1, y: 0, duration: 0.38, ease: 'power3.out', delay: 0.2 });
     setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 150);
   }
 
