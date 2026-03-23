@@ -600,7 +600,7 @@ canvas#webgl {
 .tg-hero-oh {
   position: absolute;
   top: 6px; left: 0;
-  width: 24px; height: 24px;
+  width: 36px; height: 36px;
   object-fit: contain;
   transform-origin: center;
 }
@@ -732,20 +732,21 @@ canvas#webgl {
 /* ── Envelope reveal ────────────────────────────────── */
 .tg-env-wrap {
   position: relative;
-  margin: 8px -18px 0;
-  height: clamp(340px, 128cqw, 540px);
-  overflow: visible;
+  margin: 32px -18px 0;
+  /* height = ~50% of letter (109cqw × 0.5) + cover (~28cqw) */
+  height: clamp(270px, 96cqw, 420px);
+  overflow: hidden; /* clips letter so only top half peeks out */
+  margin-bottom: 0; /* flush bottom — no dead space */
 }
 .tg-env-deco {
   position: absolute; inset: 0;
   pointer-events: none; z-index: 10;
 }
-/* Letter sits centered, bottom edge above the cover */
+/* Letter anchored at top — bottom half hidden behind/below cover */
 .tg-env-letter-wrap {
   position: absolute;
-  left: 10%; /* (100% - 80%) / 2 — avoids CSS transform that GSAP would clobber */
+  top: 0; left: 10%;
   width: 80%;
-  bottom: clamp(68px, 24cqw, 110px);
   z-index: 2;
 }
 .tg-env-letter-img {
@@ -754,33 +755,36 @@ canvas#webgl {
 /* Content overlaid on the letter paper */
 .tg-env-letter-content {
   position: absolute;
-  inset: 9% 12% 15% 12%;
+  inset: 9% 12% 18% 12%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-/* Cover (envelope body) sits at the bottom, masks letter bottom */
-.tg-env-cover {
+/* Cover wrap — full width, absolute bottom, masks letter's lower half */
+.tg-env-cover-wrap {
   position: absolute;
   bottom: 0; left: 0;
-  width: 100%; height: auto;
-  display: block; z-index: 5;
+  width: 100%; z-index: 5;
 }
-/* Bottom row inside the letter */
-.tg-env-bottom-row {
+.tg-env-cover {
+  width: 100%; height: auto; display: block;
+}
+/* Helen + replay overlaid on the cover */
+.tg-env-cover-content {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  margin-top: auto;
-  padding-top: 6px;
-  gap: 8px;
+  padding: 0 clamp(12px, 4cqw, 20px);
+  z-index: 6;
 }
-/* Tiny replay button (bottom-right of letter) */
+/* Tiny replay button on the cover */
 .tg-env-replay {
   background: none; border: none; flex-shrink: 0;
   font-family: var(--font-label); font-size: clamp(7px, 2.4cqw, 9px);
   letter-spacing: 0.12em; text-transform: uppercase;
-  color: rgba(34,34,34,0.38); cursor: pointer;
+  color: rgba(34,34,34,0.45); cursor: pointer;
   transition: color 0.18s; white-space: nowrap; padding: 0;
 }
 .tg-env-replay:hover { color: var(--anchor); }

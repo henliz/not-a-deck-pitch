@@ -2232,16 +2232,19 @@ window.tgInitGame = async function () {
     await ringWipeChapter('Who Owns the Data');
     await w(200);
     flash();
-    // Type A — statement, id.png pops in
-    const userEl = line('The user does. Always.', 'tg-pl--big');
+    // Type A — statement, id.png pops in next to "Always."
+    const userEl = line('The user does. <span class="tg-always-word" style="position:relative;display:inline-block;overflow:visible;">Always.</span>', 'tg-pl--big');
     await reveal(userEl, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
       rotation: () => gsap.utils.random(-15, 15),
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
+    const alwaysWord = userEl.querySelector('.tg-always-word') || userEl;
+    alwaysWord.appendChild(decal('id.png', 'tg-decal--bob', { right: '-58px', top: '-8px', w: 72, delay: 0.2 }));
+    // party avatar — celebratory, not aggressive
     userEl.style.position = 'relative'; userEl.style.overflow = 'visible';
-    userEl.appendChild(decal('id.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 48, delay: 0.2 }));
+    userEl.appendChild(decal('avatars/g4.png', 'tg-decal--party', { left: '-54px', top: '-18px', w: 58, delay: 0.5 }));
     await w(600);
     await reveal(line('This isn\'t a privacy policy nicety — it\'s <span class="tg-hl-b">the core of the business model.</span> Trove profiles are <span class="tg-hl">assets users accumulate</span> and choose to share. You authorize what gets seen and to whom. You can revoke it.', 'tg-pl--med'), {
       y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: hasCE ? 'unfurl' : 'power3.out',
@@ -2548,19 +2551,24 @@ window.tgInitGame = async function () {
     await ringWipeChapter('The Flywheel');
     await w(200);
     flash();
-    // Type A — statement
-    await reveal(line('The data is the moat.', 'tg-pl--big'), {
+    // Type A — statement, frog beside "moat"
+    const moatEl = line('The data is the moat.', 'tg-pl--big');
+    await reveal(moatEl, {
       type: 'chars', y: 0,
       scale: () => gsap.utils.random(0.1, 0.5),
       rotation: () => gsap.utils.random(-15, 15),
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
+    moatEl.style.position = 'relative'; moatEl.style.overflow = 'visible';
+    const frogImg = decal('frog.png', 'tg-decal--bob', { right: '50px', top: '30px', w: 100, fromY: -30, fromScale: 0.3, delay: 0.3 });
+    moatEl.appendChild(frogImg);
+    setTimeout(() => orbitingTextRing(frogImg, '\u2736 THE DATA IS THE MOAT \u2736 THE DATA IS THE MOAT \u2736'), 900);
     await w(320);
     await reveal(line('Not the app.', 'tg-pl--dim'), {
       y: 10, stagger: 0.08, duration: 0.45, ease: hasCE ? 'hesitate' : 'power2.out',
     });
     await w(500);
-    // Type F — rlist with frog
+    // Type F — rlist
     const rlistEl = await rlistReveal([
       { m: '01', t: 'More plays → sharper behavioural models' },
       { m: '02', t: 'Sharper models → more accurate profiles' },
@@ -2568,22 +2576,45 @@ window.tgInitGame = async function () {
       { m: '04', t: 'More B2B value → more users → more plays' },
     ]);
     rlistEl.style.position = 'relative'; rlistEl.style.overflow = 'visible';
-    const frogImg = decal('frog.png', 'tg-decal--bob', { right: '-22px', top: '0', w: 50, fromY: -30, fromScale: 0.3, delay: 0.3 });
-    rlistEl.appendChild(frogImg);
-    // Socks: unexpected wildcard on the list container
-    rlistEl.appendChild(decal('socks.png', 'tg-decal--bob', { right: '-22px', top: '60px', w: 36, fromY: 20, fromRot: 15, toRot: -8, delay: 0.6 }));
-    setTimeout(() => orbitingTextRing(frogImg, '\u2736 THE DATA IS THE MOAT \u2736 THE DATA IS THE MOAT \u2736'), 900);
     await w(400);
     const noGPUsEl = line('You can\'t shortcut this with GPUs.', 'tg-pl--dim');
     await reveal(noGPUsEl, {
       y: 10, stagger: 0.028, duration: 0.34, ease: hasCE ? 'unfurl' : 'power3.out',
     });
     noGPUsEl.style.position = 'relative'; noGPUsEl.style.overflow = 'visible';
-    noGPUsEl.appendChild(decal('turtle.png', 'tg-decal--bob', { right: '-22px', top: '-4px', w: 46, fromY: -18, delay: 0.25 }));
+    // Turtle walks back and forth along the top of the line
+    const turtleEl = document.createElement('img');
+    turtleEl.src = './assets/turtle.png';
+    const TSZ = 46;
+    turtleEl.style.cssText = `width:${TSZ}px;height:auto;position:absolute;left:0;top:-${TSZ - 14}px;opacity:0;pointer-events:none;`;
+    noGPUsEl.appendChild(turtleEl);
+    if (hasGSAP) {
+      gsap.set(turtleEl, { scale: 0.1 });
+      gsap.to(turtleEl, {
+        opacity: 1, scale: 1, duration: 0.55, ease: 'elastic.out(1, 0.5)', delay: 0.3,
+        onComplete: () => {
+          const walkPx = Math.max(60, noGPUsEl.offsetWidth - TSZ);
+          const stepDur = walkPx / 38;
+          gsap.timeline({ repeat: -1, repeatDelay: 0.9 })
+            .to(turtleEl, { x: walkPx, duration: stepDur, ease: 'none',
+              modifiers: { y: () => (Math.sin(gsap.getProperty(turtleEl, 'x') * 0.18) * 3) + 'px' } })
+            .to(turtleEl, { scaleX: -1, duration: 0.12, ease: 'power2.inOut' })
+            .to(turtleEl, { x: 0, duration: stepDur, ease: 'none',
+              modifiers: { y: () => (Math.sin(gsap.getProperty(turtleEl, 'x') * 0.18) * 3) + 'px' } })
+            .to(turtleEl, { scaleX: 1, duration: 0.12, ease: 'power2.inOut' });
+        },
+      });
+    }
     await w(200);
     await dimLines('A competitor starting today would need years of real human behavioural data across diverse emotional contexts. Trove\'s head start is the dataset — and it compounds with every tangle played.');
     await w(350);
     await dimLines('The comparable isn\'t another assessment tool. It\'s Plaid. $430M ARR from API access to data users already had. Trove is building the behavioural equivalent of that infrastructure layer.');
+    // Socks on the yellow paper scrapbook card, overlapping
+    const lastScrapCard = [...pitch.querySelectorAll('.tg-scrapbook-card')].pop();
+    if (lastScrapCard) {
+      lastScrapCard.style.position = 'relative'; lastScrapCard.style.overflow = 'visible';
+      lastScrapCard.appendChild(decal('socks.png', 'tg-decal--bob', { right: '-24px', top: '80px', w: 130, fromY: -20, fromRot: 18, toRot: -10, delay: 0.15 }));
+    }
     await w(700);
     await contBtn("What's the ask? →");
     await sAsk();
@@ -2792,8 +2823,7 @@ window.tgInitGame = async function () {
   }
 
   // ── EMAIL CAPTURE — envelope reveal ───────────────────
-  async function emailCapture() {
-    return new Promise(resolveEmail => {
+  function emailCapture() {
       const envWrap = document.createElement('div');
       envWrap.className = 'tg-pl tg-env-wrap';
 
@@ -2839,13 +2869,27 @@ window.tgInitGame = async function () {
       fineEl.style.opacity = '0';
       fineEl.textContent = 'no spam. just signal — you\'ll hear first when trove is ready.';
 
-      // Bottom row: Helen left | tiny replay right
-      const bottomRow = document.createElement('div');
-      bottomRow.className = 'tg-env-bottom-row';
-      bottomRow.style.opacity = '0';
+      letterContent.append(heroEl, subEl, lblEl, formEl, fineEl);
+      letterWrap.append(letterImg, letterContent);
+      envWrap.appendChild(letterWrap);
+
+      // ── Cover wrap (full width, bottom, z-index:5) ─────
+      const coverWrapEl = document.createElement('div');
+      coverWrapEl.className = 'tg-env-cover-wrap';
+
+      const coverImg = document.createElement('img');
+      coverImg.src = './assets/emailcover.png';
+      coverImg.className = 'tg-env-cover';
+      coverImg.alt = '';
+
+      // Helen + replay overlaid ON the cover
+      const coverContent = document.createElement('div');
+      coverContent.className = 'tg-env-cover-content';
+      coverContent.style.opacity = '0';
 
       const helenEl = document.createElement('div');
       helenEl.className = 'tg-email-helen';
+      helenEl.style.margin = '0';
       helenEl.innerHTML = 'Helen Huang · Founder, Trove &nbsp;·&nbsp; <a href="mailto:helen@trove.garden" class="tg-email-helen-link">helen@trove.garden</a>';
 
       const replayEl = document.createElement('button');
@@ -2857,17 +2901,9 @@ window.tgInitGame = async function () {
         else window.tgInitGame?.();
       };
 
-      bottomRow.append(helenEl, replayEl);
-      letterContent.append(heroEl, subEl, lblEl, formEl, fineEl, bottomRow);
-      letterWrap.append(letterImg, letterContent);
-      envWrap.appendChild(letterWrap);
-
-      // ── Cover (envelope front, z-index:5, masks letter bottom) ─
-      const coverImg = document.createElement('img');
-      coverImg.src = './assets/emailcover.png';
-      coverImg.className = 'tg-env-cover';
-      coverImg.alt = '';
-      envWrap.appendChild(coverImg);
+      coverContent.append(helenEl, replayEl);
+      coverWrapEl.append(coverImg, coverContent);
+      envWrap.appendChild(coverWrapEl);
 
       pitch.appendChild(envWrap);
       scrollPitch();
@@ -2879,8 +2915,8 @@ window.tgInitGame = async function () {
       decoEl.appendChild(turtleImg);
 
       [
-        { src: 'starhehe.png', anim: 'spin',   css: 'top:-10px;right:6px'    },
-        { src: 'babystar.png', anim: 'spin2',  css: 'top:-10px;left:6px'     },
+        { src: 'starhehe.png', anim: 'spin',   css: 'top:4px;right:6px'    },
+        { src: 'babystar.png', anim: 'spin2',  css: 'top:4px;left:6px'     },
         { src: 'frog.png',     anim: 'bounce', css: 'bottom:20px;left:-8px'  },
         { src: 'derpy.png',    anim: 'dance',  css: 'bottom:20px;right:-8px' },
       ].forEach(a => {
@@ -2925,34 +2961,36 @@ window.tgInitGame = async function () {
       }, 80);
 
       if (!hasGSAP) {
+        envWrap.style.opacity = '1';
         coverImg.style.opacity = '1';
-        [heroEl, subEl, lblEl, formEl, fineEl, bottomRow].forEach(el => el.style.opacity = '1');
+        [heroEl, subEl, lblEl, formEl, fineEl].forEach(el => el.style.opacity = '1');
+        coverContent.style.opacity = '1';
         decoEl.querySelectorAll('img').forEach(img => img.style.opacity = '1');
         emailInEl?.focus();
         return;
       }
 
       // ── GSAP sequence ───────────────────────────────────
-      // 1. Cover slides up
-      gsap.set(coverImg, { opacity: 0, y: 28 });
-      gsap.to(coverImg, { opacity: 1, y: 0, duration: 0.55, ease: hasCE ? 'slam' : 'back.out(1.4)' });
+      // 0. Whole section slides in — same pattern as every other pitch section
+      gsap.from(envWrap, { opacity: 0, y: 24, duration: 0.55, ease: hasCE ? 'unfurl' : 'power3.out' });
+
+      // 1. Cover fades up into place
+      gsap.fromTo(coverImg, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: hasCE ? 'slam' : 'back.out(1.2)', delay: 0.25 });
 
       // 2. Letter slides up from behind the cover
-      gsap.set(letterWrap, { yPercent: 90 });
-      gsap.to(letterWrap, {
+      gsap.fromTo(letterWrap, { yPercent: 90 }, {
         yPercent: 0, duration: 1.05, ease: 'back.out(1.05)', delay: 0.28,
         onComplete: () => {
-          // Position turtle at Helen's row using real layout coords
-          const envRect   = envWrap.getBoundingClientRect();
-          const helenRect = helenEl.getBoundingClientRect();
-          const letRect   = letterWrap.getBoundingClientRect();
-          turtleImg.style.top  = (helenRect.top  - envRect.top  - 14) + 'px';
-          turtleImg.style.left = (letRect.left   - envRect.left +  6) + 'px';
+          // Position turtle on the envelope cover using real layout coords
+          const envRect  = envWrap.getBoundingClientRect();
+          const covRect  = coverImg.getBoundingClientRect();
+          turtleImg.style.top  = (covRect.top - envRect.top + covRect.height * 0.42 - 13) + 'px';
+          turtleImg.style.left = (covRect.left - envRect.left + 8) + 'px';
           gsap.set(turtleImg, { scale: 0.1 });
           gsap.to(turtleImg, {
             opacity: 1, scale: 1, duration: 0.42, ease: 'elastic.out(1, 0.5)', delay: 0.55,
             onComplete: () => {
-              const walkPx  = Math.max(60, helenRect.width - 20);
+              const walkPx  = Math.max(60, covRect.width - 24);
               const stepDur = walkPx / 36;
               const walkTl  = gsap.timeline({ repeat: -1, repeatDelay: 1.4 });
               walkTl
@@ -2983,7 +3021,7 @@ window.tgInitGame = async function () {
         onComplete: () => emailInEl?.focus(),
       });
       gsap.fromTo(fineEl,    { opacity: 0 },         { opacity: 1,       duration: 0.22, delay: 1.48 });
-      gsap.fromTo(bottomRow, { opacity: 0, y: 6  }, { opacity: 1, y: 0, duration: 0.32, ease: 'power3.out', delay: 1.60 });
+      gsap.fromTo(coverContent, { opacity: 0 }, { opacity: 1, duration: 0.38, ease: 'power2.out', delay: 1.55 });
 
       // 4. Decals pop in around the envelope
       decoEl.querySelectorAll('img:not([src*="turtle"])').forEach((img, i) => {
@@ -3001,7 +3039,6 @@ window.tgInitGame = async function () {
           }
         );
       });
-    });
   }
 
   // ── ARCHETYPE REVEAL ──────────────────────────────────
@@ -3165,7 +3202,7 @@ window.tgInitGame = async function () {
     await recapScreen(async overlay => {
       overlay.style.color = revealDark ? '#F9F9F2' : '#222222';
       overlay.style.justifyContent = 'flex-start';
-      overlay.style.paddingTop = 'clamp(40px, 10vh, 72px)';
+      overlay.style.paddingTop = 'clamp(80px, 20vh, 130px)';
 
       // Scattered bg decals
       ['babystar.png','starhehe.png','coin.png','apple.png'].forEach((src, i) => {
@@ -3178,7 +3215,7 @@ window.tgInitGame = async function () {
       });
 
       const eyebrow = document.createElement('div');
-      eyebrow.style.cssText = `font-family:var(--font-label);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;opacity:${revealDark?'0.60':'0.45'};margin-bottom:12px;`;
+      eyebrow.style.cssText = `position:absolute;top:clamp(18px,5vh,32px);left:0;right:0;font-family:var(--font-label);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;opacity:${revealDark?'0.60':'0.45'};text-align:center;pointer-events:none;`;
       eyebrow.textContent = 'your investor archetype';
 
       // Framed type image with border decals
@@ -3520,7 +3557,8 @@ window.tgInitGame = async function () {
     // ── Envelope: email CTA + Helen info + play again ─────
     await w(600);
     emailCapture(); // non-blocking — envelope is the final element
-    setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 400);
+    setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 300);
+    setTimeout(() => { pitch.scrollTop = pitch.scrollHeight; }, 900);
   }
 
   window.tgAPI.setProgress(0);
