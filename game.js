@@ -1394,9 +1394,9 @@ window.tgInitGame = async function () {
     const BLUE  = '#88ABE3';
     const CREAM = '#F9F9F2';
     const DARK  = '#222222';
-    const PAD   = 28;   // outer card padding
-    const GAP   = 14;   // gap between bento tiles
-    const IW    = W - PAD * 2;   // 844px inner width
+    const PAD   = 18;   // outer card padding
+    const GAP   = 10;   // gap between bento tiles
+    const IW    = W - PAD * 2;   // 864px inner width
 
     // ── Helpers ───────────────────────────────────────────────────────
     function scRoundRect(x, y, w, h, r, fill, stroke) {
@@ -1451,6 +1451,19 @@ window.tgInitGame = async function () {
         img.onload = () => {
           const s = Math.min(w / img.naturalWidth, h / img.naturalHeight);
           ctx.drawImage(img, x + (w - img.naturalWidth * s) / 2, y + (h - img.naturalHeight * s) / 2, img.naturalWidth * s, img.naturalHeight * s);
+          res();
+        };
+        img.onerror = res; img.src = src;
+      });
+    }
+
+    async function drawAssetCover(src, x, y, w, h) {
+      return new Promise(res => {
+        const img = new Image();
+        img.onload = () => {
+          const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+          const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+          ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
           res();
         };
         img.onerror = res; img.src = src;
@@ -1518,124 +1531,130 @@ window.tgInitGame = async function () {
       ]);
     } catch(e) {}
 
-    // ── Bento layout constants ────────────────────────────────────────
-    // Two columns
-    const COL_L = 340;
-    const COL_R = IW - COL_L - GAP;   // 490px
-    // Row y-positions and heights (sum = 1200)
-    const R1_Y = 58,  R1_H = 420;     // top row   (illustration + title)
-    const R2_Y = R1_Y + R1_H + GAP;   // 492
-    const R2_H = 200;                  // middle row (quote + traits)
-    const R3_Y = R2_Y + R2_H + GAP;   // 706
-    const R3_H = 190;                  // signals row (full-width)
-    const R4_Y = R3_Y + R3_H + GAP;   // 910
-    const R4_H = H - R4_Y - PAD;      // 262 — footer row
-    const TR   = 16;                   // tile border radius
-    const TP   = 22;                   // tile inner padding
+    // ── Layout constants ─────────────────────────────────────────────
+    const COL_L  = 340;              // title text column width (in top tile)
+    const TILE_Y = 44;               // first tile top-y
+    const R1_H   = 322;              // top tile height (title + portrait)
+    const R2_Y   = TILE_Y + R1_H + GAP;   // 376
+    const R2_H   = 160;              // quote + traits row
+    const R3_Y   = R2_Y + R2_H + GAP;    // 546
+    const R3_H   = 200;              // signals row
+    const R4_Y   = R3_Y + R3_H + GAP;    // 756
+    const R4_H   = 100;              // stats mini-row
+    const R5_Y   = R4_Y + R4_H + GAP;    // 866
+    const R5_H   = H - R5_Y - PAD;       // 316
+    const TR     = 16;               // tile border radius
+    const TP     = 20;               // tile inner padding
 
     // ════════════════════════════════════════════════════════════════
     // DRAW
     // ════════════════════════════════════════════════════════════════
 
-    // 1. Card background
+    // Card background
     ctx.fillStyle = CREAM;
     ctx.fillRect(0, 0, W, H);
 
-    // Accent bar at very top
+    // Accent bar at top
     ctx.fillStyle = accentColor;
     ctx.fillRect(0, 0, W, 3);
 
-    // Eyebrow header line
+    // Eyebrow
     ctx.textBaseline = 'top'; ctx.textAlign = 'left';
     ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
-    setLS('0.16em'); ctx.fillText('INVESTOR ARCHETYPE · TROVE', PAD, 18);
+    setLS('0.16em'); ctx.fillText('INVESTOR ARCHETYPE · TROVE', PAD, 16);
     ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(34,34,34,0.30)';
-    setLS('0.04em'); ctx.fillText('2026', W - PAD, 18); setLS('0');
+    setLS('0.04em'); ctx.fillText('2026', W - PAD, 16); setLS('0');
 
-    // ── TILE 1: Title (top-left) ──────────────────────────────────────
-    const T1X = PAD, T1Y = R1_Y, T1W = COL_L, T1H = R1_H;
-    scRoundRect(T1X, T1Y, T1W, T1H, TR, hexRgba(BLUE, 0.10), hexRgba(BLUE, 0.28));
+    // ── TILE 1: Title + Portrait (full-width, white) ──────────────────
+    const T1X = PAD, T1Y = TILE_Y, T1W = IW, T1H = R1_H;
+    scRoundRect(T1X, T1Y, T1W, T1H, TR, '#FFFFFF', 'rgba(34,34,34,0.07)');
 
-    // "YOUR TYPE" eyebrow inside tile
+    // Title text (left column)
     ctx.fillStyle = BLUE; ctx.font = '400 9px "DM Mono", monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     setLS('0.16em'); ctx.fillText('YOUR TYPE', T1X + TP, T1Y + TP); setLS('0');
 
-    // "The" prefix
     ctx.fillStyle = 'rgba(34,34,34,0.42)'; ctx.font = '400 15px "DM Mono", monospace';
-    setLS('0.06em'); ctx.fillText('The', T1X + TP, T1Y + TP + 28); setLS('0');
+    setLS('0.06em'); ctx.fillText('The', T1X + TP, T1Y + TP + 26); setLS('0');
 
     // Archetype word — auto-fit font
     const archWord = arch.name.replace(/^The\s+/, '');
-    let nfs = 46;
+    let nfs = 48;
     ctx.font = `900 ${nfs}px "Playfair Display", serif`;
     setLS('-0.02em');
-    const nameMaxW = T1W - TP * 2;
+    const nameMaxW = COL_L - TP * 2;
     if (ctx.measureText(archWord).width > nameMaxW) {
       nfs = Math.floor(nfs * nameMaxW / ctx.measureText(archWord).width);
       ctx.font = `900 ${nfs}px "Playfair Display", serif`;
     }
     ctx.fillStyle = DARK;
-    ctx.fillText(archWord, T1X + TP, T1Y + TP + 52);
+    ctx.fillText(archWord, T1X + TP, T1Y + TP + 50);
     setLS('0');
 
     // Tagline
+    const taglineY = T1Y + TP + 50 + Math.round(nfs * 1.2);
     ctx.fillStyle = 'rgba(34,34,34,0.55)'; ctx.font = '400 12px "DM Mono", monospace';
-    setLS('0.02em');
-    ctx.fillText(arch.sub, T1X + TP, T1Y + TP + 52 + Math.round(nfs * 1.2));
-    setLS('0');
+    setLS('0.02em'); ctx.fillText(arch.sub, T1X + TP, taglineY); setLS('0');
 
-    // Doodle icon — bottom-right of title tile
-    const DSZ = 62;
+    // Archetype doodle — bottom-left of title column
+    const DSZ = 52;
     await drawAsset(
       `./assets/${ARCH_ASSETS[id] || 'camera.png'}`,
-      T1X + T1W - DSZ - TP, T1Y + T1H - DSZ - TP, DSZ, DSZ, 8
+      T1X + TP, T1Y + T1H - DSZ - TP, DSZ, DSZ, 8
     );
 
-    // ── TILE 2: Character illustration (top-right) ────────────────────
-    const T2X = PAD + COL_L + GAP, T2Y = R1_Y, T2W = COL_R, T2H = R1_H;
-    scRoundRect(T2X, T2Y, T2W, T2H, TR, hexRgba(accentColor, 0.15), null);
-    ctx.save(); clipRR(T2X, T2Y, T2W, T2H, TR);
-    await drawAssetFit(`./assets/${ARCH_TYPE_IMG[id] || 'investor.png'}`, T2X + 16, T2Y + 16, T2W - 32, T2H - 32);
+    // Portrait — right side, square cover-crop
+    const IMG_X  = T1X + COL_L + GAP;
+    const IMG_W  = T1W - COL_L - GAP;              // 514px
+    const IMG_SQ = Math.min(IMG_W, T1H);            // 322px square
+    const IMG_OX = IMG_X + Math.round((IMG_W - IMG_SQ) / 2);
+    ctx.save();
+    clipRR(IMG_OX, T1Y, IMG_SQ, T1H, TR);
+    await drawAssetCover(`./assets/${ARCH_TYPE_IMG[id] || 'Cartographer.png'}`, IMG_OX, T1Y, IMG_SQ, T1H);
     ctx.restore();
 
-    // ── TILE 3: Insight quote (middle-left) ──────────────────────────
-    const T3X = PAD, T3Y = R2_Y, T3W = COL_L, T3H = R2_H;
-    scRoundRect(T3X, T3Y, T3W, T3H, TR, hexRgba(BLUE, 0.22), null);
+    // ── TILE 3: Quote (middle-left) ───────────────────────────────────
+    const T3X = PAD, T3Y = R2_Y, T3W = 380, T3H = R2_H;
+    scRoundRect(T3X, T3Y, T3W, T3H, TR, hexRgba(BLUE, 0.18), null);
 
-    ctx.fillStyle = DARK; ctx.font = '400 italic 16px "Playfair Display", serif';
+    ctx.fillStyle = DARK; ctx.font = '400 italic 15px "Playfair Display", serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    wrapText(`"${arch.insight || arch.sub}"`, T3X + TP, T3Y + TP, T3W - TP * 2, 25);
+    wrapText(`"${arch.insight}"`, T3X + TP, T3Y + TP, T3W - TP * 2, 24);
 
     // ── TILE 4: Traits (middle-right) ────────────────────────────────
-    const T4X = PAD + COL_L + GAP, T4Y = R2_Y, T4W = COL_R, T4H = R2_H;
-    scRoundRect(T4X, T4Y, T4W, T4H, TR, CREAM, 'rgba(34,34,34,0.08)');
+    const T4X = PAD + 380 + GAP, T4Y = R2_Y, T4W = IW - 380 - GAP, T4H = R2_H;
+    scRoundRect(T4X, T4Y, T4W, T4H, TR, CREAM, 'rgba(34,34,34,0.07)');
 
     ctx.fillStyle = 'rgba(34,34,34,0.38)'; ctx.font = '400 9px "DM Mono", monospace';
     ctx.textBaseline = 'top'; setLS('0.16em');
     ctx.fillText('TRAITS', T4X + TP, T4Y + TP); setLS('0');
 
-    const pW = T4W - TP * 2, pH = 34, pGap = 10, pStart = T4Y + TP + 24;
-    (arch.traits || []).forEach((trait, i) => {
+    const pW = T4W - TP * 2, pH = 30, pGap = 8, pStart = T4Y + TP + 22;
+    (arch.traits || []).slice(0, 3).forEach((trait, i) => {
       const py = pStart + i * (pH + pGap);
       scRoundRect(T4X + TP, py, pW, pH, 8, hexRgba(accentColor, 0.22), hexRgba(accentColor, 0.50));
       ctx.fillStyle = DARK; ctx.font = '400 11px "DM Mono", monospace';
       ctx.textBaseline = 'middle'; setLS('0.08em');
-      ctx.fillText(trait.toUpperCase(), T4X + TP + 14, py + pH / 2);
+      ctx.fillText(trait.toUpperCase(), T4X + TP + 12, py + pH / 2);
       setLS('0');
     });
 
-    // ── TILE 5: Your Signals (full-width) ────────────────────────────
+    // ── TILE 5: Your Signals (full-width, dark) ──────────────────────
     const T5X = PAD, T5Y = R3_Y, T5W = IW, T5H = R3_H;
     scRoundRect(T5X, T5Y, T5W, T5H, TR, DARK, null);
 
-    // Ghost move count watermark
+    // Ghost archetype doodle watermark
+    ctx.save(); ctx.globalAlpha = 0.07;
+    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`, T5X + T5W - 152, T5Y + (T5H - 140) / 2, 140, 140, -6);
+    ctx.globalAlpha = 1; ctx.restore();
+
+    // Ghost move count number
     if (moveCount > 0) {
       ctx.save();
-      ctx.font = `900 148px "Playfair Display", serif`;
+      ctx.font = `900 120px "Playfair Display", serif`;
       ctx.fillStyle = 'rgba(249,249,242,0.04)';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(moveCount), T5X + T5W - 28, T5Y + T5H / 2);
+      ctx.fillText(String(moveCount), T5X + T5W - 160, T5Y + T5H / 2);
       ctx.restore();
     }
 
@@ -1644,51 +1663,95 @@ window.tgInitGame = async function () {
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     setLS('0.18em'); ctx.fillText('YOUR SIGNALS', T5X + TP, T5Y + TP); setLS('0');
 
-    // Signal lines
-    ctx.font = '400 14px "DM Mono", monospace';
-    ctx.fillStyle = 'rgba(249,249,242,0.85)';
-    setLS('0.01em');
-    signals.forEach((sig, i) => ctx.fillText(`— ${sig}`, T5X + TP, T5Y + TP + 26 + i * 30));
+    // All behavioral signals
+    const allSigs = (data && data.allSignals && data.allSignals.length) ? data.allSignals : signals;
+    ctx.font = '400 13px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(249,249,242,0.88)'; setLS('0.01em');
+    allSigs.slice(0, 5).forEach((sig, i) => ctx.fillText(`— ${sig}`, T5X + TP, T5Y + TP + 24 + i * 27));
     setLS('0');
 
-    // Move count, right-aligned
+    // Move count right-aligned
     if (moveCount > 0) {
       ctx.fillStyle = hexRgba(BLUE, 0.65);
       ctx.font = '400 11px "DM Mono", monospace';
       ctx.textAlign = 'right'; setLS('0.06em');
-      ctx.fillText(`${moveCount} decisions`, T5X + T5W - TP, T5Y + T5H - TP - 2);
+      ctx.fillText(`${moveCount} scenes`, T5X + T5W - TP, T5Y + T5H - TP - 2);
       setLS('0');
     }
 
-    // ── TILE 6: Logo + CTA (bottom-left) ─────────────────────────────
-    const T6X = PAD, T6Y = R4_Y, T6W = COL_L, T6H = R4_H;
-    scRoundRect(T6X, T6Y, T6W, T6H, TR, hexRgba(accentColor, 1), null);
+    // ── Stats mini-row (3 tiles) ─────────────────────────────────────
+    const ST_Y = R4_Y, ST_H = R4_H;
+    const ST_W = Math.floor((IW - GAP * 2) / 3);
+    const ST_W3 = IW - ST_W * 2 - GAP * 2;
+    [
+      { x: PAD,                    w: ST_W,  label: 'SCENES EXPLORED', val: String(data ? data.pathLength : moveCount) },
+      { x: PAD + ST_W + GAP,       w: ST_W,  label: 'ENTRY ANGLE',     val: (data && data.firstChoiceLabel) || '—' },
+      { x: PAD + (ST_W + GAP) * 2, w: ST_W3, label: 'EXIT MOVE',       val: (data && data.exitMove) || '—' },
+    ].forEach(({ x, w, label, val }) => {
+      scRoundRect(x, ST_Y, w, ST_H, 12, hexRgba(BLUE, 0.10), hexRgba(BLUE, 0.22));
+      ctx.fillStyle = BLUE; ctx.font = '400 8px "DM Mono", monospace';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      setLS('0.14em'); ctx.fillText(label, x + 14, ST_Y + 14); setLS('0');
+      ctx.fillStyle = DARK; ctx.font = '700 13px "DM Mono", monospace';
+      ctx.textBaseline = 'bottom'; setLS('0.02em');
+      const vMaxW = w - 28;
+      if (ctx.measureText(val).width > vMaxW) {
+        const words = val.split(' '), half = Math.ceil(words.length / 2);
+        ctx.fillText(words.slice(0, half).join(' '), x + 14, ST_Y + ST_H - 22);
+        ctx.fillText(words.slice(half).join(' '),    x + 14, ST_Y + ST_H - 8);
+      } else {
+        ctx.fillText(val, x + 14, ST_Y + ST_H - 8);
+      }
+      setLS('0');
+    });
 
-    await drawAsset('./TroveLogo.png', T6X + TP, T6Y + TP + 8, 114, 34, 0);
+    // ── TILE 7: Trove CTA + QR (full-width) ──────────────────────────
+    const T7X = PAD, T7Y = R5_Y, T7W = IW, T7H = R5_H;
+    scRoundRect(T7X, T7Y, T7W, T7H, TR, hexRgba(accentColor, 1), null);
 
-    ctx.fillStyle = 'rgba(34,34,34,0.60)'; ctx.font = '400 12px "DM Mono", monospace';
+    // Scattered decorative assets (left section, semi-transparent)
+    ctx.save(); ctx.globalAlpha = 0.25;
+    await drawAsset('./assets/starhehe.png',                         T7X + 12,         T7Y + 14,         40, 40, -14);
+    await drawAsset('./assets/coin.png',                             T7X + T7W * 0.30, T7Y + T7H - 50,   34, 34,  10);
+    await drawAsset('./assets/flower.png',                           T7X + T7W * 0.16, T7Y + T7H * 0.45, 30, 30,  20);
+    await drawAsset(`./assets/${ARCH_ASSETS[id] || 'camera.png'}`,  T7X + T7W * 0.32, T7Y + 14,         38, 38,  -8);
+    await drawAsset('./assets/babystar.png',                         T7X + 14,         T7Y + T7H - 50,   28, 28,   6);
+    ctx.globalAlpha = 1; ctx.restore();
+
+    // Logo
+    await drawAsset('./TroveLogo.png', T7X + TP, T7Y + TP + 4, 114, 34, 0);
+
+    // CTA text
+    ctx.fillStyle = 'rgba(34,34,34,0.72)'; ctx.font = '400 12px "DM Mono", monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; setLS('0.04em');
-    ctx.fillText('see your type →', T6X + TP, T6Y + TP + 8 + 34 + 18);
+    ctx.fillText('see your type →', T7X + TP, T7Y + TP + 4 + 34 + 16);
     setLS('0');
 
-    // ── TILE 7: QR code (bottom-right) ───────────────────────────────
-    const T7X = PAD + COL_L + GAP, T7Y = R4_Y, T7W = COL_R, T7H = R4_H;
-    scRoundRect(T7X, T7Y, T7W, T7H, TR, '#FFFFFF', 'rgba(34,34,34,0.08)');
+    // URL
+    ctx.fillStyle = 'rgba(34,34,34,0.40)'; ctx.font = '400 10px "DM Mono", monospace';
+    setLS('0.02em');
+    ctx.fillText('henliz.github.io/not-a-deck-pitch', T7X + TP, T7Y + TP + 4 + 34 + 38);
+    setLS('0');
 
-    const qrSize   = Math.min(T7W - TP * 2, T7H - TP * 2 - 20);
-    const qrCanvas = await generateQR('https://henliz.github.io/not-a-deck-pitch/', qrSize);
+    // QR code with white inset tile
+    const QR_SZ = Math.min(T7H - TP * 2 - 22, 240);
+    const qrCanvas = await generateQR('https://henliz.github.io/not-a-deck-pitch/', QR_SZ);
     if (qrCanvas) {
-      const qrX = T7X + Math.round((T7W - qrSize) / 2);
-      const qrY = T7Y + Math.round((T7H - qrSize - 20) / 2);
-      ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+      const qrX = T7X + T7W - QR_SZ - TP - 10;
+      const qrY = T7Y + Math.round((T7H - QR_SZ - 20) / 2);
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.14)'; ctx.shadowBlur = 14;
+      scRoundRect(qrX - 10, qrY - 10, QR_SZ + 20, QR_SZ + 30, 12, '#FFFFFF', null);
+      ctx.restore();
+      ctx.drawImage(qrCanvas, qrX, qrY, QR_SZ, QR_SZ);
       ctx.fillStyle = 'rgba(34,34,34,0.35)'; ctx.font = '400 10px "DM Mono", monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'top'; setLS('0.08em');
-      ctx.fillText('scan to play', T7X + T7W / 2, qrY + qrSize + 10);
+      ctx.fillText('scan to play', qrX + QR_SZ / 2, qrY + QR_SZ + 6);
       setLS('0');
     }
 
-    // Subtle outer frame
-    ctx.strokeStyle = 'rgba(34,34,34,0.08)';
+    // Outer frame
+    ctx.strokeStyle = 'rgba(34,34,34,0.07)';
     ctx.lineWidth   = 1;
     ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
@@ -2163,7 +2226,7 @@ window.tgInitGame = async function () {
       stagger: 0.05, from: 'center', duration: 0.65, ease: hasCE ? 'slam' : 'back.out(3)',
     });
     // Line 3 — smaller, words bloom in from huge + blur
-    const livedEl = line('she lived the problem.', 'tg-pl--impact');
+    const livedEl = line('lived the problem.', 'tg-pl--impact');
     livedEl.style.cssText += 'color:var(--shift);margin-top:0;';
     await reveal(livedEl, {
       type: 'words', y: 0,
@@ -2580,12 +2643,29 @@ window.tgInitGame = async function () {
       operator:     ['you needed to know who built it', 'for you, the team is the thesis'],
       storyteller:  ['you followed the narrative thread', 'you understand that the product is the proof'],
     };
+    // All truthy behavioral signals (full list, not just one)
+    const allSignals = [];
+    if (firstChoice !== null) allSignals.push(`came in as a ${firstChoiceLabels[firstChoice]}`);
+    if (wentDeepOnMoat)    allSignals.push('stayed for the flywheel');
+    if (wentStraightToAsk) allSignals.push('cut straight to the ask');
+    if (usedFounderPath)   allSignals.push('led with the founder');
+    if (pushedBackOnData)  allSignals.push('pushed back on the data');
+
+    const exitMove =
+      wentDeepOnMoat    ? 'stayed for the flywheel' :
+      wentStraightToAsk ? 'cut to the ask' :
+      usedFounderPath   ? 'led with founder' :
+      pushedBackOnData  ? 'pushed back' : 'followed the signal';
+
     return {
       id, arch,
       pathLength: branchPath.length,
+      choiceCount,
       firstChoiceLabel: firstChoice !== null ? firstChoiceLabels[firstChoice] : 'curious',
       traits: traitLines[id] || [],
       wentDeepOnMoat, wentStraightToAsk, usedFounderPath, pushedBackOnData,
+      allSignals,
+      exitMove,
     };
   }
 
@@ -2611,8 +2691,8 @@ window.tgInitGame = async function () {
       const paradeEl = emailDiv.querySelector('#tg-email-parade');
       // scattered around the container: top corners, mid sides, bottom corners
       const paradeSpots = [
-        { src: 'starhehe.png',    anim: 'spin',   css: 'top:6px;left:4px'        },
-        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:-18px'     },
+        { src: 'starhehe.png',    anim: 'spin',   css: 'top:6px;left:-18px'      },
+        { src: 'babystar.png',    anim: 'spin2',  css: 'top:6px;right:4px'       },
         { src: 'frog.png',        anim: 'bounce', css: 'top:40%;left:2px'        },
         { src: 'derpy.png',       anim: 'dance',  css: 'top:40%;right:2px'       },
         { src: 'turtle.png',      anim: 'bob',    css: 'bottom:30px;left:4px'    },
@@ -3160,8 +3240,8 @@ window.tgInitGame = async function () {
 
     // ── Curious / Helen contact + email CTA ───────────────
     await w(600);
-    await emailCapture();
-    await w(400);
+    emailCapture(); // non-blocking — email is optional, play-again always follows
+    await w(2200);  // let email section animate in before section break appears
 
     // ── Play again ────────────────────────────────────────
     const playAgainWrap = document.createElement('div');
