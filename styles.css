@@ -732,52 +732,36 @@ canvas#webgl {
 /* ── Envelope reveal ────────────────────────────────── */
 .tg-env-wrap {
   position: relative;
-  margin: 32px -18px 0;
-  /* height = ~50% of letter (109cqw × 0.5) + cover (~28cqw) */
-  height: clamp(270px, 96cqw, 420px);
-  overflow: hidden; /* clips letter so only top half peeks out */
-  margin-bottom: 0; /* flush bottom — no dead space */
+  margin: 24px -18px 0;
+  margin-bottom: 0;
+  width: calc(100% + 36px);
+  max-width: none;
 }
-.tg-env-deco {
-  position: absolute; inset: 0;
-  pointer-events: none; z-index: 10;
-}
-/* Letter anchored at top — bottom half hidden behind/below cover */
 .tg-env-letter-wrap {
-  position: absolute;
-  top: 0; left: 10%;
-  width: 80%;
-  z-index: 2;
+  position: relative;
+  left: 0; width: 100%;
+  z-index: 1;
+  overflow: hidden;
 }
 .tg-env-letter-img {
   width: 100%; height: auto; display: block;
 }
-/* Content overlaid on the letter paper */
 .tg-env-letter-content {
   position: absolute;
   inset: 9% 12% 18% 12%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  display: flex; flex-direction: column;
 }
-/* Cover wrap — full width, absolute bottom, masks letter's lower half */
 .tg-env-cover-wrap {
-  position: absolute;
-  bottom: 0; left: 0;
-  width: 100%; z-index: 5;
+  position: relative;
+  width: 100%; margin-top: -8px;
 }
 .tg-env-cover {
   width: 100%; height: auto; display: block;
 }
-/* Helen + replay overlaid on the cover */
 .tg-env-cover-content {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: space-between;
   padding: 0 clamp(12px, 4cqw, 20px);
-  z-index: 6;
 }
 /* Tiny replay button on the cover */
 .tg-env-replay {

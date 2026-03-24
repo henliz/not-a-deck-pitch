@@ -296,8 +296,8 @@
 
       phoneScreenMeta = { maxX: box0.max.x, midY: mid0.y, midZ: mid0.z, sizeY: size0.y, sizeZ: size0.z };
 
-      // Scale: fit largest XY dimension to 3.7 world units
-      const sf = 3.7 / Math.max(size0.x, size0.y);
+      // Scale: fit largest XY dimension to 3.5 world units
+      const sf = 3.5 / Math.max(size0.x, size0.y);
       phoneMesh.scale.setScalar(sf);
 
       // Pose: screen faces +X in GLB → tilted for drama at start
