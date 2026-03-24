@@ -739,9 +739,9 @@ canvas#webgl {
 }
 .tg-env-letter-wrap {
   position: relative;
-  left: 0; width: 100%;
+  width: 88%;
+  margin: 0 auto;
   z-index: 1;
-  overflow: hidden;
 }
 .tg-env-letter-img {
   width: 100%; height: auto; display: block;
@@ -752,16 +752,18 @@ canvas#webgl {
   display: flex; flex-direction: column;
 }
 .tg-env-cover-wrap {
-  position: relative;
-  width: 100%; margin-top: -8px;
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 100%;
+  z-index: 2;
 }
 .tg-env-cover {
   width: 100%; height: auto; display: block;
 }
 .tg-env-cover-content {
   position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 clamp(12px, 4cqw, 20px);
+  display: flex; align-items: flex-end; justify-content: flex-start;
+  padding: 0 0 1% 12%;
 }
 /* Tiny replay button on the cover */
 .tg-env-replay {
@@ -795,8 +797,8 @@ canvas#webgl {
   box-shadow: 0 8px 28px rgba(0,0,0,0.14), 0 0 0 5px rgba(219,213,156,0.16);
 }
 .tg-email-helen {
-  font-family: var(--font-label); font-size: 11px; letter-spacing: 0.04em;
-  color: rgba(34,34,34,0.55); margin-bottom: 14px; line-height: 1.5;
+  font-family: var(--font-label); font-size: 12px; letter-spacing: 0.04em;
+  color: rgba(34,34,34,0.78); margin-bottom: 14px; line-height: 1.5;
 }
 .tg-email-helen-link { color: var(--trace); text-decoration: none; }
 .tg-email-helen-link:hover { text-decoration: underline; }

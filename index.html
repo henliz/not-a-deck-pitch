@@ -55,7 +55,7 @@
     const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
     // Breakpoint-aware camera z: idle (tilted phone) → face-on (post-spin)
     const CAM_IDLE = innerWidth < 480 ? 6.6 : innerWidth < 768 ? 6.8 : 6.9;
-    const CAM_FACE = innerWidth < 480 ? 4.7 : innerWidth < 768 ? 4.8 : 4.9;
+    const CAM_FACE = innerWidth < 480 ? 4.2 : innerWidth < 768 ? 4.3 : 4.4;
     camera.position.set(0, 0, CAM_IDLE);
 
     scene.add(new THREE.HemisphereLight(0xf5ede0, 0xd0c8b8, 0.18));

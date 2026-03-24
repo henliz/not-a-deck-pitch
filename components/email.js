@@ -23,7 +23,7 @@ export function createEmail(ctx) {
     letterWrap.append(letterImg, letterContent);
     wrap.appendChild(letterWrap);
 
-    // Cover: overlaps the lower half of the letter
+    // Cover: absolutely anchored to the bottom of the letter
     const coverWrap = document.createElement('div');
     coverWrap.className = 'tg-env-cover-wrap';
     const coverImg = document.createElement('img');

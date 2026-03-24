@@ -72,7 +72,7 @@ export function createBranches(ctx) {
     if (deadWord) {
       deadWord.style.position = 'relative';
       deadWord.style.overflow = 'visible';
-      deadWord.appendChild(ctx.decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% - 20px)', top: '18px', w: 104, fromY: -30, delay: 0.2 }));
+      deadWord.appendChild(ctx.decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% - 20px)', top: '-4px', w: 72, fromY: -30, delay: 0.2 }));
     }
     await ctx.w(500);
     await ctx.reveal(ctx.line('40–80% of applicants now use AI to write about themselves.', 'tg-blockquote'), {
@@ -310,12 +310,27 @@ export function createBranches(ctx) {
       y: 14, stagger: 0.07, duration: 0.55, blur: true, ease: ctx.hasCE ? 'unfurl' : 'power3.out',
     });
     await ctx.w(350);
+    await ctx.reveal(ctx.line('Two revenue streams. <span class="tg-hl">One compounding moat.</span>', 'tg-pl--dim'), {
+      y: 10, stagger: 0.065, duration: 0.45, ease: ctx.hasCE ? 'unfurl' : 'power3.out',
+    });
+    await ctx.w(200);
     ctx.askGrid([
-      { label: 'Consumer',   value: 'Free → Premium', sub: 'Users build profiles they own across every tangle they play' },
-      { label: 'Enterprise', value: '"Sign in with Trove"', sub: 'Platforms pay for authorized behavioural signal. Like Plaid for personality.' },
+      { label: 'Consumer',   value: 'Free → Premium', sub: '$0.10/play. Profile compounds to $5 of value. They own it.' },
+      { label: 'Enterprise', value: '"Sign in with Trove"', sub: 'That same profile is worth $50–200 to a hiring manager, a dating app, a landlord.' },
     ]);
     await ctx.w(500);
-    await ctx.dimLines('Hiring, dating, insurance, healthcare — every high-stakes people decision currently runs on self-report. Trove becomes the API layer that replaces it. The user authorizes the share. The platform pays. The data stays the user\'s.', 160);
+    await ctx.dimLines('The user authorizes the share. The platform pays. The data stays the user\'s. This is why the B2B inbounds came unsolicited — companies saw the consumer product and immediately understood what it meant for their own pipelines.', 160);
+    await ctx.w(350);
+    await ctx.statsBlockReveal([
+      { n: '$25B', l: 'hiring & assessment — all self-reported',       asset: 'waller.png' },
+      { n: '$10B', l: 'dating platforms — all self-reported',          asset: 'apple.png'  },
+      { n: '$15B', l: 'learning & admissions — all self-reported',     asset: 'id.png'     },
+      { n: '$15B', l: 'team assessment & coaching — all self-reported', asset: 'watch.png' },
+    ]);
+    await ctx.w(300);
+    await ctx.reveal(ctx.line('<span class="tg-hl">Every single one</span> of these markets runs on self-report. Trove is the infrastructure layer that replaces it.', 'tg-pl--med'), {
+      y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: ctx.hasCE ? 'unfurl' : 'power3.out',
+    });
     await ctx.w(350);
     const idx = await ctx.branchChoices([
       "What does early consumer traction look like?",
@@ -677,6 +692,10 @@ export function createBranches(ctx) {
     await ctx.dimLines('A competitor starting today would need years of real human behavioural data across diverse emotional contexts. Trove\'s head start is the dataset — and it compounds with every tangle played.');
     await ctx.w(350);
     await ctx.dimLines('The comparable isn\'t another assessment tool. It\'s Plaid. $430M ARR from API access to data users already had. Trove is building the behavioural equivalent of that infrastructure layer.');
+    await ctx.w(350);
+    await ctx.reveal(ctx.line('$65B+ across hiring, dating, learning, and team assessment. <span class="tg-hl">Every single one built on self-report.</span>', 'tg-pl--med'), {
+      y: 12, stagger: 0.065, duration: 0.52, blur: true, ease: ctx.hasCE ? 'unfurl' : 'power3.out',
+    });
     const lastScrapCard = [...ctx.pitch.querySelectorAll('.tg-scrapbook-card')].pop();
     if (lastScrapCard) {
       lastScrapCard.style.position = 'relative'; lastScrapCard.style.overflow = 'visible';
