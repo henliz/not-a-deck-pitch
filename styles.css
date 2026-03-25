@@ -763,7 +763,7 @@ canvas#webgl {
 .tg-env-cover-content {
   position: absolute; inset: 0;
   display: flex; align-items: flex-end; justify-content: flex-start;
-  padding: 0 0 1% 12%;
+  padding: 0 0 0 6%;
 }
 /* Tiny replay button on the cover */
 .tg-env-replay {
@@ -798,7 +798,8 @@ canvas#webgl {
 }
 .tg-email-helen {
   font-family: var(--font-label); font-size: 12px; letter-spacing: 0.04em;
-  color: rgba(34,34,34,0.78); margin-bottom: 14px; line-height: 1.5;
+  color: rgba(34,34,34,0.78); margin-bottom: 0; line-height: 1.5;
+  transform: translateY(60%);
 }
 .tg-email-helen-link { color: var(--trace); text-decoration: none; }
 .tg-email-helen-link:hover { text-decoration: underline; }

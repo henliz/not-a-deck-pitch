@@ -72,7 +72,7 @@ export function createBranches(ctx) {
     if (deadWord) {
       deadWord.style.position = 'relative';
       deadWord.style.overflow = 'visible';
-      deadWord.appendChild(ctx.decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% - 20px)', top: '-4px', w: 72, fromY: -30, delay: 0.2 }));
+      deadWord.appendChild(ctx.decal('heartbreak.png', 'tg-decal--lubdub', { left: 'calc(100% + 4px)', top: '-4px', w: 72, fromY: -30, delay: 0.2 }));
     }
     await ctx.w(500);
     await ctx.reveal(ctx.line('40–80% of applicants now use AI to write about themselves.', 'tg-blockquote'), {
